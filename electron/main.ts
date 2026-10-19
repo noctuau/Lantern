@@ -14,7 +14,11 @@ interface Session {
 }
 
 // Smoke runs use a throwaway profile so they never touch the real world list or logs.
-if (process.env.LANTERN_SMOKE) app.setPath('userData', path.join(app.getPath('temp'), 'lantern-smoke'));
+if (process.env.LANTERN_SMOKE) {
+  const smokeDir = path.join(app.getPath('temp'), 'lantern-smoke');
+  fs.rmSync(smokeDir, { recursive: true, force: true });
+  app.setPath('userData', smokeDir);
+}
 
 const sessions = new Map<string, Session>();
 let win: BrowserWindow | null = null;
