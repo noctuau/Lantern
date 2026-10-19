@@ -1,0 +1,137 @@
+/* Lantern — warm dark theme. Everything themeable lives in these tokens. */
+:root {
+  --bg: #14120f;
+  --bg-2: #1b1915;
+  --bg-3: #24211b;
+  --line: #2f2b24;
+  --fg: #e6dfd2;
+  --fg-muted: #8f8778;
+  --accent: #e8a94b;
+  --accent-2: #c7782e;
+  --danger: #d9674f;
+  --ok: #86b867;
+  --warn: #e0b24a;
+
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mud: "Cascadia Mono", "JetBrains Mono", "Fira Code", Consolas, "Courier New", monospace;
+  --mud-size: 15px;
+  --mud-line: 1.5;
+  --mud-max-width: 100ch;
+
+  /* 16-colour ANSI palette, tuned for a warm dark background */
+  --ansi-0: #3a3631;  --ansi-8: #6b655b;
+  --ansi-1: #d9674f;  --ansi-9: #f0876d;
+  --ansi-2: #86b867;  --ansi-10: #a6d886;
+  --ansi-3: #e0b24a;  --ansi-11: #f5cf6c;
+  --ansi-4: #6f9fd8;  --ansi-12: #93bdf0;
+  --ansi-5: #c58ad0;  --ansi-13: #dca9e6;
+  --ansi-6: #62b7b7;  --ansi-14: #86d6d6;
+  --ansi-7: #d6cfc2;  --ansi-15: #fbf6ec;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 14px; overflow: hidden; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.muted { color: var(--fg-muted); }
+.small { font-size: 12px; }
+.pad { padding: 12px; }
+.spacer { flex: 1; }
+
+.app { display: grid; grid-template-columns: 260px 1fr; height: 100%; }
+.app.sidebar-closed { grid-template-columns: 1fr; }
+
+/* ---------- sidebar ---------- */
+.sidebar { background: var(--bg-2); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.sidebar-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.brand { font-weight: 600; letter-spacing: 0.02em; }
+.world-list { flex: 1; overflow-y: auto; padding: 6px; }
+.world { display: flex; align-items: center; gap: 8px; padding: 8px 8px; border-radius: 8px; cursor: default; }
+.world:hover { background: var(--bg-3); }
+.world-main { flex: 1; min-width: 0; }
+.world-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.world-host { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.world-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.12s; }
+.world:hover .world-actions { opacity: 1; }
+.sidebar-foot { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-top: 1px solid var(--line); }
+
+/* ---------- buttons ---------- */
+.btn { background: var(--bg-3); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+.btn:hover { border-color: var(--accent-2); }
+.btn.small { padding: 4px 10px; font-size: 12px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #1a1409; font-weight: 600; }
+.btn.primary:hover { background: #f2b65b; }
+.btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--danger); }
+.icon-btn { background: transparent; border: 0; border-radius: 6px; width: 28px; height: 28px; cursor: pointer; color: var(--fg-muted); }
+.icon-btn:hover { background: var(--bg-3); color: var(--fg); }
+
+/* ---------- main ---------- */
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.tabs { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--bg-2); overflow-x: auto; }
+.tab { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 10px; border-radius: 8px; cursor: pointer; color: var(--fg-muted); white-space: nowrap; }
+.tab:hover { background: var(--bg-3); }
+.tab.active { background: var(--bg-3); color: var(--fg); }
+.tab-close { background: none; border: 0; color: var(--fg-muted); cursor: pointer; border-radius: 4px; width: 18px; height: 18px; line-height: 1; }
+.tab-close:hover { background: var(--line); color: var(--fg); }
+.tab-hint { color: var(--fg-muted); padding: 6px 8px; font-size: 13px; }
+.badge { background: var(--accent); color: #1a1409; border-radius: 10px; font-size: 11px; padding: 1px 6px; font-weight: 600; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-muted); flex-shrink: 0; }
+.status-connected .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.status-connecting .dot { background: var(--warn); animation: pulse 1s infinite alternate; }
+.status-error .dot { background: var(--danger); }
+@keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
+
+/* ---------- output ---------- */
+.output-wrap { position: relative; flex: 1; min-height: 0; }
+.output {
+  height: 100%; overflow-y: auto; padding: 14px 20px 10px;
+  font-family: var(--font-mud); font-size: var(--mud-size); line-height: var(--mud-line);
+  white-space: pre-wrap; overflow-wrap: anywhere; outline: none;
+  scrollbar-color: var(--line) transparent;
+}
+.line { max-width: var(--mud-max-width); content-visibility: auto; contain-intrinsic-size: auto 1.5em; }
+.line.kind-input { color: var(--accent); }
+.line.kind-input::before { content: "› "; color: var(--accent-2); }
+.line.kind-note { color: var(--fg-muted); font-style: italic; }
+.line.kind-error { color: var(--danger); font-style: italic; }
+.line.prompt { margin-top: 2px; }
+.link { color: var(--ansi-12); text-decoration: underline; cursor: pointer; }
+.jump {
+  position: absolute; right: 24px; bottom: 14px; background: var(--accent); color: #1a1409; border: 0;
+  border-radius: 20px; padding: 6px 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+/* ---------- input ---------- */
+.input-bar { border-top: 1px solid var(--line); background: var(--bg-2); padding: 10px 14px; }
+.input {
+  width: 100%; resize: none; background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 12px; font-family: var(--font-mud); font-size: var(--mud-size); line-height: 1.45; outline: none;
+  min-height: 38px; max-height: 200px; transition: border-color 0.12s;
+}
+.input:focus { border-color: var(--accent-2); }
+.masked .input { -webkit-text-security: disc; }
+.input-offline { display: flex; align-items: center; gap: 12px; padding: 4px 2px; }
+
+/* ---------- status bar ---------- */
+.status-bar { display: flex; align-items: center; gap: 10px; padding: 4px 14px; font-size: 12px; border-top: 1px solid var(--line); background: var(--bg-2); color: var(--fg); }
+
+/* ---------- welcome ---------- */
+.welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.welcome-mark { font-size: 56px; filter: drop-shadow(0 0 24px rgba(232,169,75,0.35)); }
+.welcome h1 { margin: 0; font-weight: 600; letter-spacing: 0.04em; }
+.welcome p { margin: 0; }
+
+/* ---------- modal ---------- */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
+.modal { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; width: 520px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.modal h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+.modal label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-muted); }
+.modal label.check { flex-direction: row; align-items: center; gap: 8px; align-self: end; padding-bottom: 8px; color: var(--fg); }
+.modal input, .modal select, .modal textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; color: var(--fg); font-size: 14px; }
+.modal input:focus, .modal select:focus, .modal textarea:focus { outline: none; border-color: var(--accent-2); }
+.modal textarea { font-family: var(--font-mud); font-size: 13px; resize: vertical; }
+.modal .row { display: flex; gap: 10px; }
+.modal .grow { flex: 1; }
+.modal-actions { display: flex; gap: 8px; margin-top: 4px; }

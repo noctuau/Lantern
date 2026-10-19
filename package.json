@@ -1,0 +1,44 @@
+{
+  "name": "lantern",
+  "productName": "Lantern",
+  "version": "0.1.0",
+  "description": "A modern MUD/MUSH client — a fresh take on MUSHclient",
+  "main": "dist-electron/main.js",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n vite,electron -c cyan,magenta \"vite\" \"npm run electron:dev\"",
+    "electron:dev": "node scripts/build-main.mjs && cross-env VITE_DEV_SERVER_URL=http://localhost:5174 electron .",
+    "build": "vite build && node scripts/build-main.mjs",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.0.0",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.0",
+    "vite": "^8.3.4"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "wasmoon": "^1.16.0"
+  },
+  "build": {
+    "appId": "au.noctua.lantern",
+    "productName": "Lantern",
+    "files": [
+      "dist/**",
+      "dist-electron/**"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
