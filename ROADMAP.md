@@ -1,6 +1,6 @@
 # Lantern roadmap
 
-Built in stages so each session is a bounded chunk of work. Stage 1 is done.
+Built in stages so each session is a bounded chunk of work. Stages 1 and 2 are done.
 
 ## Stage 1 — Connect and read (done 2026-10-20)
 
@@ -14,13 +14,17 @@ Built in stages so each session is a bounded chunk of work. Stage 1 is done.
 - Plain-text session logs per world per day
 - Smoke-test mode and an ANSI parser unit test
 
-## Stage 2 — Automation core
+## Stage 2 — Automation core (done 2026-10-20)
 
-- Triggers (regex + plain), aliases, timers, with per-world persistence
-- Gags, highlights, one-shot triggers, trigger groups
-- Command stacking and speedwalk (both optional, off by default)
-- Keypad / function-key macros
-- Import triggers, aliases and timers from `.MCL`
+- Triggers (regex + plain with `*` wildcards), aliases (regex, wildcard, or command prefix), timers (interval or daily clock time), stored per world in `worlds.json`
+- Gags, highlights (matched text or whole line, ANSI palette or custom colour), one-shot triggers and timers, groups with one-click on/off
+- `%0`–`%9` substitution, multi-line sends, "send to output as a note"
+- Command stacking and speedwalk (both optional, off by default, per world)
+- Automation panel per world (⚡ in the tab bar or sidebar) with a "Try it" box for triggers and aliases; status-bar pause switch
+- Import triggers, aliases and timers from `.MCL` (match, regexp, enabled, group, ignore_case, omit_from_output, one_shot, custom_colour / other_text_colour, send_to, at_time, sequence, command stacking and speedwalk settings)
+- Each trigger/alias/timer carries an optional Lua function name (`script`) and any inline Lua from MUSHclient (`scriptBody`) for stage 3; neither runs yet
+- Unit test `scripts/test-automation.mjs`
+- Not done: keypad / function-key macros (moved to stage 5 alongside the settings UI)
 
 ## Stage 3 — Lua scripting
 
@@ -39,6 +43,7 @@ Built in stages so each session is a bounded chunk of work. Stage 1 is done.
 ## Stage 5 — Modern-era features
 
 - Settings UI: fonts (monospace or proportional for RP), size, line spacing, themes (light + dark + custom palettes)
+- Keypad / function-key macros
 - Spell check in the input box (Chromium gives this nearly free)
 - Pose composer: a larger writing pane for long RP poses, with a preview
 - Searchable scrollback and log viewer inside the app

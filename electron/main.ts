@@ -58,12 +58,12 @@ function createWindow() {
   if (smoke) {
     const [host, port, out] = smoke.split('|');
     win.webContents.on('did-finish-load', () => {
-      setTimeout(() => send('smoke:run', { host, port: Number(port) }), 500);
+      setTimeout(() => send('smoke:run', { host, port: Number(port), panel: process.env.LANTERN_SMOKE_PANEL === '1' }), 500);
       setTimeout(async () => {
         const img = await win!.webContents.capturePage();
         fs.writeFileSync(out, img.toPNG());
         app.quit();
-      }, 7000);
+      }, Number(process.env.LANTERN_SMOKE_WAIT ?? 7000));
     });
   }
 }

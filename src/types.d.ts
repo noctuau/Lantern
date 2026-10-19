@@ -27,7 +27,7 @@ declare global {
         openLogs(): Promise<string>;
         openExternal(url: string): Promise<void>;
         version(): Promise<string>;
-        onSmoke(cb: (opts: { host: string; port: number }) => void): Unsub;
+        onSmoke(cb: (opts: { host: string; port: number; panel?: boolean }) => void): Unsub;
       };
     };
   }

@@ -6,11 +6,12 @@ interface Props {
   onToggle(): void;
   onConnect(w: World): void;
   onEdit(w: World): void;
+  onAutomation(w: World): void;
   onNew(): void;
   onImport(): void;
 }
 
-export function Sidebar({ worlds, open, onToggle, onConnect, onEdit, onNew, onImport }: Props) {
+export function Sidebar({ worlds, open, onToggle, onConnect, onEdit, onAutomation, onNew, onImport }: Props) {
   if (!open) return null;
   const sorted = [...worlds].sort((a, b) => a.name.localeCompare(b.name));
   return (
@@ -29,6 +30,7 @@ export function Sidebar({ worlds, open, onToggle, onConnect, onEdit, onNew, onIm
             </div>
             <div className="world-actions">
               <button className="btn small" onClick={() => onConnect(w)}>Connect</button>
+              <button className="icon-btn" title="Triggers, aliases, timers" onClick={() => onAutomation(w)}>⚡</button>
               <button className="icon-btn" title="Edit" onClick={() => onEdit(w)}>✎</button>
             </div>
           </div>
