@@ -41,7 +41,7 @@ Smoke runs use a throwaway profile and never touch your worlds or logs. The smok
 
 ## Automation
 
-Open ⚡ Automation from the tab bar (or the ⚡ on a world in the sidebar). Triggers watch each finished line of output and can recolour it, hide it, or send something back; aliases rewrite what you type; timers send on a schedule while connected. Plain patterns match anywhere in the line, `*` is a wildcard (and then the pattern must match the whole line); regex patterns are JavaScript regular expressions. `%1`–`%9` are the captures, `%0` the whole match. In the Triggers, Aliases and Timers tabs, Import… reads a MUSHclient export (.xml) or world file (.MCL) and Paste XML takes what MUSHclient's Copy button put on the clipboard; imported items are added to the list and kept when you Save. Command stacking and speedwalk live under Options and are off unless you turn them on for a world.
+Open ⚡ Automation from the tab bar (or the ⚡ on a world in the sidebar). Triggers watch each finished line of output and can recolour it, hide it, or send something back; aliases rewrite what you type; timers send on a schedule while connected. Plain patterns match anywhere in the line, `*` is a wildcard (and then the pattern must match the whole line); regex patterns are JavaScript regular expressions. `%1`–`%9` are the captures, `%0` the whole match. In the Triggers, Aliases and Timers tabs, Import… reads a MUSHclient export (.mct triggers, .mca aliases, .mcm timers, or .xml) or world file (.MCL) and Paste XML takes what MUSHclient's Copy button put on the clipboard; imported items are added to the list and kept when you Save. Command stacking and speedwalk live under Options and are off unless you turn them on for a world.
 
 ## Channel tabs
 

@@ -197,7 +197,7 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
               <div className="auto-list-actions">
                 <button className="btn small" onClick={addItem}>+ New</button>
                 <button className="btn small ghost" disabled={!selected} onClick={duplicate}>Duplicate</button>
-                <button className="btn small ghost" title="Import triggers, aliases and timers from a MUSHclient export (.xml) or world file (.MCL)" onClick={importFile}>Import…</button>
+                <button className="btn small ghost" title="Import from a MUSHclient export (.mct, .mca, .mcm, .xml) or world file (.MCL)" onClick={importFile}>Import…</button>
                 <button className="btn small ghost" title="Paste the XML that MUSHclient's Copy button puts on the clipboard" onClick={pasteXml}>Paste XML</button>
                 <span className="spacer" />
                 <button className="icon-btn" title="Move up" disabled={!selected} onClick={() => move(-1)}>↑</button>

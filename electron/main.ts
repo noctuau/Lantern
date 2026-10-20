@@ -169,7 +169,7 @@ ipcMain.handle('mcl:parse', (_e, xml: string) => parseMclXml(String(xml)));
 ipcMain.handle('mcl:importFile', async () => {
   const res = await dialog.showOpenDialog(win!, {
     title: 'Import MUSHclient triggers, aliases or timers',
-    filters: [{ name: 'MUSHclient XML or world files', extensions: ['xml', 'mcl', 'MCL', 'txt'] }, { name: 'All files', extensions: ['*'] }],
+    filters: [{ name: 'MUSHclient exports and worlds', extensions: ['mct', 'mca', 'mcm', 'xml', 'mcl', 'MCT', 'MCA', 'MCM', 'MCL', 'txt'] }, { name: 'All files', extensions: ['*'] }],
     properties: ['openFile'],
   });
   if (res.canceled) return null;
