@@ -2,7 +2,19 @@
 
 <!-- sidebar: the ‹ / 🏮 toggle cycles full → icon rail → hidden; the state is remembered. -->
 
-A modern MUD/MUSH client: a fresh take on MUSHclient, built for roleplay games. Lantern is a free, open-source desktop client for Windows, with ANSI and xterm-256 colour, triggers, aliases, timers, Lua scripting, channel tabs for keeping chatter off the roleplay screen, and MUSHclient import so you can bring your existing setup across.
+A modern MUD/MUSH client: a fresh take on MUSHclient, built for roleplay games. Lantern is a free, open-source desktop client for Windows that aims to bring the old text-client experience into the modern era.
+
+It's written predominantly for [Haven](https://havenrpg.net) and games built on the same codebase, so it ships with ready-made channel-tab presets for Haven's channels and understands the backtick colour codes those games use. It is not locked to Haven, though: it speaks standard telnet and works with any MUD or MUSH.
+
+## Features
+
+- **Colour** — full ANSI, xterm-256 and truecolour, with a configurable palette (Warm, Classic/MUSHclient, or your own).
+- **Automation** — triggers, aliases and timers, with plain, wildcard or regex matching; recolour a line, hide it, or send a reply.
+- **Channel tabs** — route OOC and other chatter into their own tabs to keep it off the roleplay screen, with per-tab timestamps, spacing and a command prefix; one-click Haven preset included.
+- **Colour composer** — build gradient or hand-picked coloured text from 87 presets and drop it straight into the command box.
+- **Lua scripting** — a Lua 5.4 script per world with a MUSHclient-style API, sandboxed in the app.
+- **MUSHclient import** — read your existing `.MCL` worlds and `.mct`/`.mca`/`.mcm` trigger, alias and timer exports.
+- **Comfortable UI** — a collapsible sidebar, separate fonts and sizes for output and input, adjustable width, spell-check, one clean log per day, and quick one-key highlighting.
 
 ## Install
 
