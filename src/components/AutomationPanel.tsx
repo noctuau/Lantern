@@ -28,10 +28,8 @@ interface Props {
   onClose(): void;
 }
 
-const ANSI_NAMES = ['Black', 'Red', 'Green', 'Yellow', 'Blue', 'Magenta', 'Cyan', 'White',
-  'Grey', 'Bright red', 'Bright green', 'Bright yellow', 'Bright blue', 'Bright magenta', 'Bright cyan', 'Bright white'];
+import { ColourPicker, colourCss } from './ColourPicker';
 
-const colourCss = (c: string) => (/^\d+$/.test(c) ? `var(--ansi-${c})` : c);
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 
 export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onClose }: Props) {
@@ -262,7 +260,6 @@ function SendToSelect({ value, onChange }: { value: SendTo; onChange(v: SendTo):
 
 function TriggerEditor({ t, patch }: { t: Trigger; patch(p: Partial<Trigger>): void }) {
   const err = patternError(t.pattern, t.regex);
-  const custom = t.highlight !== null && !/^\d+$/.test(t.highlight);
   return (
     <div className="auto-form">
       <div className="row">
@@ -280,16 +277,7 @@ function TriggerEditor({ t, patch }: { t: Trigger; patch(p: Partial<Trigger>): v
       </div>
       <div className="row">
         <Field label="Colour" grow>
-          <div className="row">
-            <select value={t.highlight === null ? '' : custom ? 'custom' : t.highlight}
-              onChange={(e) => patch({ highlight: e.target.value === '' ? null : e.target.value === 'custom' ? '#e8a94b' : e.target.value })}>
-              <option value="">No colour change</option>
-              {ANSI_NAMES.map((n, i) => <option key={i} value={String(i)}>{n}</option>)}
-              <option value="custom">Custom…</option>
-            </select>
-            {custom && <input className="mono" style={{ width: 120 }} value={t.highlight ?? ''} onChange={(e) => patch({ highlight: e.target.value })} placeholder="#rrggbb" />}
-            {t.highlight && <span className="swatch big" style={{ background: colourCss(t.highlight) }} />}
-          </div>
+          <ColourPicker value={t.highlight} onChange={(v) => patch({ highlight: v })} sample={t.highlight ? (t.regex ? 'Sample text' : t.pattern || 'Sample text') : undefined} />
         </Field>
         {t.highlight && (
           <Check label="Whole line" title="Otherwise only the matching text is coloured" checked={t.highlightLine} onChange={(v) => patch({ highlightLine: v })} />

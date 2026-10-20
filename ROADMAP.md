@@ -52,9 +52,16 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - Hooks: on connect/disconnect, on line, on send, on GMCP, on prompt
 - Port the one plugin Noctua uses
 
+## Polish (done 2026-10-20, from first hands-on use)
+
+- Colour picker with palette swatches and OS colour dialog; sample text beside it
+- Settings dialog: fonts, sizes and line spacing for output and command box, resting height of the command box (also draggable)
+- Quick "Highlight word or phrase" dialog on Ctrl+Alt+H / ✎ Highlight, creating a trigger in the Highlights group
+- Smoke-test windows no longer take keyboard focus
+
 ## Stage 5 — Modern-era features
 
-- Settings UI: fonts (monospace or proportional for RP), size, line spacing, themes (light + dark + custom palettes)
+- Themes (light + dark + custom palettes)
 - Keypad / function-key macros
 - Spell check in the input box (Chromium gives this nearly free)
 - Pose composer: a larger writing pane for long RP poses, with a preview

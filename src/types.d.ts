@@ -31,6 +31,10 @@ declare global {
         open(worldId: string): Promise<string>;
         path(worldId: string): Promise<string>;
       };
+      settings: {
+        get(): Promise<Record<string, unknown> | null>;
+        set(settings: Record<string, unknown>): Promise<void>;
+      };
       app: {
         openLogs(): Promise<string>;
         openExternal(url: string): Promise<void>;

@@ -34,6 +34,10 @@ contextBridge.exposeInMainWorld('lantern', {
     open: (worldId: string) => ipcRenderer.invoke('scripts:open', worldId),
     path: (worldId: string) => ipcRenderer.invoke('scripts:path', worldId),
   },
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    set: (settings: unknown) => ipcRenderer.invoke('settings:set', settings),
+  },
   app: {
     openLogs: () => ipcRenderer.invoke('app:openLogs'),
     openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),

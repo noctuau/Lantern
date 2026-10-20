@@ -9,9 +9,10 @@ interface Props {
   onAutomation(w: World): void;
   onNew(): void;
   onImport(): void;
+  onSettings(): void;
 }
 
-export function Sidebar({ worlds, open, onToggle, onConnect, onEdit, onAutomation, onNew, onImport }: Props) {
+export function Sidebar({ worlds, open, onToggle, onConnect, onEdit, onAutomation, onNew, onImport, onSettings }: Props) {
   if (!open) return null;
   const sorted = [...worlds].sort((a, b) => a.name.localeCompare(b.name));
   return (
@@ -40,6 +41,7 @@ export function Sidebar({ worlds, open, onToggle, onConnect, onEdit, onAutomatio
         <button className="btn" onClick={onNew}>+ New world</button>
         <button className="btn ghost" onClick={onImport}>Import .MCL</button>
         <button className="btn ghost" onClick={() => window.lantern.app.openLogs()}>Open logs folder</button>
+        <button className="btn ghost" onClick={onSettings}>⚙ Settings</button>
       </div>
     </aside>
   );

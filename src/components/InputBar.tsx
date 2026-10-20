@@ -4,26 +4,63 @@ import { activePrefix, PREFIX_BYPASS } from '../lib/channels';
 
 interface Props {
   session: SessionState;
+  /** Resting height of the box in lines (from settings). */
+  minLines: number;
+  onResize(lines: number): void;
   onSend(text: string): void;
   onReconnect(): void;
 }
 
-export function InputBar({ session, onSend, onReconnect }: Props) {
+const MAX_LINES = 20;
+const BOX_PADDING = 18; // vertical padding + border of .input
+
+export function InputBar({ session, minLines, onResize, onSend, onReconnect }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
+  const [lines, setLines] = useState(minLines);
   const histIdx = useRef<number | null>(null);   // null = not browsing history
   const draft = useRef('');
 
   useEffect(() => { ref.current?.focus(); }, []);
+  useEffect(() => { setLines(minLines); }, [minLines]);
 
-  // Keep the box to a sensible height: grows with content up to ~8 lines.
+  const lineHeight = () => {
+    const el = ref.current;
+    const lh = el ? parseFloat(getComputedStyle(el).lineHeight) : 22;
+    return Number.isFinite(lh) ? lh : 22;
+  };
+
+  // Rest at `lines` tall; grow with content up to MAX_LINES.
   useEffect(() => {
     const el = ref.current; if (!el) return;
-    const max = 8 * 22 + 16;
+    const lh = lineHeight();
+    const min = lines * lh + BOX_PADDING;
+    const max = Math.max(lines, MAX_LINES) * lh + BOX_PADDING;
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, max) + 'px';
+    const wanted = Math.min(Math.max(el.scrollHeight, min), max);
+    el.style.height = wanted + 'px';
     el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
-  }, [value]);
+  }, [value, lines]);
+
+  // Drag the top edge to change the resting height; persisted on release.
+  const startDrag = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startLines = lines;
+    const lh = lineHeight();
+    let current = startLines;
+    const move = (ev: MouseEvent) => {
+      current = Math.min(MAX_LINES, Math.max(1, Math.round(startLines + (startY - ev.clientY) / lh)));
+      setLines(current);
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      if (current !== minLines) onResize(current);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
 
   const send = () => {
     const text = value;
@@ -71,6 +108,7 @@ export function InputBar({ session, onSend, onReconnect }: Props) {
 
   return (
     <div className={`input-bar ${session.echo ? '' : 'masked'}`}>
+      <div className="input-grip" title="Drag to change the height of the command box" onMouseDown={startDrag} />
       {disconnected ? (
         <div className="input-offline">
           <span className="muted">Disconnected.</span>

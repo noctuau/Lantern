@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, session as electronSession } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -37,6 +37,9 @@ function createWindow() {
     title: 'Lantern',
     backgroundColor: '#14120f',
     autoHideMenuBar: true,
+    // Smoke runs must not steal focus from whatever the user is doing.
+    show: !process.env.LANTERN_SMOKE,
+    focusable: !process.env.LANTERN_SMOKE,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -52,6 +55,11 @@ function createWindow() {
   } else {
     win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
+
+  // Let the Settings dialog list installed fonts (Local Font Access API); everything else keeps Electron's default.
+  electronSession.defaultSession.setPermissionRequestHandler((_wc, _permission, cb) => cb(true));
+  electronSession.defaultSession.setPermissionCheckHandler(() => true);
+  if (process.env.LANTERN_SMOKE) win.once('ready-to-show', () => win?.showInactive());
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/i.test(url)) shell.openExternal(url);
@@ -237,6 +245,17 @@ ipcMain.handle('scripts:open', async (_e, worldId: string) => {
 ipcMain.handle('app:openLogs', () => shell.openPath(logsDir()));
 ipcMain.handle('app:openExternal', (_e, url: string) => { if (/^https?:/i.test(url)) shell.openExternal(url); });
 ipcMain.handle('app:version', () => app.getVersion());
+
+/* ---------- IPC: app settings (fonts etc.) ---------- */
+
+const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
+ipcMain.handle('settings:get', () => {
+  try { return JSON.parse(fs.readFileSync(settingsFile(), 'utf-8')); } catch { return null; }
+});
+ipcMain.handle('settings:set', (_e, settings: unknown) => {
+  fs.mkdirSync(path.dirname(settingsFile()), { recursive: true });
+  fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2));
+});
 
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => {

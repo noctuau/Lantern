@@ -8,6 +8,10 @@ import { InputBar } from './components/InputBar';
 import { WorldEditor } from './components/WorldEditor';
 import { AutomationPanel, type PanelTab } from './components/AutomationPanel';
 import { StatusBar } from './components/StatusBar';
+import { SettingsDialog } from './components/SettingsDialog';
+import { HighlightDialog } from './components/HighlightDialog';
+import { applySettings, normalizeSettings, listSystemFonts, FALLBACK_FONTS, type AppSettings } from './lib/settings';
+import type { Trigger } from '../shared/types';
 
 const NO_LINES: never[] = [];
 
@@ -18,11 +22,49 @@ export function App() {
   const [automating, setAutomating] = useState<World | null>(null);
   const [panelTab, setPanelTab] = useState<PanelTab | undefined>(undefined);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [settings, setSettings] = useState<AppSettings>(() => normalizeSettings(null));
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [fonts, setFonts] = useState<string[]>(FALLBACK_FONTS);
+  const [highlight, setHighlight] = useState<{ worldId: string; text: string } | null>(null);
   const worldsRef = useRef<World[]>([]);
   worldsRef.current = worlds;
 
   const refreshWorlds = useCallback(async () => setWorlds(await window.lantern.worlds.list()), []);
   useEffect(() => { refreshWorlds(); }, [refreshWorlds]);
+
+  // Display settings: load once, apply as CSS variables, persist on change.
+  useEffect(() => {
+    window.lantern.settings.get().then((raw) => { const s = normalizeSettings(raw as Partial<AppSettings> | null); setSettings(s); applySettings(s); });
+  }, []);
+  const saveSettings = useCallback(async (s: AppSettings) => {
+    setSettings(s); applySettings(s);
+    await window.lantern.settings.set(s as unknown as Record<string, unknown>);
+  }, []);
+  const openSettings = async () => {
+    // queryLocalFonts needs a user gesture, so the font list is fetched from the click itself.
+    setFonts(await listSystemFonts());
+    setSettingsOpen(true);
+  };
+
+  // Ctrl+Alt+H: quick highlight for the active world, seeded with any selected output text.
+  const openHighlight = useCallback(() => {
+    const sess = store.active(); if (!sess) return;
+    const text = (window.getSelection()?.toString() ?? '').trim().split('\n')[0] ?? '';
+    setHighlight({ worldId: sess.world.id, text });
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.altKey && !e.shiftKey && e.key.toLowerCase() === 'h') { e.preventDefault(); openHighlight(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openHighlight]);
+  const addHighlight = async (t: Trigger) => {
+    if (!highlight) return;
+    const w = worldsRef.current.find((x) => x.id === highlight.worldId) ?? store.active()?.world;
+    if (w) await saveWorld({ ...w, triggers: [...w.triggers, t] });
+    setHighlight(null);
+  };
 
   /** Persist one world and push it to any open session on it (which may hand back script variables it owns). */
   const saveWorld = useCallback(async (w: World) => {
@@ -91,7 +133,9 @@ export function App() {
       'end',
     ].join('\n'));
     await connect(w);
-    if (panel) { setPanelTab(panel === 'script' ? 'script' : panel === 'channels' ? 'channels' : undefined); setAutomating(w); }
+    if (panel === 'highlight') setHighlight({ worldId: w.id, text: 'Aardwolf' });
+    else if (panel === 'settings') { setFonts(await listSystemFonts()); setSettingsOpen(true); }
+    else if (panel) { setPanelTab(panel === 'script' ? 'script' : panel === 'channels' ? 'channels' : undefined); setAutomating(w); }
     setTimeout(() => sendCommandRef.current('look'), 3000);
     if (view) {
       // LANTERN_SMOKE_VIEW=<tab name> screenshots that channel tab instead of Main.
@@ -147,6 +191,7 @@ export function App() {
         onAutomation={(w) => openAutomation(w)}
         onNew={async () => setEditing(await window.lantern.worlds.create())}
         onImport={async () => { await window.lantern.worlds.importMcl(); refreshWorlds(); }}
+        onSettings={openSettings}
       />
       <main className="main">
         <div className="tabs">
@@ -172,6 +217,9 @@ export function App() {
           {active && (
             <>
               <span className="spacer" />
+              <button className="btn small ghost" title="Highlight a word or phrase (Ctrl+Alt+H). Select text in the output first to pre-fill it." onClick={openHighlight}>
+                ✎ Highlight
+              </button>
               <button className="btn small ghost" title="Triggers, aliases, timers and channel tabs for this world" onClick={() => openAutomation(active.world)}>
                 ⚡ Automation
               </button>
@@ -195,6 +243,8 @@ export function App() {
             <InputBar
               key={`in-${active.id}`}
               session={active}
+              minLines={settings.inputLines}
+              onResize={(lines) => saveSettings({ ...settings, inputLines: lines })}
               onSend={sendCommand}
               onReconnect={() => connect(active.world)}
             />
@@ -216,6 +266,24 @@ export function App() {
           onSave={async (w) => { await saveWorld(w); setEditing(null); }}
           onDelete={deleteWorld}
           onClose={() => { setEditing(null); refreshWorlds(); }}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsDialog
+          settings={settings}
+          fonts={fonts}
+          onSave={async (s) => { await saveSettings(s); setSettingsOpen(false); }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
+
+      {highlight && (
+        <HighlightDialog
+          worldName={worlds.find((x) => x.id === highlight.worldId)?.name ?? 'this world'}
+          initialText={highlight.text}
+          onSave={addHighlight}
+          onClose={() => setHighlight(null)}
         />
       )}
 
