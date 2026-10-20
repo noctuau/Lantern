@@ -65,15 +65,24 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, visible 
     if (atBottom !== pinned) { setPinned(atBottom); if (atBottom) setMissed(0); }
   };
 
+  // Snap to the bottom only when THIS pane gained content. Renders caused by other panes'
+  // traffic must not touch the scroll position, or a scroll-up in a channel tab is undone
+  // before the browser has even delivered the scroll event.
+  const lastPartial = useRef(partial);
   useLayoutEffect(() => {
     const el = ref.current; if (!el) return;
-    if (pinned) { if (visible) el.scrollTop = el.scrollHeight; }
-    else {
-      const added = lines.length - lastCount.current;
-      if (added > 0) setMissed((m) => m + added);
-    }
+    const added = lines.length - lastCount.current;
+    const changed = added > 0 || partial !== lastPartial.current;
     lastCount.current = lines.length;
+    lastPartial.current = partial;
+    if (!changed) return;
+    if (pinned) { if (visible) el.scrollTop = el.scrollHeight; }
+    else if (added > 0) setMissed((m) => m + added);
   });
+
+  // Wheel up unpins at once, before the scroll event arrives, so an incoming line cannot
+  // snap the pane back down in the same frame.
+  const onWheel = (e: React.WheelEvent) => { if (e.deltaY < 0 && pinned) setPinned(false); };
 
   // Coming back into view: a pinned pane (display:none has no height) snaps to its latest line.
   useLayoutEffect(() => {
@@ -87,7 +96,7 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, visible 
 
   return (
     <div className={`output-wrap ${visible ? '' : 'hidden'}`}>
-      <div className="output" ref={ref} onScroll={onScroll} tabIndex={-1}>
+      <div className="output" ref={ref} onScroll={onScroll} onWheel={onWheel} tabIndex={-1}>
         {lines.length === 0 && emptyHint && <div className="line output-empty">{emptyHint}</div>}
         {lines.map((l) => <LineView key={l.id} line={l} showTime={timestamps} />)}
         {partial.length > 0 && (

@@ -73,6 +73,12 @@ export interface ChannelTab {
   keepInMain: boolean;       // false (default) = lines move to the tab; true = copy, main keeps them
   notify: ChannelNotify;
   /**
+   * Games often pad a channel line with a blank line before and after. When a line moves to this
+   * tab, also drop the blank line that follows it and the one just before it, so the main pane
+   * is not left with empty gaps. Default true.
+   */
+  trimBlanks: boolean;
+  /**
    * Put in front of whatever is typed while this tab is showing (e.g. "ooc " so typing "hi"
    * sends "ooc hi"). '' (default) = type to the game as usual. A command starting with "\"
    * is sent without it, once. Applied before aliases, stacking and speedwalk.
@@ -190,7 +196,7 @@ export function normalizeTimer(t: Partial<Timer> & Pick<Timer, 'id'>): Timer {
 export function normalizeChannelTab(c: Partial<ChannelTab> & Pick<ChannelTab, 'id'>): ChannelTab {
   const notify: ChannelNotify = c.notify === 'badge+sound' || c.notify === 'silent' ? c.notify : 'badge';
   return {
-    name: 'Channel', enabled: true, keepInMain: false,
+    name: 'Channel', enabled: true, keepInMain: false, trimBlanks: true,
     ...c,
     notify,
     commandPrefix: typeof c.commandPrefix === 'string' ? c.commandPrefix : '',

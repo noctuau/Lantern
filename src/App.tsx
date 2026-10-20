@@ -120,7 +120,7 @@ export function App() {
       // The Haven starter patterns plus one that copies the login banner, so a login screen lights the badge.
       // The "ooc " prefix shows in the input bar when LANTERN_SMOKE_VIEW=OOC.
       channelTabs: [{
-        id: 'smoke-ooc', name: 'OOC', enabled: true, keepInMain: true, notify: 'badge', commandPrefix: 'ooc ',
+        id: 'smoke-ooc', name: 'OOC', enabled: true, keepInMain: true, trimBlanks: true, notify: 'badge', commandPrefix: 'ooc ',
         patterns: [
           { id: 'smoke-p1', pattern: '^\\[OOC\\] ', ignoreCase: false, mode: 'capture' },
           { id: 'smoke-p2', pattern: '^\\[AFK\\]\\s*$', ignoreCase: false, mode: 'silence' },

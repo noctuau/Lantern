@@ -138,6 +138,7 @@ export function havenChannelTab(uid: () => string): ChannelTab {
     name: HAVEN_TAB_NAME,
     enabled: true,
     keepInMain: false,
+    trimBlanks: true,
     notify: 'badge',
     // No prefix: the old setup redirected whole commands to another world rather than
     // prepending a channel command, so there is no "ooc " to copy. Set one in the editor.

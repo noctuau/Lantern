@@ -51,6 +51,7 @@ export interface SessionState {
   gmcp: Record<string, unknown>;
   automation: boolean;   // master switch for triggers/timers on this session
   fired: number;         // triggers fired this session (status bar)
+  swallowBlankUntil: number; // after a captured line: drop the next blank line until this time (ms)
   lua: LuaSession | null;
   luaStatus: 'starting' | 'ready' | 'error' | 'failed';
   luaGen: number;        // bumps on every (re)load so a stale load can't install itself
@@ -104,7 +105,7 @@ class Store {
   add(id: string, world: World) {
     const s: SessionState = {
       id, world, status: 'connecting', lines: [], partial: [], echo: true, history: [], unread: 0, gmcp: {},
-      view: MAIN_VIEW, channels: {}, mainUnread: 0,
+      view: MAIN_VIEW, channels: {}, mainUnread: 0, swallowBlankUntil: 0,
       automation: true, fired: 0, lua: null, luaStatus: 'starting', luaGen: 0, scriptDepth: 0,
     };
     this.sessions.set(id, s);
@@ -266,12 +267,30 @@ class Store {
       route = { action: 'main', tab: null, pattern: null, showInMain: true, showInTab: false };
     }
 
+    // Blank padding around a captured line: games print an empty line before and after a channel
+    // message. When the message moves to a tab, take its padding out of the main pane as well.
+    const blank = text.trim() === '';
+    let swallow = false;
+    if (route && route.action === 'capture' && route.tab && route.tab.trimBlanks && !route.showInMain) {
+      const last = s.lines[s.lines.length - 1];
+      if (last && last.kind === 'mud' && !last.prompt && Date.now() - last.ts < 3000 && last.spans.every((sp) => sp.text.trim() === '')) {
+        s.lines.pop();
+        if (s.view !== MAIN_VIEW && s.mainUnread > 0) s.mainUnread--;
+      }
+      s.swallowBlankUntil = Date.now() + 3000;
+    } else if (blank && route && route.showInMain && s.swallowBlankUntil > Date.now()) {
+      swallow = true;
+      s.swallowBlankUntil = 0;
+    } else if (!blank) {
+      s.swallowBlankUntil = 0;
+    }
+
     // The log records every line in order, gagged and silenced ones included, captured ones with their tab name.
     if (s.world.logging && s.world.log.output) {
       const prefix = logPrefix(route);
       this.hooks.log(s.id, prefix + text, 'output', s.world.log.format === 'html' ? lineHtml('output', prefix, merged) : undefined);
     }
-    if (!route) return;   // gagged: shown nowhere, and never reaches a tab
+    if (!route || swallow) return;   // gagged or padding: shown nowhere, and never reaches a tab
 
     const line: Line = { id: this.lineId++, kind, spans: merged, ts: Date.now(), prompt };
     if (route.showInTab && route.tab) this.pushChannelLine(s, route.tab, line, !route.showInMain);
