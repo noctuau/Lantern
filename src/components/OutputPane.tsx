@@ -29,9 +29,11 @@ export function fmtTime(ts: number): string {
 }
 
 export const LineView = memo(function LineView({ line, showTime }: { line: Line; showTime?: boolean }) {
+  // Hover any line to see when it arrived (like MUSHclient), even when inline timestamps are off.
+  const when = new Date(line.ts).toLocaleString();
   return (
-    <div className={`line kind-${line.kind} ${line.prompt ? 'prompt' : ''}`} data-ts={line.ts}>
-      {showTime && <span className="ts" title={new Date(line.ts).toLocaleString()}>{fmtTime(line.ts)}</span>}
+    <div className={`line kind-${line.kind} ${line.prompt ? 'prompt' : ''}`} data-ts={line.ts} title={when}>
+      {showTime && <span className="ts" title={when}>{fmtTime(line.ts)}</span>}
       {line.spans.length === 0 ? ' ' : line.spans.map(renderSpan)}
     </div>
   );
