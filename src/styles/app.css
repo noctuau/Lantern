@@ -16,7 +16,7 @@
   --font-mud: "Cascadia Mono", "JetBrains Mono", "Fira Code", Consolas, "Courier New", monospace;
   --mud-size: 15px;
   --mud-line: 1.5;
-  --mud-max-width: 100ch;
+  --mud-max-width: none;
 
   /* 16-colour ANSI palette, tuned for a warm dark background */
   --ansi-0: #3a3631;  --ansi-8: #6b655b;

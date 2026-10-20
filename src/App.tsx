@@ -38,8 +38,12 @@ export function App() {
   }, []);
   const saveSettings = useCallback(async (s: AppSettings) => {
     setSettings(s); applySettings(s);
+    // Tell live sessions the new width (NAWS), so server-wrapped games follow it too.
+    const paneCols = Math.max(60, Math.floor((window.innerWidth - (sidebarOpen ? 260 : 0) - 48) / 8.4));
+    const rows = Math.max(20, Math.floor((window.innerHeight - 140) / 22));
+    for (const id of store.order) window.lantern.session.resize(id, s.outputWidth || paneCols, rows);
     await window.lantern.settings.set(s as unknown as Record<string, unknown>);
-  }, []);
+  }, [sidebarOpen]);
   const openSettings = async () => {
     // queryLocalFonts needs a user gesture, so the font list is fetched from the click itself.
     setFonts(await listSystemFonts());
@@ -95,10 +99,15 @@ export function App() {
     return () => offs.forEach((off) => off());
   }, [saveWorld]);
 
-  const connect = async (world: World) => {
-    const cols = Math.max(60, Math.floor((window.innerWidth - (sidebarOpen ? 260 : 0) - 48) / 8.4));
+  // The width told to the server (NAWS): a fixed Output width if set, else the pane's own columns.
+  const termSize = () => {
+    const paneCols = Math.max(60, Math.floor((window.innerWidth - (sidebarOpen ? 260 : 0) - 48) / 8.4));
     const rows = Math.max(20, Math.floor((window.innerHeight - 140) / 22));
-    const id = await window.lantern.session.connect(world.id, { width: cols, height: rows });
+    return { width: settings.outputWidth || paneCols, height: rows };
+  };
+
+  const connect = async (world: World) => {
+    const id = await window.lantern.session.connect(world.id, termSize());
     store.add(id, world);
   };
 

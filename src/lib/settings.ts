@@ -7,6 +7,7 @@ export interface AppSettings {
   outputFont: string;
   outputSize: number;        // px
   outputLineHeight: number;  // multiplier
+  outputWidth: number;       // max line width in characters; 0 = fit the window. Also the width told to the server (NAWS).
   outputBg: string;          // output pane background: '' = theme default, else a CSS colour
   inputFont: string;
   inputSize: number;         // px
@@ -18,6 +19,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   outputFont: 'Cascadia Mono',
   outputSize: 15,
   outputLineHeight: 1.5,
+  outputWidth: 0,
   outputBg: '',
   inputFont: 'Cascadia Mono',
   inputSize: 15,
@@ -46,6 +48,7 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
     outputFont: typeof s?.outputFont === 'string' ? s.outputFont : DEFAULT_SETTINGS.outputFont,
     outputSize: clamp(s?.outputSize, 9, 40, DEFAULT_SETTINGS.outputSize),
     outputLineHeight: clamp(s?.outputLineHeight, 1, 2.5, DEFAULT_SETTINGS.outputLineHeight),
+    outputWidth: s?.outputWidth === 0 ? 0 : Math.round(clamp(s?.outputWidth, 20, 500, DEFAULT_SETTINGS.outputWidth)),
     outputBg: typeof s?.outputBg === 'string' ? s.outputBg : DEFAULT_SETTINGS.outputBg,
     inputFont: typeof s?.inputFont === 'string' ? s.inputFont : DEFAULT_SETTINGS.inputFont,
     inputSize: clamp(s?.inputSize, 9, 40, DEFAULT_SETTINGS.inputSize),
@@ -61,6 +64,7 @@ export function applySettings(s: AppSettings) {
   r.setProperty('--mud-line', String(s.outputLineHeight));
   r.setProperty('--font-input', fontStack(s.inputFont));
   r.setProperty('--input-size', `${s.inputSize}px`);
+  r.setProperty('--mud-max-width', s.outputWidth ? `${s.outputWidth}ch` : 'none');
   // '' falls back to the theme background in the CSS (var(--output-bg, var(--bg))).
   if (s.outputBg) r.setProperty('--output-bg', s.outputBg);
   else r.removeProperty('--output-bg');

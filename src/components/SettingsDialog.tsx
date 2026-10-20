@@ -44,7 +44,12 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
           </label>
           <label>Size (px){num('outputSize', 1, 9, 40)}</label>
           <label>Line spacing{num('outputLineHeight', 0.05, 1, 2.5)}</label>
+          <label title="Maximum characters per line. 0 fills the window. Also the width Lantern tells the game, so server-wrapped MUSHes follow it.">Width (chars)
+            <input type="number" step={1} min={0} max={500} value={s.outputWidth}
+              onChange={(e) => set('outputWidth', e.target.value === '' ? s.outputWidth : Math.max(0, Math.min(500, Number(e.target.value))))} style={{ width: 90 }} />
+          </label>
         </div>
+        <p className="hint">Width caps how wide lines get (0 = fill the window) and is the size Lantern reports to the game, so games that wrap text themselves use it too.</p>
         <div className="row bg-row">
           <label>Background
             <div className="bg-choices">
