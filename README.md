@@ -1,5 +1,7 @@
 # Lantern
 
+<!-- sidebar: the ‹ / 🏮 toggle cycles full → icon rail → hidden; the state is remembered. -->
+
 A modern MUD/MUSH client: a fresh take on MUSHclient, built for roleplay games.
 
 ## Run it

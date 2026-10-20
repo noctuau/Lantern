@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { store, useStore, MAIN_VIEW, type World } from './lib/store';
 import { activePrefix, applyCommandPrefix } from './lib/channels';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, type SidebarMode } from './components/Sidebar';
 import { OutputPane } from './components/OutputPane';
 import { ChannelStrip } from './components/ChannelStrip';
 import { InputBar } from './components/InputBar';
@@ -21,7 +21,14 @@ export function App() {
   const [editing, setEditing] = useState<World | null>(null);
   const [automating, setAutomating] = useState<World | null>(null);
   const [panelTab, setPanelTab] = useState<PanelTab | undefined>(undefined);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Sidebar has three widths: full, a narrow icon rail, and hidden. Remembered per viewer.
+  const [sidebar, setSidebar] = useState<SidebarMode>(() => {
+    try { const v = localStorage.getItem('lantern.sidebar'); if (v === 'rail' || v === 'hidden' || v === 'full') return v; } catch { /* ignore */ }
+    return 'full';
+  });
+  useEffect(() => { try { localStorage.setItem('lantern.sidebar', sidebar); } catch { /* ignore */ } }, [sidebar]);
+  const cycleSidebar = () => setSidebar((s) => (s === 'full' ? 'rail' : s === 'rail' ? 'hidden' : 'full'));
+  const sidebarWidth = sidebar === 'full' ? 260 : sidebar === 'rail' ? 56 : 0;
   const [settings, setSettings] = useState<AppSettings>(() => normalizeSettings(null));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fonts, setFonts] = useState<string[]>(FALLBACK_FONTS);
@@ -39,11 +46,11 @@ export function App() {
   const saveSettings = useCallback(async (s: AppSettings) => {
     setSettings(s); applySettings(s);
     // Tell live sessions the new width (NAWS), so server-wrapped games follow it too.
-    const paneCols = Math.max(60, Math.floor((window.innerWidth - (sidebarOpen ? 260 : 0) - 48) / 8.4));
+    const paneCols = Math.max(60, Math.floor((window.innerWidth - sidebarWidth - 48) / 8.4));
     const rows = Math.max(20, Math.floor((window.innerHeight - 140) / 22));
     for (const id of store.order) window.lantern.session.resize(id, s.outputWidth || paneCols, rows);
     await window.lantern.settings.set(s as unknown as Record<string, unknown>);
-  }, [sidebarOpen]);
+  }, [sidebarWidth]);
   const openSettings = async () => {
     // queryLocalFonts needs a user gesture, so the font list is fetched from the click itself.
     setFonts(await listSystemFonts());
@@ -105,7 +112,7 @@ export function App() {
 
   // The width told to the server (NAWS): a fixed Output width if set, else the pane's own columns.
   const termSize = () => {
-    const paneCols = Math.max(60, Math.floor((window.innerWidth - (sidebarOpen ? 260 : 0) - 48) / 8.4));
+    const paneCols = Math.max(60, Math.floor((window.innerWidth - sidebarWidth - 48) / 8.4));
     const rows = Math.max(20, Math.floor((window.innerHeight - 140) / 22));
     return { width: settings.outputWidth || paneCols, height: rows };
   };
@@ -208,11 +215,11 @@ export function App() {
   const openAutomation = (w: World, tab?: PanelTab) => { setPanelTab(tab); setAutomating(worlds.find((x) => x.id === w.id) ?? w); };
 
   return (
-    <div className={`app ${sidebarOpen ? '' : 'sidebar-closed'}`}>
+    <div className={`app sidebar-${sidebar}`}>
       <Sidebar
         worlds={worlds}
-        open={sidebarOpen}
-        onToggle={() => setSidebarOpen((o) => !o)}
+        mode={sidebar}
+        onToggle={cycleSidebar}
         onConnect={connect}
         onEdit={setEditing}
         onAutomation={(w) => openAutomation(w)}
@@ -222,8 +229,8 @@ export function App() {
       />
       <main className="main">
         <div className="tabs">
-          {!sidebarOpen && (
-            <button className="icon-btn" title="Show worlds" onClick={() => setSidebarOpen(true)}>☰</button>
+          {sidebar === 'hidden' && (
+            <button className="icon-btn" title="Show the sidebar" onClick={() => setSidebar('full')}>☰</button>
           )}
           {s.order.map((id) => {
             const sess = s.get(id)!;
