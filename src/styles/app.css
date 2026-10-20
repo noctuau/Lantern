@@ -319,3 +319,4 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ---------- spell language picker ---------- */
 .lang-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
 .lang-more summary { cursor: pointer; }
+.palette-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }

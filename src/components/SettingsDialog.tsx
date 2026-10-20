@@ -32,6 +32,23 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
     spellLanguages: x.spellLanguages.includes(code) ? x.spellLanguages.filter((l) => l !== code) : [...x.spellLanguages, code],
   }));
 
+  // Shift every colour lighter/darker, except the greyscale ones (black, white, grey, bright white),
+  // the way MUSHclient's Lighter/Darker buttons do. Mixes each channel toward white or black.
+  const GREYSCALE = new Set([0, 7, 8, 15]);
+  const nudge = (hex: string, toward: 255 | 0, t: number) => {
+    const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+    if (!m) return hex;
+    const ch = [1, 2, 3].map((i) => {
+      const v = parseInt(m[i], 16);
+      return Math.round(v + (toward - v) * t).toString(16).padStart(2, '0');
+    });
+    return '#' + ch.join('');
+  };
+  const shift = (toward: 255 | 0) => {
+    const base = resolvePalette(s).map((c, i) => (GREYSCALE.has(i) ? c : nudge(c, toward, 0.12)));
+    setS((x) => ({ ...x, palette: 'custom', customPalette: base }));
+  };
+
   // Live preview; put the saved settings back if the dialog is cancelled.
   useEffect(() => { applySettings(normalizeSettings(s)); }, [s]);
   useEffect(() => () => applySettings(settings), [settings]);
@@ -108,6 +125,11 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
               <span>{i}</span>
             </label>
           ))}
+        </div>
+        <div className="palette-actions">
+          <button type="button" className="btn small" onClick={() => shift(255)}>Lighter</button>
+          <button type="button" className="btn small" onClick={() => shift(0)}>Darker</button>
+          <span className="hint">Shifts all colours except black and white.</span>
         </div>
 
         <h3>Command box</h3>
