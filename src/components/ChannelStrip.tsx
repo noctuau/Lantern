@@ -18,7 +18,9 @@ interface Props {
 }
 
 export function ChannelStrip({ session, onEdit }: Props) {
-  const tabs = session.world.channelTabs.filter((t) => t.enabled);
+  const enabledTabs = session.world.channelTabs.filter((t) => t.enabled);
+  const off = session.channelsOff;
+  const tabs = off ? [] : enabledTabs;
   const [peek, setPeek] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -33,7 +35,8 @@ export function ChannelStrip({ session, onEdit }: Props) {
     setPeek(null);
   };
 
-  if (!tabs.length) return null;
+  // Nothing to show only when there are no channel tabs at all.
+  if (!enabledTabs.length) return null;
 
   const items: { id: string; name: string; unread: number; lines: Line[]; prefix: string }[] = [
     { id: MAIN_VIEW, name: 'Main', unread: session.mainUnread, lines: session.lines, prefix: '' },
@@ -65,6 +68,15 @@ export function ChannelStrip({ session, onEdit }: Props) {
         );
       })}
       <span className="spacer" />
+      <button
+        className={`subtab-toggle ${off ? 'off' : ''}`}
+        title={off
+          ? `Channel tabs are hidden and everything is going to Main. Click to show your ${enabledTabs.length} channel tab${enabledTabs.length === 1 ? '' : 's'} again.`
+          : 'Hide all channel tabs and send everything to Main (for when you are not in RP). Your tabs and patterns are kept.'}
+        onClick={() => store.setChannelsOff(session.id, !off)}
+      >
+        {off ? `Show channels (${enabledTabs.length})` : 'Hide channels'}
+      </button>
       <button className="icon-btn small" title="Edit channel tabs" onClick={onEdit}>⚙</button>
     </div>
   );

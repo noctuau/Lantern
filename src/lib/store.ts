@@ -47,6 +47,7 @@ export interface SessionState {
   view: string;          // MAIN_VIEW or a channel tab id
   channels: Record<string, ChannelView>;   // channel tab id → its lines
   mainUnread: number;    // game lines that reached the main pane while a channel tab was showing
+  channelsOff: boolean;  // session toggle: route everything to Main and hide the channel sub-tabs
   connectedAt?: number;
   gmcp: Record<string, unknown>;
   automation: boolean;   // master switch for triggers/timers on this session
@@ -110,7 +111,7 @@ class Store {
   add(id: string, world: World) {
     const s: SessionState = {
       id, world, status: 'connecting', lines: [], partial: [], echo: true, history: [], unread: 0, gmcp: {},
-      view: MAIN_VIEW, channels: {}, mainUnread: 0, swallowBlankUntil: 0, cmdCapture: null,
+      view: MAIN_VIEW, channels: {}, mainUnread: 0, channelsOff: false, swallowBlankUntil: 0, cmdCapture: null,
       automation: true, fired: 0, lua: null, luaStatus: 'starting', luaGen: 0, scriptDepth: 0,
     };
     this.sessions.set(id, s);
@@ -146,6 +147,14 @@ class Store {
    * whichever view is showing; a tab with a command prefix only changes what App.sendCommand
    * puts in front of the typed text.
    */
+  /** Session toggle: hide all channel tabs and send everything to Main (for when you're not in RP). */
+  setChannelsOff(id: string, off: boolean) {
+    const s = this.sessions.get(id); if (!s) return;
+    s.channelsOff = off;
+    if (off) { s.view = MAIN_VIEW; s.mainUnread = 0; }
+    this.notify();
+  }
+
   setView(id: string, view: string) {
     const s = this.sessions.get(id); if (!s) return;
     if (view !== MAIN_VIEW && !s.world.channelTabs.some((t) => t.id === view && t.enabled)) view = MAIN_VIEW;
@@ -254,7 +263,7 @@ class Store {
     let route: Route | null = null;
     const triggers = s.automation ? s.world.triggers : [];
     if (triggers.length || s.world.channelTabs.length) {
-      const c = classifyLine(triggers, s.world.channelTabs, text);
+      const c = classifyLine(triggers, s.channelsOff ? [] : s.world.channelTabs, text);
       const r = c.triggers;
       if (r.fired.length) {
         s.fired += r.fired.length;
@@ -534,7 +543,7 @@ class Store {
     if (s.partial.length) this.commitPartial(s, 'mud', true);
     // A command matching a tab's capture pattern (help …) starts routing replies to that tab; any
     // command ends the previous capture.
-    const capTab = text.trim() ? commandCaptureTab(s.world.channelTabs, text) : null;
+    const capTab = text.trim() && !s.channelsOff ? commandCaptureTab(s.world.channelTabs, text) : null;
     s.cmdCapture = capTab ? { tabId: capTab.id, until: Date.now() + Math.max(capTab.captureQuietMs, 4000), lines: 0 } : null;
     // An empty line is sent (MUSHes use it to nudge the prompt) but there is nothing to show for it.
     if (echo && text.trim()) {
