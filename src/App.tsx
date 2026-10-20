@@ -10,9 +10,10 @@ import { WorldEditor } from './components/WorldEditor';
 import { ColourComposer } from './components/ColourComposer';
 import { AutomationPanel, type PanelTab } from './components/AutomationPanel';
 import { StatusBar } from './components/StatusBar';
-import { SettingsDialog } from './components/SettingsDialog';
+import { SettingsDialog, type SettingsTab } from './components/SettingsDialog';
 import { HighlightDialog } from './components/HighlightDialog';
 import { applySettings, normalizeSettings, listSystemFonts, FALLBACK_FONTS, type AppSettings } from './lib/settings';
+import type { UpdateInfo } from '../shared/updates';
 import type { Trigger } from '../shared/types';
 
 const NO_LINES: never[] = [];
@@ -60,9 +61,19 @@ export function App() {
     store.customColours = Object.fromEntries(s.customColours.map((c) => [c.id, { fg: c.fg, bg: c.bg }]));
   };
 
+  // The last update check (Settings › About); the startup check fills it in a few seconds after launch.
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  // Which Settings tab to open on; null = Text, or About while an update is waiting.
+  const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null);
+
   // Display settings: load once, apply as CSS variables, persist on change.
   useEffect(() => {
-    window.lantern.settings.get().then((raw) => { const s = normalizeSettings(raw as Partial<AppSettings> | null); setSettings(s); applySettings(s); pushCustomColours(s); });
+    window.lantern.settings.get().then((raw) => {
+      const s = normalizeSettings(raw as Partial<AppSettings> | null); setSettings(s); applySettings(s); pushCustomColours(s);
+      // Quiet startup check (installed builds only; main skips it from source or in smoke runs). A failure is silent here:
+      // the About tab's own button reports errors.
+      if (s.checkUpdates) setTimeout(() => { window.lantern.update.check(true).then((u) => { if (u) setUpdate(u); }).catch(() => {}); }, 8000);
+    });
   }, []);
   const saveSettings = useCallback(async (s: AppSettings) => {
     setSettings(s); applySettings(s); pushCustomColours(s);
@@ -217,6 +228,7 @@ export function App() {
     await connect(w);
     if (panel === 'highlight') setHighlight({ worldId: w.id, text: 'Aardwolf' });
     else if (panel === 'world') setTimeout(() => setEditing(w), 4500);
+    else if (panel === 'about') { setSettingsTab('about'); setSettingsOpen(true); }
     else if (panel === 'settings') {
       setFonts(await listSystemFonts()); setSettingsOpen(true);
       // Open the first font dropdown so the screenshot shows the list.
@@ -283,6 +295,7 @@ export function App() {
         onNew={async () => setEditing(await window.lantern.worlds.create())}
         onImport={async () => { await window.lantern.worlds.importMcl(); refreshWorlds(); }}
         onSettings={openSettings}
+        updateAvailable={update?.newer ? update.latest : null}
       />
       <main className="main">
         <div className="tabs">
@@ -385,8 +398,11 @@ export function App() {
         <SettingsDialog
           settings={settings}
           fonts={fonts}
-          onSave={async (s) => { await saveSettings(s); setSettingsOpen(false); }}
-          onClose={() => setSettingsOpen(false)}
+          onSave={async (s) => { await saveSettings(s); setSettingsOpen(false); setSettingsTab(null); }}
+          onClose={() => { setSettingsOpen(false); setSettingsTab(null); }}
+          initialTab={settingsTab ?? (update?.newer ? 'about' : 'text')}
+          update={update}
+          onUpdate={setUpdate}
         />
       )}
 

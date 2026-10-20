@@ -12,6 +12,8 @@ interface Props {
   onNew(): void;
   onImport(): void;
   onSettings(): void;
+  /** A newer release's version, when the startup check found one: puts a dot on the Settings button. */
+  updateAvailable?: string | null;
 }
 
 /** Two-letter badge for a world in the icon rail. */
@@ -21,7 +23,7 @@ function initials(name: string) {
   return (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-export function Sidebar({ worlds, mode, onToggle, onConnect, onEdit, onAutomation, onNew, onImport, onSettings }: Props) {
+export function Sidebar({ worlds, mode, onToggle, onConnect, onEdit, onAutomation, onNew, onImport, onSettings, updateAvailable = null }: Props) {
   if (mode === 'hidden') return null;
   const sorted = [...worlds].sort((a, b) => a.name.localeCompare(b.name));
   const next = mode === 'full' ? 'icon rail' : 'hidden';
@@ -43,7 +45,7 @@ export function Sidebar({ worlds, mode, onToggle, onConnect, onEdit, onAutomatio
           <button className="icon-btn" title="New world" onClick={onNew}>＋</button>
           <button className="icon-btn" title="Import MUSHclient worlds (.MCL)" onClick={onImport}>⬇</button>
           <button className="icon-btn" title="Open logs folder" onClick={() => window.lantern.app.openLogs()}>🗂</button>
-          <button className="icon-btn" title="Settings" onClick={onSettings}>⚙</button>
+          <button className={`icon-btn ${updateAvailable ? 'has-update' : ''}`} title={updateAvailable ? `Settings (Lantern v${updateAvailable} is available)` : 'Settings'} onClick={onSettings}>⚙</button>
         </div>
       </aside>
     );
@@ -75,7 +77,7 @@ export function Sidebar({ worlds, mode, onToggle, onConnect, onEdit, onAutomatio
         <button className="btn" onClick={onNew}>+ New world</button>
         <button className="btn ghost" onClick={onImport}>Import .MCL</button>
         <button className="btn ghost" onClick={() => window.lantern.app.openLogs()}>Open logs folder</button>
-        <button className="btn ghost" onClick={onSettings}>⚙ Settings</button>
+        <button className={`btn ghost ${updateAvailable ? 'has-update' : ''}`} title={updateAvailable ? `Lantern v${updateAvailable} is available: see Settings › About` : undefined} onClick={onSettings}>⚙ Settings</button>
       </div>
     </aside>
   );

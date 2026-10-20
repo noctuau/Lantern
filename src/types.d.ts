@@ -1,5 +1,6 @@
 import type { World } from './lib/store';
 import type { Trigger, Alias, Timer } from '../shared/types';
+import type { UpdateInfo, ReleaseAsset, UpdateFlavour } from '../shared/updates';
 
 type MclItems = { triggers: Trigger[]; aliases: Alias[]; timers: Timer[] };
 
@@ -54,7 +55,17 @@ declare global {
         logsDir(): Promise<string>;
         openExternal(url: string): Promise<void>;
         version(): Promise<string>;
+        about(): Promise<{ version: string; electron: string; chrome: string; node: string; packaged: boolean; flavour: UpdateFlavour }>;
         onSmoke(cb: (opts: { host: string; port: number; panel?: string; view?: string }) => void): Unsub;
+      };
+      update: {
+        /** The latest GitHub release vs this version. `auto` (the startup check) returns null from source or smoke runs. */
+        check(auto?: boolean): Promise<UpdateInfo | null>;
+        /** Download a release asset to the temp folder; progress arrives on onProgress. Resolves to the file path. */
+        download(asset: ReleaseAsset): Promise<string>;
+        /** Run the downloaded installer and quit, or show the portable exe. */
+        install(file: string, flavour: UpdateFlavour): Promise<'launched' | 'shown'>;
+        onProgress(cb: (p: { received: number; total: number }) => void): Unsub;
       };
     };
   }

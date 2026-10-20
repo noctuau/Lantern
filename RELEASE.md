@@ -29,6 +29,8 @@ The executables are not code-signed (a signing certificate costs money per year)
 - Settings and worlds live in `%APPDATA%\Lantern` (`worlds.json`, `settings.json`, `logs\`).
 - Uninstall from Windows "Apps & features" or the Start-menu uninstaller.
 
-## Auto-update (later)
+## In-app update check
 
-Not set up yet. electron-builder supports `electron-updater` with GitHub Releases as the feed; add it when you want in-app updates.
+Settings › About shows the running version and has "Check for updates". It asks the GitHub Releases API for the latest release of `noctuau/Lantern`, compares its tag with the running version, and offers the matching download: `Lantern-<version>-x64.exe` for an installed copy, `Lantern-<version>-portable.exe` for the portable build. The file is downloaded into `%TEMP%\lantern-updates\` with a progress bar; "Install and restart" closes Lantern and starts the installer (which replaces the installed files and keeps `%APPDATA%\Lantern`), while the portable build gets "Show the new exe" because it cannot replace itself. By default the app also checks once, a few seconds after start (installed builds only), and puts a dot on the Settings button when a newer release exists; nothing is downloaded until asked.
+
+For this to keep working, a release must be **tagged `v<version>`** (matching `package.json`) and carry those two asset names (the `artifactName` settings above produce them). Pre-releases and drafts are not offered, since the API's "latest" endpoint skips them. There is no `electron-updater` feed (`latest.yml`); if you ever want silent background updates, that is the next step, and it needs code signing to be pleasant.

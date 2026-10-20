@@ -8,6 +8,8 @@ import { loadWorlds, saveWorlds, newWorld, importMcl, type World } from './world
 import { importMclTriggers, importMclAliases, importMclTimers } from './mcl';
 import { expandLogName } from '../shared/logname';
 import { LOG_HTML_HEAD } from '../src/lib/loghtml';
+import { aboutInfo, checkForUpdates, downloadUpdate, installUpdate } from './updates';
+import type { ReleaseAsset, UpdateFlavour } from '../shared/updates';
 
 interface Session {
   id: string;
@@ -344,6 +346,19 @@ ipcMain.handle('app:chooseFolder', async (_e, title?: string) => {
 });
 ipcMain.handle('app:openExternal', (_e, url: string) => { if (/^https?:/i.test(url)) shell.openExternal(url); });
 ipcMain.handle('app:version', () => app.getVersion());
+ipcMain.handle('app:about', () => aboutInfo());
+
+/* ---------- IPC: updates (Settings › About) ---------- */
+
+// `auto` is the startup check: skipped when running from source or in a smoke run, so dev
+// runs do not ask GitHub every time. A click on "Check for updates" always asks.
+ipcMain.handle('update:check', (_e, auto?: boolean) => {
+  if (auto && (!app.isPackaged || process.env.LANTERN_SMOKE)) return null;
+  return checkForUpdates();
+});
+ipcMain.handle('update:download', (_e, asset: ReleaseAsset) =>
+  downloadUpdate(asset, (received, total) => send('update:progress', { received, total })));
+ipcMain.handle('update:install', (_e, file: string, flavour: UpdateFlavour) => installUpdate(file, flavour));
 
 /* ---------- IPC: installed fonts ---------- */
 

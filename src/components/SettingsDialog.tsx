@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, PALETTES, resolvePalette, MAX_CUSTOM_COLOURS, type AppSettings, type PaletteName, type CustomColour } from '../lib/settings';
 import { FontPicker } from './FontPicker';
+import { AboutTab } from './AboutTab';
+import type { UpdateInfo } from '../../shared/updates';
 
 const ANSI_LABELS = ['Black', 'Red', 'Green', 'Yellow', 'Blue', 'Magenta', 'Cyan', 'White',
   'Bright black', 'Bright red', 'Bright green', 'Bright yellow', 'Bright blue', 'Bright magenta', 'Bright cyan', 'Bright white'];
@@ -12,6 +14,11 @@ interface Props {
   fonts: string[];
   onSave(s: AppSettings): void;
   onClose(): void;
+  /** Which tab to open on (About when an update is waiting). */
+  initialTab?: SettingsTab;
+  /** The last update check (the startup one, or an earlier look at About). */
+  update?: UpdateInfo | null;
+  onUpdate?(u: UpdateInfo | null): void;
 }
 
 const LANG_LABELS: Record<string, string> = {
@@ -21,17 +28,18 @@ const LANG_LABELS: Record<string, string> = {
 };
 const langLabel = (c: string) => LANG_LABELS[c] ?? c;
 
-type SettingsTab = 'text' | 'colours' | 'spelling';
+export type SettingsTab = 'text' | 'colours' | 'spelling' | 'about';
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: 'text', label: 'Text & layout' },
   { id: 'colours', label: 'Colours' },
   { id: 'spelling', label: 'Spelling' },
+  { id: 'about', label: 'About' },
 ];
 
-export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
+export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 'text', update = null, onUpdate }: Props) {
   const [s, setS] = useState<AppSettings>(settings);
   const [langs, setLangs] = useState<string[]>([]);
-  const [tab, setTab] = useState<SettingsTab>('text');
+  const [tab, setTab] = useState<SettingsTab>(initialTab);
   const set = <K extends keyof AppSettings>(k: K, v: AppSettings[K]) => setS((x) => ({ ...x, [k]: v }));
 
   useEffect(() => { window.lantern.spell.languages().then((r) => setLangs(r.available)); }, []);
@@ -94,7 +102,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
         <div className="settings-body">
           <nav className="settings-nav">
             {SETTINGS_TABS.map((t) => (
-              <button type="button" key={t.id} className={`settings-navitem ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>{t.label}</button>
+              <button type="button" key={t.id} className={`settings-navitem ${tab === t.id ? 'active' : ''} ${t.id === 'about' && update?.newer ? 'has-update' : ''}`} onClick={() => setTab(t.id)}>{t.label}</button>
             ))}
           </nav>
           <div className="settings-pane">
@@ -229,6 +237,10 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
                 </details>
               )}
             </>)}
+
+            {tab === 'about' && (
+              <AboutTab checkOnStart={s.checkUpdates} onCheckOnStart={(v) => set('checkUpdates', v)} update={update} onUpdate={(u) => onUpdate?.(u)} />
+            )}
           </div>
         </div>
 

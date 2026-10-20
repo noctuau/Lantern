@@ -54,6 +54,13 @@ contextBridge.exposeInMainWorld('lantern', {
     logsDir: () => ipcRenderer.invoke('app:logsDir'),
     openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
     version: () => ipcRenderer.invoke('app:version'),
+    about: () => ipcRenderer.invoke('app:about'),
     onSmoke: on('smoke:run'),
+  },
+  update: {
+    check: (auto?: boolean) => ipcRenderer.invoke('update:check', auto),
+    download: (asset: unknown) => ipcRenderer.invoke('update:download', asset),
+    install: (file: string, flavour: string) => ipcRenderer.invoke('update:install', file, flavour),
+    onProgress: on('update:progress'),
   },
 });

@@ -81,7 +81,7 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - Notifications when your name is mentioned or a tab you are not watching gets activity
 - GMCP-driven panels (vitals, room, who) for games that send them
 - Secure storage for passwords (Electron `safeStorage`) instead of plain text in `worlds.json`
-- Installer via `electron-builder` and auto-update
+- Installer via `electron-builder` (done) and auto-update (2026-10-21: Settings › About checks GitHub Releases, downloads the installer or portable exe and starts the installer; a silent electron-updater feed with code signing is the possible next step)
 
 ## Colour composer (done 2026-10-20)
 

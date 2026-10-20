@@ -25,6 +25,10 @@ Download the latest release from the [Releases page](../../releases) and pick on
 
 Lantern is not code-signed, so Windows SmartScreen shows an "unknown publisher" warning on first run. Choose **More info › Run anyway**. Your worlds, scripts and logs live in `%APPDATA%\Lantern\`, separate from the program, so they survive reinstalls and uninstalls.
 
+### Updating
+
+Settings › About shows the version you are running and has a "Check for updates" button. It looks up the latest release on GitHub and, if it is newer, offers to download the installer (or the portable exe) and start it; your worlds, settings and logs stay where they are. Lantern also checks once a few seconds after it starts and puts a dot on the Settings button when a newer release exists; turn that off on the About tab if you prefer. Nothing is downloaded until you ask.
+
 ## Build and run from source
 
 Requires [Node.js](https://nodejs.org/). Then:
@@ -67,7 +71,7 @@ Connects to a login screen, screenshots the window and quits:
 LANTERN_SMOKE="aardwolf.org|4000|C:\path\to\out.png" npx electron .
 ```
 
-Smoke runs use a throwaway profile and never touch your worlds or logs. The smoke world carries a demo highlight trigger, a one-shot note trigger that also calls a Lua function, a Lua script, an alias and an `OOC` channel tab, so the screenshot also exercises automation, scripting and capture. Set `LANTERN_SMOKE_PANEL=1` to screenshot with the Automation panel open (`=script` or `=channels` opens it on that tab), `LANTERN_SMOKE_VIEW=OOC` to screenshot the channel tab instead of Main, and `LANTERN_SMOKE_WAIT=<ms>` to wait longer before the capture.
+Smoke runs use a throwaway profile and never touch your worlds or logs. The smoke world carries a demo highlight trigger, a one-shot note trigger that also calls a Lua function, a Lua script, an alias and an `OOC` channel tab, so the screenshot also exercises automation, scripting and capture. Set `LANTERN_SMOKE_PANEL=1` to screenshot with the Automation panel open (`=script` or `=channels` opens it on that tab; `=about` opens Settings › About), `LANTERN_SMOKE_VIEW=OOC` to screenshot the channel tab instead of Main, and `LANTERN_SMOKE_WAIT=<ms>` to wait longer before the capture.
 
 ## Display settings and quick highlights
 
