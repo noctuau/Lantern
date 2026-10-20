@@ -114,7 +114,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: var(--output-bg, var(--bg));
   scrollbar-color: var(--line) transparent;
 }
-.line { max-width: var(--mud-max-width); margin-bottom: var(--line-gap, 0); }
+/* content-visibility lets the browser skip layout/paint for off-screen lines, which keeps a long
+   buffer cheap (and the command box responsive). contain-intrinsic-size: auto remembers each
+   line's real height once seen, so scrolling stays accurate. */
+.line { max-width: var(--mud-max-width); margin-bottom: var(--line-gap, 0); content-visibility: auto; contain-intrinsic-size: auto 1.5em; }
+.output-bottom { height: 1px; }
 .line.kind-input { color: var(--accent); }
 
 .line.kind-note { color: var(--fg-muted); font-style: italic; }

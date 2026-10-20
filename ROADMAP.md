@@ -59,7 +59,7 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - Quick "Highlight word or phrase" dialog on Ctrl+Alt+H / ✎ Highlight, creating a trigger in the Highlights group
 - Smoke-test windows no longer take keyboard focus
 - Font picker over the installed fonts (asked of Windows via .NET), each drawn in its own face, with a monospace-only filter
-- Scroll-to-new-output toggle; removed the content-visibility estimate that made follow-at-bottom jumpy
+- Scroll-to-new-output toggle; follow-at-bottom via an IntersectionObserver sentinel, with content-visibility kept for a responsive command box on long buffers
 - ANSI palette presets (Warm / Classic-MUSHclient / readable-VGA) and full 16-colour custom editor
 - Spell check: choose dictionaries (defaults to en-AU), personal dictionary, right-click suggestions
 - Output width (wrap column, also sent to the game via NAWS)
