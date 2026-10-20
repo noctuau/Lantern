@@ -145,10 +145,10 @@ export function App() {
       // The Haven starter patterns plus one that copies the login banner, so a login screen lights the badge.
       // The "ooc " prefix shows in the input bar when LANTERN_SMOKE_VIEW=OOC.
       channelTabs: [{
-        id: 'smoke-help', name: 'Help', enabled: true, keepInMain: false, trimBlanks: false, notify: 'badge', commandPrefix: '',
+        id: 'smoke-help', name: 'Help', enabled: true, keepInMain: false, trimBlanks: false, timestamps: true, notify: 'badge', commandPrefix: '',
         captureCommands: '^(help|look)\\b', captureQuietMs: 1500, messageGap: 0, patterns: [],
       }, {
-        id: 'smoke-ooc', name: 'OOC', enabled: true, keepInMain: true, trimBlanks: true, notify: 'badge', commandPrefix: 'ooc ',
+        id: 'smoke-ooc', name: 'OOC', enabled: true, keepInMain: true, trimBlanks: true, timestamps: true, notify: 'badge', commandPrefix: 'ooc ',
         captureCommands: '', captureQuietMs: 1500, messageGap: 6,
         patterns: [
           { id: 'smoke-p1', pattern: '^\\[OOC\\] ', ignoreCase: false, mode: 'capture' },
@@ -275,7 +275,7 @@ export function App() {
               <OutputPane
                 key={`out-${active.id}-${t.id}`}
                 lines={active.channels[t.id]?.lines ?? NO_LINES}
-                timestamps
+                timestamps={t.timestamps}
                 lineGap={t.messageGap}
                 autoScroll={settings.autoScroll}
                 visible={active.view === t.id}

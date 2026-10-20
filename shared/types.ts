@@ -79,6 +79,7 @@ export interface ChannelTab {
    * is not left with empty gaps. Default true.
    */
   trimBlanks: boolean;
+  timestamps: boolean;        // show HH:MM before each captured line
   /**
    * Command-triggered capture: a regex tested against each command you send (after prefix and
    * aliases). When it matches, the command's echo and everything the game sends afterwards go
@@ -209,6 +210,7 @@ export function normalizeChannelTab(c: Partial<ChannelTab> & Pick<ChannelTab, 'i
   const notify: ChannelNotify = c.notify === 'badge+sound' || c.notify === 'silent' ? c.notify : 'badge';
   return {
     name: 'Channel', enabled: true, keepInMain: false, trimBlanks: true,
+    timestamps: typeof c.timestamps === 'boolean' ? c.timestamps : true,
     ...c,
     notify,
     commandPrefix: typeof c.commandPrefix === 'string' ? c.commandPrefix : '',

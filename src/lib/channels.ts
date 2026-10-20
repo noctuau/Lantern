@@ -89,7 +89,7 @@ export const HELP_COMMANDS = '^(help|rules|policy|news|motd)\\b';
 /** A tab that collects the replies to help commands. */
 export function helpChannelTab(uid: () => string): ChannelTab {
   return {
-    id: uid(), name: HELP_TAB_NAME, enabled: true, keepInMain: false, trimBlanks: false, notify: 'badge',
+    id: uid(), name: HELP_TAB_NAME, enabled: true, keepInMain: false, trimBlanks: false, timestamps: true, notify: 'badge',
     commandPrefix: '', captureCommands: HELP_COMMANDS, captureQuietMs: 1500, messageGap: 0, patterns: [],
   };
 }
@@ -165,6 +165,7 @@ export function havenChannelTab(uid: () => string): ChannelTab {
     enabled: true,
     keepInMain: false,
     trimBlanks: true,
+    timestamps: true,
     notify: 'badge',
     captureCommands: '',
     captureQuietMs: 1500,

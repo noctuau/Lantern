@@ -648,6 +648,7 @@ function ChannelTabEditor({ t, patch }: { t: ChannelTab; patch(p: Partial<Channe
       <div className="row wrap">
         <Check label="Keep a copy in Main" title="Otherwise matching lines move to this tab and leave the main pane" checked={t.keepInMain} onChange={(v) => patch({ keepInMain: v })} />
         <Check label="Trim blank lines around captured lines" title="Games often print an empty line before and after a channel message. When a message moves to this tab, its blank padding is removed from Main too." checked={t.trimBlanks} onChange={(v) => patch({ trimBlanks: v })} />
+        <Check label="Show timestamps" title="Show HH:MM before each captured line in this tab." checked={t.timestamps} onChange={(v) => patch({ timestamps: v })} />
       </div>
       <Field label="Command prefix" hint={`Put in front of whatever you type while this tab is showing, so "hello" is sent as "${t.commandPrefix || 'ooc '}hello". Keep the trailing space if the game needs one. Start a command with ${PREFIX_BYPASS} to send it without the prefix once (${PREFIX_BYPASS}look sends "look"). Leave empty to type to the game as usual. Applied before aliases, stacking and speedwalk; ↑ recalls what you typed, not the prefixed command.`}>
         <input className="mono" style={{ width: 160 }} value={t.commandPrefix} onChange={(e) => patch({ commandPrefix: e.target.value })} placeholder="ooc " spellCheck={false} />
