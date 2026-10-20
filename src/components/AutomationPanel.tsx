@@ -604,7 +604,7 @@ function ChannelTabEditor({ t, patch }: { t: ChannelTab; patch(p: Partial<Channe
       <Field label="Command prefix" hint={`Put in front of whatever you type while this tab is showing, so "hello" is sent as "${t.commandPrefix || 'ooc '}hello". Keep the trailing space if the game needs one. Start a command with ${PREFIX_BYPASS} to send it without the prefix once (${PREFIX_BYPASS}look sends "look"). Leave empty to type to the game as usual. Applied before aliases, stacking and speedwalk; ↑ recalls what you typed, not the prefixed command.`}>
         <input className="mono" style={{ width: 160 }} value={t.commandPrefix} onChange={(e) => patch({ commandPrefix: e.target.value })} placeholder="ooc " spellCheck={false} />
       </Field>
-      <Field label="Space between messages (px)" hint="Extra blank space between lines in this tab, to make chat easier to read. 0 = none.">
+      <Field label="Space between messages (px)" hint="A gap after each message (paragraph spacing, not line height), so chat is easier to scan. Try 8. 0 = none.">
         <input type="number" min={0} max={40} step={1} style={{ width: 100 }} value={t.messageGap} onChange={(e) => patch({ messageGap: Math.max(0, Math.min(40, Number(e.target.value) || 0)) })} />
       </Field>
       <div className="row">
