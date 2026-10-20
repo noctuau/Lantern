@@ -34,6 +34,12 @@ import type { CustomColour } from '../lib/settings';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 
+/** Resolve a trigger's highlight (which may be a "custom:<id>" reference) to a CSS colour for the list swatch. */
+function swatchColour(h: string, customColours: CustomColour[]): string {
+  if (h.startsWith('custom:')) return customColours.find((c) => `custom:${c.id}` === h)?.fg ?? 'transparent';
+  return colourCss(h);
+}
+
 export function AutomationPanel({ world, initialTab, customColours = [], onSave, onReloadScript, onClose }: Props) {
   const [w, setW] = useState<World>(() => JSON.parse(JSON.stringify(world)) as World);
   const [tab, setTab] = useState<Tab>(initialTab ?? 'triggers');
@@ -203,7 +209,7 @@ export function AutomationPanel({ world, initialTab, customColours = [], onSave,
                       <div className="auto-item-title">{itemTitle(tab, it)}</div>
                       <div className="auto-item-sub muted">{itemSub(tab, it)}</div>
                     </div>
-                    {'highlight' in it && it.highlight && <span className="swatch" style={{ background: colourCss(it.highlight) }} />}
+                    {'highlight' in it && it.highlight && <span className="swatch" style={{ background: swatchColour(it.highlight, customColours) }} />}
                   </div>
                 ))}
               </div>
@@ -303,6 +309,8 @@ function SendToSelect({ value, onChange }: { value: SendTo; onChange(v: SendTo):
 
 function TriggerEditor({ t, patch, customColours }: { t: Trigger; patch(p: Partial<Trigger>): void; customColours: CustomColour[] }) {
   const err = patternError(t.pattern, t.regex);
+  const customRef = typeof t.highlight === 'string' && t.highlight.startsWith('custom:')
+    ? customColours.find((c) => `custom:${c.id}` === t.highlight) ?? null : null;
   return (
     <div className="auto-form">
       <div className="row">
@@ -319,26 +327,37 @@ function TriggerEditor({ t, patch, customColours }: { t: Trigger; patch(p: Parti
         <Check label="Fire once, then disable" checked={t.oneShot} onChange={(v) => patch({ oneShot: v })} />
       </div>
       {customColours.length > 0 && (
-        <Field label="Custom colours" hint="Your saved colours (Settings › Colours). Picking one sets the text and background below.">
+        <Field label="Custom colours" hint="Your saved colours (Settings › Colours). A trigger linked to one follows it whenever you edit that colour.">
           <div className="customcol-row">
-            {customColours.map((c) => (
-              <button type="button" key={c.id} className="customcol" title={c.name}
-                style={{ color: c.fg, background: c.bg || 'transparent', borderColor: c.bg ? c.bg : c.fg }}
-                onClick={() => patch({ highlight: c.fg, highlightBg: c.bg || null })}>
-                {c.name}
-              </button>
-            ))}
+            {customColours.map((c) => {
+              const active = t.highlight === `custom:${c.id}`;
+              return (
+                <button type="button" key={c.id} className={`customcol ${active ? 'active' : ''}`} title={c.name}
+                  style={{ color: c.fg, background: c.bg || 'transparent', borderColor: active ? 'var(--accent)' : (c.bg || c.fg) }}
+                  onClick={() => patch({ highlight: `custom:${c.id}`, highlightBg: null })}>
+                  {c.name}
+                </button>
+              );
+            })}
           </div>
         </Field>
       )}
-      <div className="row">
-        <Field label="Text colour" grow>
-          <ColourPicker value={t.highlight} onChange={(v) => patch({ highlight: v })} sample={t.highlight ? (t.regex ? 'Sample text' : t.pattern || 'Sample text') : undefined} />
-        </Field>
-        <Field label="Background" grow>
-          <ColourPicker value={t.highlightBg} onChange={(v) => patch({ highlightBg: v })} noneLabel="None" />
-        </Field>
-      </div>
+      {customRef ? (
+        <div className="customcol-linked">
+          Linked to custom colour <b style={{ color: customRef.fg, background: customRef.bg || 'transparent', padding: '0 4px', borderRadius: 4 }}>{customRef.name}</b>.
+          Edit it in Settings › Colours to change every trigger that uses it.
+          <button type="button" className="btn small ghost" onClick={() => patch({ highlight: customRef.fg, highlightBg: customRef.bg || null })}>Use fixed colours instead</button>
+        </div>
+      ) : (
+        <div className="row">
+          <Field label="Text colour" grow>
+            <ColourPicker value={t.highlight} onChange={(v) => patch({ highlight: v })} sample={t.highlight ? (t.regex ? 'Sample text' : t.pattern || 'Sample text') : undefined} />
+          </Field>
+          <Field label="Background" grow>
+            <ColourPicker value={t.highlightBg} onChange={(v) => patch({ highlightBg: v })} noneLabel="None" />
+          </Field>
+        </div>
+      )}
       {(t.highlight || t.highlightBg) && (
         <Check label="Colour the whole line" title="Otherwise only the matching text is coloured" checked={t.highlightLine} onChange={(v) => patch({ highlightLine: v })} />
       )}

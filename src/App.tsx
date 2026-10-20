@@ -39,12 +39,17 @@ export function App() {
   const refreshWorlds = useCallback(async () => setWorlds(await window.lantern.worlds.list()), []);
   useEffect(() => { refreshWorlds(); }, [refreshWorlds]);
 
+  // Give the store the custom colours so triggers that reference one ("custom:<id>") resolve live.
+  const pushCustomColours = (s: AppSettings) => {
+    store.customColours = Object.fromEntries(s.customColours.map((c) => [c.id, { fg: c.fg, bg: c.bg }]));
+  };
+
   // Display settings: load once, apply as CSS variables, persist on change.
   useEffect(() => {
-    window.lantern.settings.get().then((raw) => { const s = normalizeSettings(raw as Partial<AppSettings> | null); setSettings(s); applySettings(s); });
+    window.lantern.settings.get().then((raw) => { const s = normalizeSettings(raw as Partial<AppSettings> | null); setSettings(s); applySettings(s); pushCustomColours(s); });
   }, []);
   const saveSettings = useCallback(async (s: AppSettings) => {
-    setSettings(s); applySettings(s);
+    setSettings(s); applySettings(s); pushCustomColours(s);
     // Tell live sessions the new width (NAWS), so server-wrapped games follow it too.
     const paneCols = Math.max(60, Math.floor((window.innerWidth - sidebarWidth - 48) / 8.4));
     const rows = Math.max(20, Math.floor((window.innerHeight - 140) / 22));

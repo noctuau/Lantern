@@ -365,3 +365,5 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .customcol-pick { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-muted); }
 .customcol-pick input[type="color"] { width: 30px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); cursor: pointer; }
 .icon-btn.danger:hover { color: var(--danger); }
+.customcol.active { outline: 2px solid var(--accent); }
+.customcol-linked { font-size: 12px; color: var(--fg-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--bg-3); border-radius: 8px; padding: 8px 10px; }

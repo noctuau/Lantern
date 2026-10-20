@@ -81,6 +81,9 @@ class Store {
   order: string[] = [];
   activeId: string | null = null;
   hooks: StoreHooks = { send() {}, worldChanged() {}, loadScript: async () => '', log() {} };
+  // Named custom colours (by id), so a trigger can reference one ("custom:<id>") and every trigger
+  // using it follows when the colour is edited. Set from settings in App.
+  customColours: Record<string, { fg: string; bg: string }> = {};
   private parsers = new Map<string, AnsiParser>();
   private timers = new Map<string, TimerScheduler>();
   private varSaves = new Map<string, ReturnType<typeof setTimeout>>();
@@ -255,7 +258,18 @@ class Store {
       const r = c.triggers;
       if (r.fired.length) {
         s.fired += r.fired.length;
-        if (r.highlights.length) merged = applyHighlights(merged, r.highlights);
+        if (r.highlights.length) {
+          // Resolve "custom:<id>" references to the current custom colour, so editing a custom
+          // colour changes every trigger that uses it (for lines from here on).
+          for (const h of r.highlights) {
+            if (typeof h.colour === 'string' && h.colour.startsWith('custom:')) {
+              const cc = this.customColours[h.colour.slice(7)];
+              h.colour = cc ? cc.fg : null;
+              if (cc && cc.bg) h.bg = cc.bg;
+            }
+          }
+          merged = applyHighlights(merged, r.highlights);
+        }
         // Sends, notes and scripts run after this line is in place, so echoes land below it.
         if (r.outgoing.length) queueMicrotask(() => this.dispatch(s.id, r.outgoing));
         const scripted = r.matches.filter((m) => m.trigger.script || m.trigger.scriptBody);
