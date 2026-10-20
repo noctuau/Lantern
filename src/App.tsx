@@ -134,7 +134,11 @@ export function App() {
     ].join('\n'));
     await connect(w);
     if (panel === 'highlight') setHighlight({ worldId: w.id, text: 'Aardwolf' });
-    else if (panel === 'settings') { setFonts(await listSystemFonts()); setSettingsOpen(true); }
+    else if (panel === 'settings') {
+      setFonts(await listSystemFonts()); setSettingsOpen(true);
+      // Open the first font dropdown so the screenshot shows the list.
+      setTimeout(() => (document.querySelector('.font-btn') as HTMLButtonElement | null)?.click(), 1500);
+    }
     else if (panel) { setPanelTab(panel === 'script' ? 'script' : panel === 'channels' ? 'channels' : undefined); setAutomating(w); }
     setTimeout(() => sendCommandRef.current('look'), 3000);
     if (view) {

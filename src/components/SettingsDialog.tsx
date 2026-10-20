@@ -1,6 +1,7 @@
 /** App settings: fonts and sizes for the output pane and the command box. Changes preview live; Cancel reverts. */
 import { useEffect, useState } from 'react';
-import { applySettings, normalizeSettings, DEFAULT_SETTINGS, type AppSettings } from '../lib/settings';
+import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, type AppSettings } from '../lib/settings';
+import { FontPicker } from './FontPicker';
 
 interface Props {
   settings: AppSettings;
@@ -32,12 +33,14 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <form className="modal" onSubmit={(e) => { e.preventDefault(); onSave(normalizeSettings(s)); }}>
         <h2>Settings</h2>
-        <datalist id="font-list">{fonts.map((f) => <option key={f} value={f} />)}</datalist>
+        {fonts === FALLBACK_FONTS && (
+          <p className="hint">Windows did not share its font list, so this shows a few common fonts. You can still type any installed font's name.</p>
+        )}
 
         <h3>Output pane</h3>
         <div className="row">
           <label className="grow">Font
-            <input list="font-list" value={s.outputFont} onChange={(e) => set('outputFont', e.target.value)} placeholder="Cascadia Mono" />
+            <FontPicker value={s.outputFont} fonts={fonts} onChange={(v) => set('outputFont', v)} />
           </label>
           <label>Size (px){num('outputSize', 1, 9, 40)}</label>
           <label>Line spacing{num('outputLineHeight', 0.05, 1, 2.5)}</label>
@@ -49,7 +52,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
         <h3>Command box</h3>
         <div className="row">
           <label className="grow">Font
-            <input list="font-list" value={s.inputFont} onChange={(e) => set('inputFont', e.target.value)} placeholder="Cascadia Mono" />
+            <FontPicker value={s.inputFont} fonts={fonts} onChange={(v) => set('inputFont', v)} />
           </label>
           <label>Size (px){num('inputSize', 1, 9, 40)}</label>
           <label>Lines shown{num('inputLines', 1, 1, 20)}</label>

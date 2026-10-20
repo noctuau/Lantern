@@ -31,6 +31,9 @@ declare global {
         open(worldId: string): Promise<string>;
         path(worldId: string): Promise<string>;
       };
+      fonts: {
+        list(): Promise<string[]>;
+      };
       settings: {
         get(): Promise<Record<string, unknown> | null>;
         set(settings: Record<string, unknown>): Promise<void>;

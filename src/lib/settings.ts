@@ -57,8 +57,29 @@ export function applySettings(s: AppSettings) {
   r.setProperty('--input-size', `${s.inputSize}px`);
 }
 
+const monoCache = new Map<string, boolean>();
+let canvas: CanvasRenderingContext2D | null = null;
+
+/** True when a font renders narrow and wide letters at the same width (so it is fixed-pitch). */
+export function isMonospace(family: string): boolean {
+  const hit = monoCache.get(family);
+  if (hit !== undefined) return hit;
+  if (!canvas) canvas = document.createElement('canvas').getContext('2d');
+  if (!canvas) return false;
+  canvas.font = `32px "${family.replace(/"/g, '')}"`;
+  const narrow = canvas.measureText('iiiiiiiiiill').width;
+  const wide = canvas.measureText('WWWWWWWWWWMM').width;
+  const mono = Math.abs(narrow - wide) < 0.5;
+  monoCache.set(family, mono);
+  return mono;
+}
+
 /** Installed font family names, via the Local Font Access API when the browser grants it. */
 export async function listSystemFonts(): Promise<string[]> {
+  try {
+    const fromOs = await window.lantern.fonts.list();
+    if (fromOs.length) return fromOs;
+  } catch { /* fall through to the browser API */ }
   try {
     const q = (window as unknown as { queryLocalFonts?: () => Promise<{ family: string }[]> }).queryLocalFonts;
     if (!q) return FALLBACK_FONTS;

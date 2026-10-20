@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld('lantern', {
     open: (worldId: string) => ipcRenderer.invoke('scripts:open', worldId),
     path: (worldId: string) => ipcRenderer.invoke('scripts:path', worldId),
   },
+  fonts: {
+    list: () => ipcRenderer.invoke('fonts:list'),
+  },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (settings: unknown) => ipcRenderer.invoke('settings:set', settings),

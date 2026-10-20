@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, shell, session as electronSession 
 import path from 'node:path';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { TelnetSession } from './telnet';
 import { loadWorlds, saveWorlds, newWorld, importMcl, type World } from './worlds';
 
@@ -246,6 +247,25 @@ ipcMain.handle('app:openLogs', () => shell.openPath(logsDir()));
 ipcMain.handle('app:openExternal', (_e, url: string) => { if (/^https?:/i.test(url)) shell.openExternal(url); });
 ipcMain.handle('app:version', () => app.getVersion());
 
+/* ---------- IPC: installed fonts ---------- */
+
+// Asked of Windows via .NET once per run; the renderer's Local Font Access API needs a user
+// gesture and a permission grant, which makes it flaky, so this is the primary source.
+let fontList: Promise<string[]> | null = null;
+function installedFonts(): Promise<string[]> {
+  if (fontList) return fontList;
+  fontList = new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve([]); return; }
+    const cmd = 'Add-Type -AssemblyName System.Drawing; (New-Object System.Drawing.Text.InstalledFontCollection).Families | ForEach-Object { $_.Name }';
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', cmd], { windowsHide: true, timeout: 15000 }, (err, stdout) => {
+      if (err) { resolve([]); return; }
+      resolve(stdout.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b)));
+    });
+  });
+  return fontList;
+}
+ipcMain.handle('fonts:list', () => installedFonts());
+
 /* ---------- IPC: app settings (fonts etc.) ---------- */
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
@@ -257,7 +277,7 @@ ipcMain.handle('settings:set', (_e, settings: unknown) => {
   fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2));
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => { createWindow(); installedFonts(); });
 app.on('window-all-closed', () => {
   for (const s of sessions.values()) s.telnet.disconnect();
   app.quit();
