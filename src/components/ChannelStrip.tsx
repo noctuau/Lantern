@@ -35,9 +35,9 @@ export function ChannelStrip({ session, onEdit }: Props) {
 
   if (!tabs.length) return null;
 
-  const items: { id: string; name: string; unread: number; lines: Line[] }[] = [
-    { id: MAIN_VIEW, name: 'Main', unread: session.mainUnread, lines: session.lines },
-    ...tabs.map((t) => ({ id: t.id, name: t.name || 'Channel', unread: session.channels[t.id]?.unread ?? 0, lines: session.channels[t.id]?.lines ?? [] })),
+  const items: { id: string; name: string; unread: number; lines: Line[]; prefix: string }[] = [
+    { id: MAIN_VIEW, name: 'Main', unread: session.mainUnread, lines: session.lines, prefix: '' },
+    ...tabs.map((t) => ({ id: t.id, name: t.name || 'Channel', unread: session.channels[t.id]?.unread ?? 0, lines: session.channels[t.id]?.lines ?? [], prefix: t.commandPrefix })),
   ];
 
   return (
@@ -52,6 +52,7 @@ export function ChannelStrip({ session, onEdit }: Props) {
             tabIndex={0}
             aria-selected={active}
             className={`subtab ${active ? 'active' : ''} ${showUnread ? 'unread' : ''}`}
+            title={it.prefix ? `Commands typed here are sent as "${it.prefix}…"` : undefined}
             onClick={() => { leave(); store.setView(session.id, it.id); }}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); store.setView(session.id, it.id); } }}
             onMouseEnter={() => { if (!active) enter(it.id); }}

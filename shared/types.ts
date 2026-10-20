@@ -72,6 +72,12 @@ export interface ChannelTab {
   patterns: ChannelPattern[];
   keepInMain: boolean;       // false (default) = lines move to the tab; true = copy, main keeps them
   notify: ChannelNotify;
+  /**
+   * Put in front of whatever is typed while this tab is showing (e.g. "ooc " so typing "hi"
+   * sends "ooc hi"). '' (default) = type to the game as usual. A command starting with "\"
+   * is sent without it, once. Applied before aliases, stacking and speedwalk.
+   */
+  commandPrefix: string;
 }
 
 export type ChannelNotify = 'badge' | 'badge+sound' | 'silent';
@@ -169,6 +175,7 @@ export function normalizeChannelTab(c: Partial<ChannelTab> & Pick<ChannelTab, 'i
     name: 'Channel', enabled: true, keepInMain: false,
     ...c,
     notify,
+    commandPrefix: typeof c.commandPrefix === 'string' ? c.commandPrefix : '',
     patterns: (c.patterns ?? []).map(normalizeChannelPattern),
   };
 }

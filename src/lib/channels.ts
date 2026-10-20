@@ -78,6 +78,42 @@ export function logPrefix(route: Route | null): string {
   return route && route.action === 'capture' && route.tab ? `[${route.tab.name}] ` : '';
 }
 
+/* ---------- command prefix ---------- */
+
+/** Start a typed command with this to send it without the active tab's prefix, once. */
+export const PREFIX_BYPASS = '\\';
+
+/**
+ * The command prefix the input bar applies for a session's view: the active tab's
+ * `commandPrefix`, or '' on Main, on a disabled or missing tab, or when the tab has none.
+ */
+export function activePrefix(tabs: readonly ChannelTab[], view: string): string {
+  const tab = tabs.find((t) => t.id === view && t.enabled);
+  return tab?.commandPrefix ?? '';
+}
+
+export interface Prefixed {
+  /** What goes on to aliases, stacking and the game. */
+  text: string;
+  /** The prefix was put in front of the typed text. */
+  applied: boolean;
+  /** The typed text began with PREFIX_BYPASS, which was removed and the prefix skipped. */
+  bypassed: boolean;
+}
+
+/**
+ * Apply a view's command prefix to what was typed. With no prefix the text passes through
+ * untouched (a leading backslash included, so Main behaves exactly as before). With a prefix,
+ * a leading backslash is removed and the prefix skipped for that one command; a blank line
+ * is sent blank, since "ooc " on its own would only earn an error from the game.
+ */
+export function applyCommandPrefix(prefix: string, typed: string): Prefixed {
+  if (!prefix) return { text: typed, applied: false, bypassed: false };
+  if (typed.startsWith(PREFIX_BYPASS)) return { text: typed.slice(PREFIX_BYPASS.length), applied: false, bypassed: true };
+  if (!typed.trim()) return { text: typed, applied: false, bypassed: false };
+  return { text: prefix + typed, applied: true, bypassed: false };
+}
+
 /* ---------- presets ---------- */
 
 /**
@@ -103,6 +139,9 @@ export function havenChannelTab(uid: () => string): ChannelTab {
     enabled: true,
     keepInMain: false,
     notify: 'badge',
+    // No prefix: the old setup redirected whole commands to another world rather than
+    // prepending a channel command, so there is no "ooc " to copy. Set one in the editor.
+    commandPrefix: '',
     patterns: HAVEN_CHANNEL_PATTERNS.map((p) => ({ id: uid(), ...p })),
   };
 }

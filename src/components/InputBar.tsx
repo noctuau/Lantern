@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SessionState } from '../lib/store';
+import { activePrefix, PREFIX_BYPASS } from '../lib/channels';
 
 interface Props {
   session: SessionState;
@@ -59,6 +60,15 @@ export function InputBar({ session, onSend, onReconnect }: Props) {
 
   const disconnected = session.status === 'disconnected' || session.status === 'error';
 
+  // The active channel tab's command prefix (see docs/channel-tabs.md): shown as a chip so it is
+  // visible while typing, and named in the placeholder. Dimmed while the command starts with "\",
+  // which sends that one command without it. Masked input never gets a prefix.
+  const prefix = session.echo ? activePrefix(session.world.channelTabs, session.view) : '';
+  const bypassing = !!prefix && value.startsWith(PREFIX_BYPASS);
+  const placeholder = !session.echo ? 'Password (hidden)'
+    : prefix ? `${prefix.trimEnd()} … (sent with the prefix; start with ${PREFIX_BYPASS} to skip it once)`
+    : 'Type a command… (Shift+Enter for a new line, ↑ for history)';
+
   return (
     <div className={`input-bar ${session.echo ? '' : 'masked'}`}>
       {disconnected ? (
@@ -67,16 +77,28 @@ export function InputBar({ session, onSend, onReconnect }: Props) {
           <button className="btn small" onClick={onReconnect}>Reconnect</button>
         </div>
       ) : (
-        <textarea
-          ref={ref}
-          className="input"
-          value={value}
-          rows={1}
-          spellCheck={session.echo}
-          placeholder={session.echo ? 'Type a command… (Shift+Enter for a new line, ↑ for history)' : 'Password (hidden)'}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={onKeyDown}
-        />
+        <div className="input-row">
+          {prefix && (
+            <span
+              className={`input-prefix ${bypassing ? 'off' : ''}`}
+              title={bypassing
+                ? `Sent as typed, without "${prefix}" (the leading ${PREFIX_BYPASS} is removed)`
+                : `Commands typed on this tab are sent as "${prefix}…". Start one with ${PREFIX_BYPASS} to send it without the prefix.`}
+            >
+              {prefix.trimEnd()}
+            </span>
+          )}
+          <textarea
+            ref={ref}
+            className="input"
+            value={value}
+            rows={1}
+            spellCheck={session.echo}
+            placeholder={placeholder}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={onKeyDown}
+          />
+        </div>
       )}
     </div>
   );

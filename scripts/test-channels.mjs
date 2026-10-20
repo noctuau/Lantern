@@ -16,14 +16,15 @@ let ids = 0;
 const uid = () => `id-${++ids}`;
 const trig = (p) => ({ id: 't', name: '', pattern: '', regex: false, enabled: true, group: '', ignoreCase: false, send: '', sendTo: 'world', highlight: null, highlightLine: false, gag: false, oneShot: false, ...p });
 const pat = (pattern, mode = 'capture', ignoreCase = false) => ({ id: uid(), pattern, ignoreCase, mode });
-const tab = (name, patterns, extra = {}) => ({ id: uid(), name, enabled: true, keepInMain: false, notify: 'badge', patterns, ...extra });
+const tab = (name, patterns, extra = {}) => ({ id: uid(), name, enabled: true, keepInMain: false, notify: 'badge', commandPrefix: '', patterns, ...extra });
 
 /* ---------- the Haven preset ---------- */
 const haven = C.havenChannelTab(uid);
 assert.equal(haven.name, C.HAVEN_TAB_NAME);
 assert.equal(haven.patterns.length, 5);
 assert.equal(new Set(haven.patterns.map((p) => p.id)).size, 5, 'every pattern gets its own id');
-assert.equal(haven.keepInMain, false); assert.equal(haven.notify, 'badge'); ok();
+assert.equal(haven.keepInMain, false); assert.equal(haven.notify, 'badge');
+assert.equal(haven.commandPrefix, '', 'the preset carries no command prefix (the old setup had none to copy)'); ok();
 assert.equal(C.hasHavenPreset([haven]), true);
 assert.equal(C.hasHavenPreset([tab('x', [pat('^\\[OOC\\] ')])]), false, 'a partial copy does not count as the preset'); ok();
 
@@ -104,6 +105,52 @@ assert.equal(C.logPrefix(C.routeLine([haven], '[AFK]')), '', 'silenced lines log
 assert.equal(C.logPrefix(C.routeLine([haven], 'plain')), ''); ok();
 assert.equal(C.logPrefix(null), ''); ok();
 
+/* ---------- command prefix: what the input bar puts in front of a typed command ---------- */
+const ooc = tab('OOC', [pat('^\\[OOC\\] ')], { commandPrefix: 'ooc ' });
+const plainTab = tab('Guide', [pat('^\\[Guide\\] ')]);
+assert.equal(C.PREFIX_BYPASS, '\\'); ok();
+// Which prefix applies for a view.
+assert.equal(C.activePrefix([ooc, plainTab], ooc.id), 'ooc '); ok();
+assert.equal(C.activePrefix([ooc, plainTab], 'main'), '', 'Main has no prefix'); ok();
+assert.equal(C.activePrefix([ooc, plainTab], plainTab.id), '', 'a tab without a prefix has none'); ok();
+assert.equal(C.activePrefix([{ ...ooc, enabled: false }], ooc.id), '', 'a disabled tab cannot be the view, so no prefix'); ok();
+assert.equal(C.activePrefix([ooc], 'no-such-tab'), ''); ok();
+assert.equal(C.activePrefix([], ooc.id), ''); ok();
+// Applied.
+let p = C.applyCommandPrefix('ooc ', 'hello there');
+assert.deepEqual(p, { text: 'ooc hello there', applied: true, bypassed: false }); ok();
+p = C.applyCommandPrefix('ooc ', '  spaced');
+assert.equal(p.text, 'ooc   spaced', 'typed text is not trimmed'); ok();
+p = C.applyCommandPrefix('ooc ', 'line one\nline two');
+assert.equal(p.text, 'ooc line one\nline two', 'a multi-line entry is prefixed once, at the start'); ok();
+// Bypassed with a leading backslash: the backslash goes, the prefix is skipped.
+p = C.applyCommandPrefix('ooc ', '\\look');
+assert.deepEqual(p, { text: 'look', applied: false, bypassed: true }); ok();
+p = C.applyCommandPrefix('ooc ', '\\');
+assert.deepEqual(p, { text: '', applied: false, bypassed: true }, 'a lone backslash sends a blank line'); ok();
+p = C.applyCommandPrefix('ooc ', 'not \\ at the start');
+assert.equal(p.text, 'ooc not \\ at the start', 'only a leading backslash bypasses'); ok();
+// A blank line is sent blank rather than as "ooc ".
+p = C.applyCommandPrefix('ooc ', '');
+assert.deepEqual(p, { text: '', applied: false, bypassed: false }); ok();
+p = C.applyCommandPrefix('ooc ', '   ');
+assert.equal(p.text, '   '); assert.equal(p.applied, false); ok();
+// Empty prefix (Main, or a tab without one): everything passes through untouched, backslash included.
+for (const typed of ['look', '\\look', '', '\\', 'ooc hi']) {
+  p = C.applyCommandPrefix('', typed);
+  assert.deepEqual(p, { text: typed, applied: false, bypassed: false }, `no prefix leaves "${typed}" alone`); ok();
+}
+// End to end: the view decides, Main untouched, the OOC tab prefixed, bypass works there.
+const prefixFor = (view, typed) => C.applyCommandPrefix(C.activePrefix([ooc, plainTab], view), typed).text;
+assert.equal(prefixFor('main', 'hello'), 'hello'); ok();
+assert.equal(prefixFor('main', '\\hello'), '\\hello', 'Main keeps a leading backslash'); ok();
+assert.equal(prefixFor(ooc.id, 'hello'), 'ooc hello'); ok();
+assert.equal(prefixFor(ooc.id, '\\hello'), 'hello'); ok();
+assert.equal(prefixFor(plainTab.id, 'hello'), 'hello'); ok();
+// The prefix is text, not a pattern: whatever it is goes in front verbatim.
+assert.equal(C.applyCommandPrefix('@emit ', 'waves.').text, '@emit waves.'); ok();
+assert.equal(C.applyCommandPrefix('ooc', 'hi').text, 'oochi', 'no space is added for you'); ok();
+
 /* ---------- normalisation: old worlds.json files load ---------- */
 const old = T.normalizeWorld({ id: 'w', name: 'Old', host: 'h', port: 1, triggers: [], aliases: [], timers: [] });
 assert.deepEqual(old.channelTabs, [], 'a world saved before channel tabs gets an empty list'); ok();
@@ -111,11 +158,15 @@ const w = T.normalizeWorld({ id: 'w', channelTabs: [{ id: 'c1', name: 'OOC', pat
 assert.equal(w.channelTabs.length, 1);
 const ct = w.channelTabs[0];
 assert.equal(ct.enabled, true); assert.equal(ct.keepInMain, false); assert.equal(ct.notify, 'badge');
+assert.equal(ct.commandPrefix, '', 'a tab saved before command prefixes gets an empty one');
 assert.deepEqual(ct.patterns[0], { id: 'p1', pattern: '^x', ignoreCase: false, mode: 'capture' });
 assert.deepEqual(ct.patterns[1], { id: 'p2', pattern: '^y', ignoreCase: true, mode: 'silence' }); ok();
 assert.equal(T.normalizeChannelTab({ id: 'c', notify: 'loud' }).notify, 'badge', 'unknown notify falls back to badge'); ok();
 assert.equal(T.normalizeChannelPattern({ id: 'p', mode: 'drop' }).mode, 'capture', 'unknown mode falls back to capture'); ok();
 assert.deepEqual(T.normalizeChannelTab({ id: 'c' }).patterns, []); ok();
+assert.equal(T.normalizeChannelTab({ id: 'c', commandPrefix: 'ooc ' }).commandPrefix, 'ooc ', 'a saved prefix survives, trailing space included'); ok();
+assert.equal(T.normalizeChannelTab({ id: 'c', commandPrefix: 42 }).commandPrefix, '', 'a non-string prefix falls back to empty'); ok();
+assert.equal(T.normalizeChannelTab({ id: 'c', commandPrefix: null }).commandPrefix, ''); ok();
 // Routing works on a normalised tab straight from disk.
 assert.equal(C.routeLine(w.channelTabs, 'x marks').action, 'capture');
 assert.equal(C.routeLine(w.channelTabs, 'Y not').action, 'silence'); ok();

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { store, useStore, MAIN_VIEW, type World } from './lib/store';
+import { activePrefix, applyCommandPrefix } from './lib/channels';
 import { Sidebar } from './components/Sidebar';
 import { OutputPane } from './components/OutputPane';
 import { ChannelStrip } from './components/ChannelStrip';
@@ -72,8 +73,9 @@ export function App() {
         { id: 'smoke-alias', name: 'look shortcut', pattern: 'l', regex: false, enabled: true, group: '', ignoreCase: true, send: 'look %1', sendTo: 'world' },
       ],
       // The Haven starter patterns plus one that copies the login banner, so a login screen lights the badge.
+      // The "ooc " prefix shows in the input bar when LANTERN_SMOKE_VIEW=OOC.
       channelTabs: [{
-        id: 'smoke-ooc', name: 'OOC', enabled: true, keepInMain: true, notify: 'badge',
+        id: 'smoke-ooc', name: 'OOC', enabled: true, keepInMain: true, notify: 'badge', commandPrefix: 'ooc ',
         patterns: [
           { id: 'smoke-p1', pattern: '^\\[OOC\\] ', ignoreCase: false, mode: 'capture' },
           { id: 'smoke-p2', pattern: '^\\[AFK\\]\\s*$', ignoreCase: false, mode: 'silence' },
@@ -104,12 +106,16 @@ export function App() {
 
   const active = s.active();
 
-  const sendCommand = async (text: string) => {
+  const sendCommand = async (typed: string) => {
     if (!active) return;
     if (active.status !== 'connected') { store.note(active.id, 'Not connected.', 'error'); return; }
-    // Masked input (a password) is never expanded or echoed.
-    if (!active.echo) { await window.lantern.session.send(active.id, text); return; }
-    store.input(active.id, text);
+    // Masked input (a password) is never expanded, prefixed or echoed.
+    if (!active.echo) { await window.lantern.session.send(active.id, typed); return; }
+    // A channel tab's command prefix goes on first (typed commands only: a script's Execute
+    // calls store.execute directly), then aliases, stacking and speedwalk see the whole thing.
+    // The echo and log show what was sent; history keeps what was typed.
+    const { text } = applyCommandPrefix(activePrefix(active.world.channelTabs, active.view), typed);
+    store.input(active.id, text, true, typed);
     store.execute(active.id, text, false);
   };
 

@@ -134,7 +134,11 @@ class Store {
     this.notify();
   }
 
-  /** Show the main pane (MAIN_VIEW) or one channel tab. The input bar is unaffected: it always talks to the game. */
+  /**
+   * Show the main pane (MAIN_VIEW) or one channel tab. The input bar still talks to the game
+   * whichever view is showing; a tab with a command prefix only changes what App.sendCommand
+   * puts in front of the typed text.
+   */
   setView(id: string, view: string) {
     const s = this.sessions.get(id); if (!s) return;
     if (view !== MAIN_VIEW && !s.world.channelTabs.some((t) => t.id === view && t.enabled)) view = MAIN_VIEW;
@@ -456,15 +460,19 @@ class Store {
     this.scheduleNotify();
   }
 
-  /** Echo a command into the output. Typed commands also go into history; automated ones don't. */
-  input(id: string, text: string, remember = true) {
+  /**
+   * Echo a command into the output. Typed commands also go into history; automated ones don't.
+   * `typed` is what to remember when it differs from what was sent (a channel tab's command
+   * prefix is echoed and logged, but ↑ recalls the words as typed so they are not prefixed twice).
+   */
+  input(id: string, text: string, remember = true, typed = text) {
     const s = this.sessions.get(id); if (!s) return;
     // If a prompt line is pending, the command visually completes it.
     if (s.partial.length) this.commitPartial(s, 'mud', true);
     this.pushLine(s, { id: this.lineId++, kind: 'input', spans: [{ text, style: plain() }], ts: Date.now() });
     if (s.world.logging) this.hooks.log(id, `> ${text}`);
-    if (remember && text.trim() && s.history[s.history.length - 1] !== text) {
-      s.history.push(text);
+    if (remember && typed.trim() && s.history[s.history.length - 1] !== typed) {
+      s.history.push(typed);
       if (s.history.length > 500) s.history.shift();
     }
     this.scheduleNotify();

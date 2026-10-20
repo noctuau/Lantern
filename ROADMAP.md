@@ -43,7 +43,7 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - Channels editor in the Automation panel with a Try-it box, and a one-click "Add Haven channel tabs" preset (`[OOC]`, `[Guide]`, `[Newbie]`, `[HeyThere]` captured, bare `[AFK]` silenced)
 - Daily logs now written line by line from the renderer, captured lines prefixed `[tab name]`
 - Unit test `scripts/test-channels.mjs`; `LANTERN_SMOKE_VIEW` / `LANTERN_SMOKE_PANEL=channels` for screenshots
-- Not done: per-tab command prefix (type in the OOC tab and have `ooc ` prepended)
+- Per-tab command prefix (`ChannelTab.commandPrefix`, same day): typing on a tab that has one sends `prefix + text` through aliases, stacking and speedwalk; `\` at the start skips it once; a chip in the input bar shows it; echo and log show what was sent, ↑ recalls what was typed. The Haven preset ships without one (the old OOC world redirected commands rather than prefixing them)
 
 ## Stage 4 — Plugins
 

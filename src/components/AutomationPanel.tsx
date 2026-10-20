@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { World, Trigger, Alias, Timer, SendTo, ChannelTab, ChannelPattern, ChannelNotify, ChannelMode } from '../../shared/types';
 import { normalizeTrigger, normalizeAlias, normalizeTimer, normalizeChannelTab } from '../../shared/types';
 import { runTriggers, applyHighlights, patternError, describeTimer, expandCommand } from '../lib/automation';
-import { classifyLine, channelPatternError, havenChannelTab, hasHavenPreset, HAVEN_TAB_NAME } from '../lib/channels';
+import { classifyLine, channelPatternError, havenChannelTab, hasHavenPreset, HAVEN_TAB_NAME, PREFIX_BYPASS } from '../lib/channels';
 import { spanStyle, EMPTY_STYLE } from '../lib/ansi';
 
 export type PanelTab = 'triggers' | 'aliases' | 'timers' | 'channels' | 'script' | 'options';
@@ -548,6 +548,7 @@ function channelSub(t: ChannelTab): string {
   const silenced = live.filter((p) => p.mode === 'silence').length;
   if (silenced) bits.push(`${silenced} silenced`);
   if (t.keepInMain) bits.push('copy, main keeps them');
+  if (t.commandPrefix) bits.push(`prefix "${t.commandPrefix}"`);
   if (t.notify !== 'badge') bits.push(t.notify === 'silent' ? 'no badge' : 'badge + sound');
   return bits.join(' · ');
 }
@@ -571,6 +572,9 @@ function ChannelTabEditor({ t, patch }: { t: ChannelTab; patch(p: Partial<Channe
       <div className="row wrap">
         <Check label="Keep a copy in Main" title="Otherwise matching lines move to this tab and leave the main pane" checked={t.keepInMain} onChange={(v) => patch({ keepInMain: v })} />
       </div>
+      <Field label="Command prefix" hint={`Put in front of whatever you type while this tab is showing, so "hello" is sent as "${t.commandPrefix || 'ooc '}hello". Keep the trailing space if the game needs one. Start a command with ${PREFIX_BYPASS} to send it without the prefix once (${PREFIX_BYPASS}look sends "look"). Leave empty to type to the game as usual. Applied before aliases, stacking and speedwalk; ↑ recalls what you typed, not the prefixed command.`}>
+        <input className="mono" style={{ width: 160 }} value={t.commandPrefix} onChange={(e) => patch({ commandPrefix: e.target.value })} placeholder="ooc " spellCheck={false} />
+      </Field>
       <Field label="Patterns" hint="JavaScript regular expressions, tested against the plain text of each finished line after triggers have run. Tabs are tried top to bottom, patterns top to bottom; the first match wins. Capture sends the line to this tab; silence drops it everywhere (noise such as a bare [AFK] line).">
         <div className="chan-patterns">
           {t.patterns.map((p) => {
