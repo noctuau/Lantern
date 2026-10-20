@@ -42,9 +42,9 @@ export function safeName(s: string): string {
 }
 
 /** Expand a pattern to a file name; adds the extension for the format when the pattern has none. */
-export function expandLogName(pattern: string, worldName: string, format: 'text' | 'html', d = new Date()): string {
+export function expandLogName(pattern: string, worldName: string, format: 'text' | 'html' | 'raw', d = new Date()): string {
   const base = strftime((pattern || DEFAULT_LOG_FILE).replace(/\{world\}/gi, safeName(worldName)), d);
   const last = base.split(/[\\/]/).pop() ?? '';
-  const ext = format === 'html' ? '.html' : '.txt';
+  const ext = format === 'html' ? '.html' : format === 'raw' ? '.raw.txt' : '.txt';
   return /\.[a-z0-9]{1,5}$/i.test(last) ? base : base + ext;
 }

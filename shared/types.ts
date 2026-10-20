@@ -109,7 +109,7 @@ export interface ChannelPattern {
 
 export type ChannelMode = 'capture' | 'silence';
 
-export type LogFormat = 'text' | 'html';
+export type LogFormat = 'text' | 'html' | 'raw';
 export interface LogSettings {
   output: boolean;          // game text
   commands: boolean;        // what you typed
@@ -122,7 +122,8 @@ export interface LogSettings {
 export const DEFAULT_LOG: LogSettings = { output: true, commands: true, notes: false, format: 'text', file: '', worldNameHeader: true };
 
 export function normalizeLog(l: Partial<LogSettings> | undefined): LogSettings {
-  return { ...DEFAULT_LOG, ...(l ?? {}), format: l?.format === 'html' ? 'html' : 'text' };
+  const format: LogFormat = l?.format === 'html' ? 'html' : l?.format === 'raw' ? 'raw' : 'text';
+  return { ...DEFAULT_LOG, ...(l ?? {}), format };
 }
 
 export interface World {

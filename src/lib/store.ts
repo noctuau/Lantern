@@ -300,7 +300,7 @@ class Store {
     }
 
     // The log records every line in order, gagged and silenced ones included, captured ones with their tab name.
-    if (s.world.logging && s.world.log.output) {
+    if (s.world.logging && s.world.log.output && s.world.log.format !== 'raw') {
       const prefix = logPrefix(route);
       this.hooks.log(s.id, prefix + text, 'output', s.world.log.format === 'html' ? lineHtml('output', prefix, merged) : undefined);
     }
@@ -490,7 +490,7 @@ class Store {
   }
 
   private logNote(s: SessionState, spans: Span[]) {
-    if (!s.world.logging || !s.world.log.notes) return;
+    if (!s.world.logging || !s.world.log.notes || s.world.log.format === 'raw') return;
     const text = spans.map((x) => x.text).join('');
     this.hooks.log(s.id, text, 'note', s.world.log.format === 'html' ? lineHtml('note', '', spans) : undefined);
   }
@@ -527,7 +527,7 @@ class Store {
       if (tab) this.pushChannelLine(s, tab, line, false);
       else this.pushLine(s, line);
     }
-    if (s.world.logging && s.world.log.commands) this.hooks.log(id, `> ${text}`, 'command', s.world.log.format === 'html' ? lineHtml('command', '', [{ text, style: plain() }]) : undefined);
+    if (s.world.logging && s.world.log.commands && s.world.log.format !== 'raw') this.hooks.log(id, `> ${text}`, 'command', s.world.log.format === 'html' ? lineHtml('command', '', [{ text, style: plain() }]) : undefined);
     if (remember && typed.trim() && s.history[s.history.length - 1] !== typed) {
       s.history.push(typed);
       if (s.history.length > 500) s.history.shift();

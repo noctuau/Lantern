@@ -66,6 +66,7 @@ export function WorldEditor({ world, onSave, onDelete, onClose }: Props) {
               <legend>Format</legend>
               <label className="check inline"><input type="radio" name="logfmt" checked={w.log.format === 'text'} onChange={() => setLog('format', 'text')} /> Plain text</label>
               <label className="check inline"><input type="radio" name="logfmt" checked={w.log.format === 'html'} onChange={() => setLog('format', 'html')} /> HTML with colours</label>
+              <label className="check inline" title="Diagnostic: the exact bytes the game sends, with colour codes shown as \e[...]. For troubleshooting, not everyday reading."><input type="radio" name="logfmt" checked={w.log.format === 'raw'} onChange={() => setLog('format', 'raw')} /> Raw (colour codes)</label>
             </fieldset>
             <fieldset className="group">
               <legend>Header</legend>

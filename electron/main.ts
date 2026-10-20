@@ -192,8 +192,14 @@ ipcMain.handle('session:connect', (_e, worldId: string, size: { width: number; h
   });
   const s: Session = { id, world, telnet, log: openLog(world), logHtml: world.log.format === 'html' };
   sessions.set(id, s);
+  const logRaw = world.logging && world.log.format === 'raw';
 
-  telnet.on('text', (text: string) => send('session:text', id, text));
+  telnet.on('text', (text: string) => {
+    send('session:text', id, text);
+    // Raw diagnostic log: the exact bytes the game sent (telnet stripped), escapes shown as \e,
+    // written here before the renderer parses ANSI out. Lets us see colour codes verbatim.
+    if (logRaw && s.log) s.log.write(text.replace(/\x1b/g, '\\e').replace(/\r/g, ''));
+  });
   telnet.on('prompt', () => send('session:prompt', id));
   telnet.on('echo', (on: boolean) => send('session:echo', id, on));
   telnet.on('gmcp', (pkg: string, data: unknown) => send('session:gmcp', id, pkg, data));
