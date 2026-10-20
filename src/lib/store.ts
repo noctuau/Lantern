@@ -18,7 +18,7 @@ import { useSyncExternalStore } from 'react';
 import { AnsiParser, type Span } from './ansi';
 import type { World, SendTo, Timer, ChannelTab } from '../../shared/types';
 import { applyHighlights, splitSend, expandCommand, TimerScheduler, type Outgoing, type Match } from './automation';
-import { classifyLine, logPrefix, type Route } from './channels';
+import { classifyLine, logPrefix, commandCaptureTab, type Route } from './channels';
 import { lineHtml } from './loghtml';
 import { LuaSession, type LuaHost, type NoteSpan, type Scripted, type ScriptKind } from './lua';
 import { getLuaFactory } from './lua-wasm';
@@ -52,6 +52,8 @@ export interface SessionState {
   automation: boolean;   // master switch for triggers/timers on this session
   fired: number;         // triggers fired this session (status bar)
   swallowBlankUntil: number; // after a captured line: drop the next blank line until this time (ms)
+  /** A command matched a tab's capture pattern: replies go to that tab until quiet or the next command. */
+  cmdCapture: { tabId: string; until: number; lines: number } | null;
   lua: LuaSession | null;
   luaStatus: 'starting' | 'ready' | 'error' | 'failed';
   luaGen: number;        // bumps on every (re)load so a stale load can't install itself
@@ -105,7 +107,7 @@ class Store {
   add(id: string, world: World) {
     const s: SessionState = {
       id, world, status: 'connecting', lines: [], partial: [], echo: true, history: [], unread: 0, gmcp: {},
-      view: MAIN_VIEW, channels: {}, mainUnread: 0, swallowBlankUntil: 0,
+      view: MAIN_VIEW, channels: {}, mainUnread: 0, swallowBlankUntil: 0, cmdCapture: null,
       automation: true, fired: 0, lua: null, luaStatus: 'starting', luaGen: 0, scriptDepth: 0,
     };
     this.sessions.set(id, s);
@@ -267,11 +269,23 @@ class Store {
       route = { action: 'main', tab: null, pattern: null, showInMain: true, showInTab: false };
     }
 
+    // Command-triggered capture (e.g. a Help tab): lines no pattern tab claimed follow the command.
+    if (s.cmdCapture) {
+      const cap = s.cmdCapture;
+      const tab = s.world.channelTabs.find((t) => t.id === cap.tabId && t.enabled);
+      if (!tab || Date.now() > cap.until || cap.lines >= 500) s.cmdCapture = null;
+      else if (route && route.action === 'main') {
+        route = { action: 'capture', tab, pattern: null, showInMain: tab.keepInMain, showInTab: true };
+        cap.until = Date.now() + tab.captureQuietMs;
+        cap.lines++;
+      }
+    }
+
     // Blank padding around a captured line: games print an empty line before and after a channel
     // message. When the message moves to a tab, take its padding out of the main pane as well.
     const blank = text.trim() === '';
     let swallow = false;
-    if (route && route.action === 'capture' && route.tab && route.tab.trimBlanks && !route.showInMain) {
+    if (route && route.action === 'capture' && route.tab && route.pattern && route.tab.trimBlanks && !route.showInMain) {
       const last = s.lines[s.lines.length - 1];
       if (last && last.kind === 'mud' && !last.prompt && Date.now() - last.ts < 3000 && last.spans.every((sp) => sp.text.trim() === '')) {
         s.lines.pop();
@@ -500,12 +514,16 @@ class Store {
     const s = this.sessions.get(id); if (!s) return;
     // If a prompt line is pending, the command visually completes it.
     if (s.partial.length) this.commitPartial(s, 'mud', true);
+    // A command matching a tab's capture pattern (help …) starts routing replies to that tab; any
+    // command ends the previous capture.
+    const capTab = text.trim() ? commandCaptureTab(s.world.channelTabs, text) : null;
+    s.cmdCapture = capTab ? { tabId: capTab.id, until: Date.now() + Math.max(capTab.captureQuietMs, 4000), lines: 0 } : null;
     // An empty line is sent (MUSHes use it to nudge the prompt) but there is nothing to show for it.
     if (echo && text.trim()) {
       // The echo lands in the pane the command was typed from: a channel tab keeps its own
       // conversation together, and the main RP pane stays free of OOC chatter.
       const line: Line = { id: this.lineId++, kind: 'input', spans: [{ text, style: plain() }], ts: Date.now() };
-      const tab = s.view !== MAIN_VIEW ? s.world.channelTabs.find((t) => t.id === s.view && t.enabled) : undefined;
+      const tab = capTab ?? (s.view !== MAIN_VIEW ? s.world.channelTabs.find((t) => t.id === s.view && t.enabled) : undefined);
       if (tab) this.pushChannelLine(s, tab, line, false);
       else this.pushLine(s, line);
     }

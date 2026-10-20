@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { World, Trigger, Alias, Timer, SendTo, ChannelTab, ChannelPattern, ChannelNotify, ChannelMode } from '../../shared/types';
 import { normalizeTrigger, normalizeAlias, normalizeTimer, normalizeChannelTab } from '../../shared/types';
 import { runTriggers, applyHighlights, patternError, describeTimer, expandCommand } from '../lib/automation';
-import { classifyLine, channelPatternError, havenChannelTab, hasHavenPreset, HAVEN_TAB_NAME, PREFIX_BYPASS } from '../lib/channels';
+import { classifyLine, channelPatternError, havenChannelTab, hasHavenPreset, helpChannelTab, hasHelpPreset, HAVEN_TAB_NAME, PREFIX_BYPASS } from '../lib/channels';
 import { spanStyle, EMPTY_STYLE } from '../lib/ansi';
 
 export type PanelTab = 'triggers' | 'aliases' | 'timers' | 'channels' | 'script' | 'options';
@@ -483,6 +483,12 @@ function ChannelsTab({ w, setW }: { w: World; setW: React.Dispatch<React.SetStat
     setTabs([...tabs, t]);
     setSel(t.id);
   };
+  const addHelpPreset = () => {
+    const t = helpChannelTab(uid);
+    setTabs([...tabs, t]);
+    setSel(t.id);
+  };
+  const helpDone = hasHelpPreset(tabs);
   const duplicate = () => {
     if (!selected) return;
     const copy: ChannelTab = { ...selected, id: uid(), name: `${selected.name} (copy)`, patterns: selected.patterns.map((p) => ({ ...p, id: uid() })) };
@@ -516,6 +522,7 @@ function ChannelsTab({ w, setW }: { w: World; setW: React.Dispatch<React.SetStat
             <div className="auto-empty-actions">
               <div className="muted small">No channel tabs yet. A channel tab collects matching lines (OOC chatter, guide channels…) in its own pane under the session tab, so the roleplay screen stays clean.</div>
               <button className="btn small primary" onClick={addPreset}>Add Haven channel tabs</button>
+              <button className="btn small" onClick={addHelpPreset}>Add a Help tab</button>
             </div>
           )}
           {tabs.map((t) => (
@@ -551,6 +558,9 @@ function ChannelsTab({ w, setW }: { w: World; setW: React.Dispatch<React.SetStat
           <div className="row">
             <button className="btn small ghost" disabled={havenDone} title={havenDone ? 'A tab with the Haven patterns already exists' : 'Add a tab with the Haven OOC / Guide / Newbie / HeyThere patterns'} onClick={addPreset}>
               {havenDone ? '✓ Haven channel tabs added' : 'Add Haven channel tabs'}
+            </button>
+            <button className="btn small ghost" disabled={helpDone} title={helpDone ? 'A Help tab already exists' : 'Add a tab that collects the replies to help, rules, news and similar commands'} onClick={addHelpPreset}>
+              {helpDone ? '✓ Help tab added' : 'Add a Help tab'}
             </button>
           </div>
         )}
@@ -594,6 +604,14 @@ function ChannelTabEditor({ t, patch }: { t: ChannelTab; patch(p: Partial<Channe
       <Field label="Command prefix" hint={`Put in front of whatever you type while this tab is showing, so "hello" is sent as "${t.commandPrefix || 'ooc '}hello". Keep the trailing space if the game needs one. Start a command with ${PREFIX_BYPASS} to send it without the prefix once (${PREFIX_BYPASS}look sends "look"). Leave empty to type to the game as usual. Applied before aliases, stacking and speedwalk; ↑ recalls what you typed, not the prefixed command.`}>
         <input className="mono" style={{ width: 160 }} value={t.commandPrefix} onChange={(e) => patch({ commandPrefix: e.target.value })} placeholder="ooc " spellCheck={false} />
       </Field>
+      <div className="row">
+        <Field label="Capture replies to commands matching" grow hint={`A regular expression tested against each command you send. When it matches, the command and everything the game sends after it land in this tab until the output has been quiet for the time on the right, or you send another command. Lines a pattern tab claims still go there. Leave empty to capture by line patterns only. Example: ^help\\b`}>
+          <input className="mono" value={t.captureCommands} onChange={(e) => patch({ captureCommands: e.target.value })} placeholder="^help\\b" spellCheck={false} />
+        </Field>
+        <Field label="Quiet for (ms)">
+          <input type="number" min={200} max={10000} step={100} value={t.captureQuietMs} onChange={(e) => patch({ captureQuietMs: Number(e.target.value) || 1500 })} style={{ width: 100 }} />
+        </Field>
+      </div>
       <Field label="Patterns" hint="JavaScript regular expressions, tested against the plain text of each finished line after triggers have run. Tabs are tried top to bottom, patterns top to bottom; the first match wins. Capture sends the line to this tab; silence drops it everywhere (noise such as a bare [AFK] line).">
         <div className="chan-patterns">
           {t.patterns.map((p) => {

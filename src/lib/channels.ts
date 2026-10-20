@@ -74,6 +74,30 @@ export function classifyLine(triggers: readonly Trigger[], tabs: readonly Channe
 }
 
 /** The text a captured line gets in the daily log, so the log still reads as a whole. */
+/** The first enabled tab whose command pattern matches a command you sent, or null. */
+export function commandCaptureTab(tabs: readonly ChannelTab[], command: string): ChannelTab | null {
+  for (const tab of tabs) {
+    if (!tab.enabled || !tab.captureCommands) continue;
+    try { if (new RegExp(tab.captureCommands, 'i').test(command)) return tab; } catch { /* bad regex: ignore */ }
+  }
+  return null;
+}
+
+export const HELP_TAB_NAME = 'Help';
+export const HELP_COMMANDS = '^(help|rules|policy|news|motd)\\b';
+
+/** A tab that collects the replies to help commands. */
+export function helpChannelTab(uid: () => string): ChannelTab {
+  return {
+    id: uid(), name: HELP_TAB_NAME, enabled: true, keepInMain: false, trimBlanks: false, notify: 'badge',
+    commandPrefix: '', captureCommands: HELP_COMMANDS, captureQuietMs: 1500, patterns: [],
+  };
+}
+
+export function hasHelpPreset(tabs: readonly ChannelTab[]): boolean {
+  return tabs.some((t) => t.captureCommands === HELP_COMMANDS);
+}
+
 export function logPrefix(route: Route | null): string {
   return route && route.action === 'capture' && route.tab ? `[${route.tab.name}] ` : '';
 }
@@ -140,6 +164,8 @@ export function havenChannelTab(uid: () => string): ChannelTab {
     keepInMain: false,
     trimBlanks: true,
     notify: 'badge',
+    captureCommands: '',
+    captureQuietMs: 1500,
     // No prefix: the old setup redirected whole commands to another world rather than
     // prepending a channel command, so there is no "ooc " to copy. Set one in the editor.
     commandPrefix: '',

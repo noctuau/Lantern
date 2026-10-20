@@ -79,6 +79,14 @@ export interface ChannelTab {
    */
   trimBlanks: boolean;
   /**
+   * Command-triggered capture: a regex tested against each command you send (after prefix and
+   * aliases). When it matches, the command's echo and everything the game sends afterwards go
+   * to this tab, until the output has been quiet for `captureQuietMs` or you send another
+   * command. '' = off. Lines that a pattern tab claims still go to that tab.
+   */
+  captureCommands: string;
+  captureQuietMs: number;
+  /**
    * Put in front of whatever is typed while this tab is showing (e.g. "ooc " so typing "hi"
    * sends "ooc hi"). '' (default) = type to the game as usual. A command starting with "\"
    * is sent without it, once. Applied before aliases, stacking and speedwalk.
@@ -200,6 +208,8 @@ export function normalizeChannelTab(c: Partial<ChannelTab> & Pick<ChannelTab, 'i
     ...c,
     notify,
     commandPrefix: typeof c.commandPrefix === 'string' ? c.commandPrefix : '',
+    captureCommands: typeof c.captureCommands === 'string' ? c.captureCommands : '',
+    captureQuietMs: typeof c.captureQuietMs === 'number' && c.captureQuietMs >= 200 ? c.captureQuietMs : 1500,
     patterns: (c.patterns ?? []).map(normalizeChannelPattern),
   };
 }

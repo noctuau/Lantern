@@ -171,4 +171,18 @@ assert.equal(T.normalizeChannelTab({ id: 'c', commandPrefix: null }).commandPref
 assert.equal(C.routeLine(w.channelTabs, 'x marks').action, 'capture');
 assert.equal(C.routeLine(w.channelTabs, 'Y not').action, 'silence'); ok();
 
+
+// Command-triggered capture (Help tab)
+{
+  const help = C.helpChannelTab(uid);
+  const tabs = [C.havenChannelTab(uid), help];
+  assert.equal(C.commandCaptureTab(tabs, 'help emote')?.id, help.id, 'help command starts capture');
+  assert.equal(C.commandCaptureTab(tabs, 'HELP')?.id, help.id, 'case-insensitive');
+  assert.equal(C.commandCaptureTab(tabs, 'helpme'), null, 'word boundary respected');
+  assert.equal(C.commandCaptureTab(tabs, 'say hello'), null, 'other commands do not capture');
+  assert.equal(C.commandCaptureTab([{ ...help, enabled: false }], 'help'), null, 'disabled tab ignored');
+  assert.equal(C.commandCaptureTab([{ ...help, captureCommands: '(' }], 'help'), null, 'bad regex ignored');
+  assert.ok(C.hasHelpPreset(tabs) && !C.hasHelpPreset([tabs[0]]));
+  n += 7;
+}
 console.log(`test-channels: ${n} checks passed`);
