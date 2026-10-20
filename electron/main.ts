@@ -62,7 +62,7 @@ function createWindow() {
   if (smoke) {
     const [host, port, out] = smoke.split('|');
     win.webContents.on('did-finish-load', () => {
-      setTimeout(() => send('smoke:run', { host, port: Number(port), panel: process.env.LANTERN_SMOKE_PANEL === '1' }), 500);
+      setTimeout(() => send('smoke:run', { host, port: Number(port), panel: process.env.LANTERN_SMOKE_PANEL }), 500);
       setTimeout(async () => {
         const img = await win!.webContents.capturePage();
         fs.writeFileSync(out, img.toPNG());
@@ -185,6 +185,44 @@ ipcMain.handle('session:disconnect', (_e, id: string) => {
 
 ipcMain.handle('session:resize', (_e, id: string, width: number, height: number) => {
   sessions.get(id)?.telnet.resize(width, height);
+});
+
+/* ---------- IPC: scripts (one Lua file per world) ---------- */
+
+const STARTER_SCRIPT = `-- Lantern script for this world. Saved to disk and reloaded on every connect
+-- and whenever you press Save or Reload on the Script tab.
+--
+-- A trigger, alias or timer with a "Lua function" calls it as fn(name, line, wildcards):
+--
+-- function on_tell(name, line, wildcards)
+--   ColourNote("yellow", "", wildcards[1] .. " told you: " .. wildcards[2])
+--   SetVariable("last_tell", wildcards[1])
+-- end
+--
+-- Send("say hello"), Execute("l"), Note(...), ColourNote(fg, bg, text), GetVariable(name),
+-- AddTrigger(...), EnableGroup(name, true) and the rest work as in MUSHclient.
+`;
+
+function scriptsDir() {
+  const dir = path.join(app.getPath('userData'), 'scripts');
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+const scriptFile = (worldId: string) => path.join(scriptsDir(), `${String(worldId).replace(/[^A-Za-z0-9_-]/g, '_')}.lua`);
+
+ipcMain.handle('scripts:read', (_e, worldId: string) => {
+  try { return fs.readFileSync(scriptFile(worldId), 'utf-8'); } catch { return ''; }
+});
+ipcMain.handle('scripts:write', (_e, worldId: string, text: string) => {
+  const file = scriptFile(worldId);
+  fs.writeFileSync(file, String(text));
+  return file;
+});
+ipcMain.handle('scripts:path', (_e, worldId: string) => scriptFile(worldId));
+ipcMain.handle('scripts:open', async (_e, worldId: string) => {
+  const file = scriptFile(worldId);
+  if (!fs.existsSync(file)) fs.writeFileSync(file, STARTER_SCRIPT);
+  return shell.openPath(file);
 });
 
 /* ---------- IPC: app ---------- */

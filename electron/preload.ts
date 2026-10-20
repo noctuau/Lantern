@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld('lantern', {
     onGmcp: on('session:gmcp'),
     onInfo: on('session:info'),
   },
+  scripts: {
+    read: (worldId: string) => ipcRenderer.invoke('scripts:read', worldId),
+    write: (worldId: string, text: string) => ipcRenderer.invoke('scripts:write', worldId, text),
+    open: (worldId: string) => ipcRenderer.invoke('scripts:open', worldId),
+    path: (worldId: string) => ipcRenderer.invoke('scripts:path', worldId),
+  },
   app: {
     openLogs: () => ipcRenderer.invoke('app:openLogs'),
     openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),

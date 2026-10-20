@@ -141,6 +141,7 @@ function colourCss(c: string): string {
   if (c === 'fg') return 'var(--fg)';
   if (c === 'bg') return 'var(--bg)';
   if (c.startsWith('#')) return c;
+  if (!/^\d+$/.test(c)) return c;   // a CSS colour name (ColourNote "red", "cornflowerblue")
   const n = Number(c);
   if (n < 16) return `var(--ansi-${n})`;
   return xterm256(n);

@@ -19,7 +19,10 @@ export function loadWorlds(): World[] {
 
 export function saveWorlds(worlds: World[]) {
   fs.mkdirSync(path.dirname(file()), { recursive: true });
-  fs.writeFileSync(file(), JSON.stringify(worlds, null, 2));
+  // Items a script added with the Temporary flag live only as long as the session.
+  const keep = <T extends { temporary?: boolean }>(xs: T[]) => xs.filter((x) => !x.temporary);
+  const onDisk = worlds.map((w) => ({ ...w, triggers: keep(w.triggers), aliases: keep(w.aliases), timers: keep(w.timers) }));
+  fs.writeFileSync(file(), JSON.stringify(onDisk, null, 2));
 }
 
 export function newWorld(partial: Partial<World> = {}): World {

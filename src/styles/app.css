@@ -187,6 +187,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .auto-options .example { align-self: flex-end; padding-bottom: 9px; font-size: 12px; }
 .modal.auto .modal-actions { padding: 12px 22px; border-top: 1px solid var(--line); margin: 0; align-items: center; }
 
+/* script tab */
+.auto-script { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px 22px 10px; }
+.auto-script-head { display: flex; align-items: center; gap: 8px; }
+.auto-script-head > div:first-child { font-weight: 500; }
+.auto-script-head .btn:disabled { opacity: 0.4; cursor: default; }
+.modal textarea.auto-script-text { flex: 1; min-height: 0; resize: none; white-space: pre; overflow: auto; line-height: 1.45; tab-size: 2; scrollbar-color: var(--line) transparent; }
+.auto-script-foot { display: flex; align-items: center; gap: 8px; }
+.self-start { align-self: flex-start; }
+
 /* status bar automation toggle */
 .status-toggle { background: transparent; border: 0; color: var(--fg-muted); cursor: pointer; padding: 0 6px; border-radius: 6px; font-size: 12px; }
 .status-toggle:hover { background: var(--bg-3); color: var(--fg); }

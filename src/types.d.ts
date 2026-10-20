@@ -23,11 +23,17 @@ declare global {
         onGmcp(cb: (id: string, pkg: string, data: unknown) => void): Unsub;
         onInfo(cb: (id: string, message: string) => void): Unsub;
       };
+      scripts: {
+        read(worldId: string): Promise<string>;
+        write(worldId: string, text: string): Promise<string>;
+        open(worldId: string): Promise<string>;
+        path(worldId: string): Promise<string>;
+      };
       app: {
         openLogs(): Promise<string>;
         openExternal(url: string): Promise<void>;
         version(): Promise<string>;
-        onSmoke(cb: (opts: { host: string; port: number; panel?: boolean }) => void): Unsub;
+        onSmoke(cb: (opts: { host: string; port: number; panel?: string }) => void): Unsub;
       };
     };
   }

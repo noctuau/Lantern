@@ -59,16 +59,28 @@ export function splitSend(text: string): string[] {
 
 export interface Highlight { start: number; end: number; colour: string }
 
+/** What a trigger or alias matched: `wildcards[0]` is the whole match, 1..n the captures, plus any named groups. */
+export interface Match { wildcards: string[]; named: Record<string, string> }
+
 export interface TriggerResult {
   gag: boolean;
   outgoing: Outgoing[];
   highlights: Highlight[];
   fired: Trigger[];
+  matches: { trigger: Trigger; match: Match }[];
+}
+
+export function toMatch(m: RegExpExecArray): Match {
+  const wildcards: string[] = [];
+  for (let i = 0; i < m.length; i++) wildcards.push(m[i] ?? '');
+  const named: Record<string, string> = {};
+  if (m.groups) for (const [k, v] of Object.entries(m.groups)) named[k] = v ?? '';
+  return { wildcards, named };
 }
 
 /** Run every enabled trigger against one line of plain text. Nothing is mutated. */
 export function runTriggers(triggers: readonly Trigger[], line: string): TriggerResult {
-  const res: TriggerResult = { gag: false, outgoing: [], highlights: [], fired: [] };
+  const res: TriggerResult = { gag: false, outgoing: [], highlights: [], fired: [], matches: [] };
   for (const t of triggers) {
     if (!t.enabled || !t.pattern) continue;
     const re = compile(t.pattern, t.regex, t.ignoreCase, 'trigger');
@@ -77,6 +89,7 @@ export function runTriggers(triggers: readonly Trigger[], line: string): Trigger
     const first = re.exec(line);
     if (!first) continue;
     res.fired.push(t);
+    res.matches.push({ trigger: t, match: toMatch(first) });
     if (t.gag) res.gag = true;
     if (t.send) for (const cmd of splitSend(substitute(t.send, first))) res.outgoing.push({ text: cmd, sendTo: t.sendTo });
     if (t.highlight) {
@@ -130,10 +143,11 @@ export function applyHighlights(spans: readonly Span[], highlights: readonly Hig
 export interface ExpandResult {
   outgoing: Outgoing[];
   aliasesUsed: Alias[];
+  matches: { alias: Alias; command: string; match: Match }[];
 }
 
 /** Try the enabled aliases against one command; the first that matches wins. Null when none match. */
-export function expandAlias(aliases: readonly Alias[], command: string): { alias: Alias; outgoing: Outgoing[] } | null {
+export function expandAlias(aliases: readonly Alias[], command: string): { alias: Alias; outgoing: Outgoing[]; match: Match } | null {
   for (const a of aliases) {
     if (!a.enabled || !a.pattern) continue;
     const re = compile(a.pattern, a.regex, a.ignoreCase, 'alias');
@@ -142,7 +156,7 @@ export function expandAlias(aliases: readonly Alias[], command: string): { alias
     const m = re.exec(command);
     if (!m) continue;
     const outgoing = splitSend(substitute(a.send, m)).map((text) => ({ text, sendTo: a.sendTo }));
-    return { alias: a, outgoing };
+    return { alias: a, outgoing, match: toMatch(m) };
   }
   return null;
 }
@@ -194,14 +208,19 @@ export function splitStacked(text: string, ch: string): string[] {
 /** Everything that happens to a typed command before it reaches the game. */
 export function expandCommand(world: Pick<World, 'aliases' | 'commandStacking' | 'commandStackChar' | 'speedwalk' | 'speedwalkPrefix'>, text: string): ExpandResult {
   const pieces = world.commandStacking ? splitStacked(text, world.commandStackChar) : [text];
-  const res: ExpandResult = { outgoing: [], aliasesUsed: [] };
+  const res: ExpandResult = { outgoing: [], aliasesUsed: [], matches: [] };
   for (const piece of pieces) {
     if (world.speedwalk && world.speedwalkPrefix && piece.startsWith(world.speedwalkPrefix)) {
       const walk = expandSpeedwalk(piece.slice(world.speedwalkPrefix.length));
       if (walk) { for (const step of walk) res.outgoing.push({ text: step, sendTo: 'world' }); continue; }
     }
     const al = expandAlias(world.aliases, piece);
-    if (al) { res.aliasesUsed.push(al.alias); res.outgoing.push(...al.outgoing); continue; }
+    if (al) {
+      res.aliasesUsed.push(al.alias);
+      res.matches.push({ alias: al.alias, command: piece, match: al.match });
+      res.outgoing.push(...al.outgoing);
+      continue;
+    }
     res.outgoing.push({ text: piece, sendTo: 'world' });
   }
   return res;

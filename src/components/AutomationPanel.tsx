@@ -1,20 +1,27 @@
 /**
- * Per-world automation: triggers, aliases, timers and the command options.
- * Edits a draft copy of the world; nothing is persisted until Save.
+ * Per-world automation: triggers, aliases, timers, the Lua script and the
+ * command options. Edits a draft copy of the world; nothing is persisted until
+ * Save. The Script tab is separate: it reads and writes the world's script
+ * file directly and asks the app to reload it into any live session.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { World, Trigger, Alias, Timer, SendTo } from '../../shared/types';
 import { normalizeTrigger, normalizeAlias, normalizeTimer } from '../../shared/types';
 import { runTriggers, applyHighlights, patternError, describeTimer, expandCommand } from '../lib/automation';
 import { spanStyle, EMPTY_STYLE } from '../lib/ansi';
 
-type Tab = 'triggers' | 'aliases' | 'timers' | 'options';
+type Tab = 'triggers' | 'aliases' | 'timers' | 'script' | 'options';
 type Item = Trigger | Alias | Timer;
 type ListKey = 'triggers' | 'aliases' | 'timers';
+const LIST_TABS: ListKey[] = ['triggers', 'aliases', 'timers'];
+const isList = (t: Tab): t is ListKey => (LIST_TABS as Tab[]).includes(t);
 
 interface Props {
   world: World;
+  initialTab?: Tab;
   onSave(w: World): void;
+  /** The script file changed on disk: start a fresh Lua state in every session on this world. */
+  onReloadScript(): void;
   onClose(): void;
 }
 
@@ -24,14 +31,16 @@ const ANSI_NAMES = ['Black', 'Red', 'Green', 'Yellow', 'Blue', 'Magenta', 'Cyan'
 const colourCss = (c: string) => (/^\d+$/.test(c) ? `var(--ansi-${c})` : c);
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 
-export function AutomationPanel({ world, onSave, onClose }: Props) {
+export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onClose }: Props) {
   const [w, setW] = useState<World>(() => JSON.parse(JSON.stringify(world)) as World);
-  const [tab, setTab] = useState<Tab>('triggers');
-  const [sel, setSel] = useState<string | null>(world.triggers[0]?.id ?? null);
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'triggers');
+  const [sel, setSel] = useState<string | null>(initialTab && !isList(initialTab) ? null : (world.triggers[0]?.id ?? null));
   const [test, setTest] = useState('');
-  const dirty = useMemo(() => JSON.stringify(w) !== JSON.stringify(world), [w, world]);
+  const [scriptDirty, setScriptDirty] = useState(false);
+  const worldDirty = useMemo(() => JSON.stringify(w) !== JSON.stringify(world), [w, world]);
+  const dirty = worldDirty || scriptDirty;
 
-  const list: Item[] = tab === 'options' ? [] : w[tab];
+  const list: Item[] = isList(tab) ? w[tab] : [];
   const selected = list.find((x) => x.id === sel) ?? null;
 
   useEffect(() => {
@@ -40,16 +49,16 @@ export function AutomationPanel({ world, onSave, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [dirty, onClose]);
 
-  const switchTab = (t: Tab) => { setTab(t); setSel(t === 'options' ? null : (w[t][0]?.id ?? null)); };
+  const switchTab = (t: Tab) => { setTab(t); setSel(isList(t) ? (w[t][0]?.id ?? null) : null); };
 
   const setList = (key: ListKey, items: Item[]) => setW((x) => ({ ...x, [key]: items }));
   const patch = (patchObj: Partial<Item>) => {
-    if (tab === 'options' || !selected) return;
+    if (!isList(tab) || !selected) return;
     setList(tab, list.map((x) => (x.id === selected.id ? { ...x, ...patchObj } as Item : x)));
   };
 
   const addItem = () => {
-    if (tab === 'options') return;
+    if (!isList(tab)) return;
     const id = uid();
     const item: Item = tab === 'triggers' ? normalizeTrigger({ id })
       : tab === 'aliases' ? normalizeAlias({ id })
@@ -58,7 +67,7 @@ export function AutomationPanel({ world, onSave, onClose }: Props) {
     setSel(id);
   };
   const duplicate = () => {
-    if (tab === 'options' || !selected) return;
+    if (!isList(tab) || !selected) return;
     const id = uid();
     const copy = { ...selected, id, name: selected.name ? `${selected.name} (copy)` : '' } as Item;
     const i = list.findIndex((x) => x.id === selected.id);
@@ -66,14 +75,14 @@ export function AutomationPanel({ world, onSave, onClose }: Props) {
     setSel(id);
   };
   const remove = () => {
-    if (tab === 'options' || !selected) return;
+    if (!isList(tab) || !selected) return;
     const i = list.findIndex((x) => x.id === selected.id);
     const next = list.filter((x) => x.id !== selected.id);
     setList(tab, next);
     setSel(next[Math.min(i, next.length - 1)]?.id ?? null);
   };
   const move = (dir: -1 | 1) => {
-    if (tab === 'options' || !selected) return;
+    if (!isList(tab) || !selected) return;
     const i = list.findIndex((x) => x.id === selected.id);
     const j = i + dir;
     if (j < 0 || j >= list.length) return;
@@ -93,11 +102,11 @@ export function AutomationPanel({ world, onSave, onClose }: Props) {
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [list]);
   const toggleGroup = (g: string, on: boolean) => {
-    if (tab === 'options') return;
+    if (!isList(tab)) return;
     setList(tab, list.map((x) => (x.group === g ? { ...x, enabled: on } as Item : x)));
   };
 
-  const counts = { triggers: w.triggers.length, aliases: w.aliases.length, timers: w.timers.length };
+  const counts: Partial<Record<Tab, number>> = { triggers: w.triggers.length, aliases: w.aliases.length, timers: w.timers.length };
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget && !dirty) onClose(); }}>
@@ -108,10 +117,11 @@ export function AutomationPanel({ world, onSave, onClose }: Props) {
             <div className="muted small">{w.name}</div>
           </div>
           <div className="auto-tabs">
-            {(['triggers', 'aliases', 'timers', 'options'] as Tab[]).map((t) => (
+            {(['triggers', 'aliases', 'timers', 'script', 'options'] as Tab[]).map((t) => (
               <button key={t} className={`auto-tab ${tab === t ? 'active' : ''}`} onClick={() => switchTab(t)}>
                 {t[0].toUpperCase() + t.slice(1)}
-                {t !== 'options' && counts[t] > 0 && <span className="count">{counts[t]}</span>}
+                {(counts[t] ?? 0) > 0 && <span className="count">{counts[t]}</span>}
+                {t === 'script' && scriptDirty && <span className="count" title="Unsaved script">●</span>}
               </button>
             ))}
           </div>
@@ -119,6 +129,8 @@ export function AutomationPanel({ world, onSave, onClose }: Props) {
 
         {tab === 'options' ? (
           <OptionsTab w={w} setW={setW} />
+        ) : tab === 'script' ? (
+          <ScriptTab worldId={w.id} onDirty={setScriptDirty} onReload={onReloadScript} />
         ) : (
           <div className="auto-body">
             <div className="auto-side">
@@ -174,10 +186,10 @@ export function AutomationPanel({ world, onSave, onClose }: Props) {
         )}
 
         <div className="modal-actions">
-          <span className="muted small">{dirty ? 'Unsaved changes' : 'Saved'}</span>
+          <span className="muted small">{worldDirty ? 'Unsaved changes' : scriptDirty ? 'Script not saved (use Save script above)' : 'Saved'}</span>
           <span className="spacer" />
           <button type="button" className="btn ghost" onClick={onClose}>{dirty ? 'Discard' : 'Close'}</button>
-          <button type="button" className="btn primary" disabled={!dirty} onClick={() => onSave(w)}>Save</button>
+          <button type="button" className="btn primary" disabled={!worldDirty} onClick={() => onSave(w)}>Save</button>
         </div>
       </div>
     </div>
@@ -283,14 +295,22 @@ function TriggerEditor({ t, patch }: { t: Trigger; patch(p: Partial<Trigger>): v
       </Field>
       <div className="row">
         <Field label="Send it" grow><SendToSelect value={t.sendTo} onChange={(v) => patch({ sendTo: v })} /></Field>
-        <Field label="Lua function" hint="Stage 3: called when the trigger fires." grow>
-          <input className="mono" value={t.script ?? ''} onChange={(e) => patch({ script: e.target.value || undefined })} placeholder="not wired up yet" />
+        <Field label="Lua function" hint="From the Script tab; called as fn(name, line, wildcards) after the send." grow>
+          <input className="mono" value={t.script ?? ''} onChange={(e) => patch({ script: e.target.value || undefined })} placeholder="on_tell" spellCheck={false} />
         </Field>
       </div>
-      {t.scriptBody && (
-        <Field label="Imported script (kept for stage 3)"><textarea className="mono" rows={3} readOnly value={t.scriptBody} /></Field>
-      )}
+      <InlineLua value={t.scriptBody} onChange={(v) => patch({ scriptBody: v })} />
     </div>
+  );
+}
+
+function InlineLua({ value, onChange }: { value?: string; onChange(v: string | undefined): void }) {
+  const [open, setOpen] = useState(!!value);
+  if (!open && !value) return <button type="button" className="btn small ghost self-start" onClick={() => setOpen(true)}>+ Inline Lua</button>;
+  return (
+    <Field label="Inline Lua" hint="Runs when it fires, after the send. %1–%9 are substituted into the text first; `local name, line, wildcards = ...` gets the rest.">
+      <textarea className="mono" rows={3} value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)} spellCheck={false} placeholder='Note("matched %1")' />
+    </Field>
   );
 }
 
@@ -314,13 +334,11 @@ function AliasEditor({ a, patch }: { a: Alias; patch(p: Partial<Alias>): void })
       </Field>
       <div className="row">
         <Field label="Send it" grow><SendToSelect value={a.sendTo} onChange={(v) => patch({ sendTo: v })} /></Field>
-        <Field label="Lua function" hint="Stage 3: called instead." grow>
-          <input className="mono" value={a.script ?? ''} onChange={(e) => patch({ script: e.target.value || undefined })} placeholder="not wired up yet" />
+        <Field label="Lua function" hint="From the Script tab; called as fn(name, command, wildcards) after the send." grow>
+          <input className="mono" value={a.script ?? ''} onChange={(e) => patch({ script: e.target.value || undefined })} placeholder="do_greet" spellCheck={false} />
         </Field>
       </div>
-      {a.scriptBody && (
-        <Field label="Imported script (kept for stage 3)"><textarea className="mono" rows={3} readOnly value={a.scriptBody} /></Field>
-      )}
+      <InlineLua value={a.scriptBody} onChange={(v) => patch({ scriptBody: v })} />
     </div>
   );
 }
@@ -359,13 +377,11 @@ function TimerEditor({ t, patch }: { t: Timer; patch(p: Partial<Timer>): void })
       </Field>
       <div className="row">
         <Field label="Send it" grow><SendToSelect value={t.sendTo} onChange={(v) => patch({ sendTo: v })} /></Field>
-        <Field label="Lua function" hint="Stage 3: called when the timer fires." grow>
-          <input className="mono" value={t.script ?? ''} onChange={(e) => patch({ script: e.target.value || undefined })} placeholder="not wired up yet" />
+        <Field label="Lua function" hint="From the Script tab; called as fn(name) after the send." grow>
+          <input className="mono" value={t.script ?? ''} onChange={(e) => patch({ script: e.target.value || undefined })} placeholder="on_tick" spellCheck={false} />
         </Field>
       </div>
-      {t.scriptBody && (
-        <Field label="Imported script (kept for stage 3)"><textarea className="mono" rows={3} readOnly value={t.scriptBody} /></Field>
-      )}
+      <InlineLua value={t.scriptBody} onChange={(v) => patch({ scriptBody: v })} />
     </div>
   );
 }
@@ -421,6 +437,76 @@ function AliasTest({ world }: { world: World }) {
           {r.outgoing.map((o, k) => <div key={k} className="mono muted">{o.sendTo === 'output' ? '(note) ' : '› '}{o.text}</div>)}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- script ---------- */
+
+function ScriptTab({ worldId, onDirty, onReload }: { worldId: string; onDirty(d: boolean): void; onReload(): void }) {
+  const [text, setText] = useState<string | null>(null);
+  const [saved, setSaved] = useState('');
+  const [file, setFile] = useState('');
+  const [status, setStatus] = useState('');
+  const area = useRef<HTMLTextAreaElement>(null);
+  const dirty = text !== null && text !== saved;
+
+  useEffect(() => {
+    let live = true;
+    window.lantern.scripts.read(worldId).then((t) => { if (live) { setText(t); setSaved(t); } });
+    window.lantern.scripts.path(worldId).then((p) => { if (live) setFile(p); });
+    return () => { live = false; };
+  }, [worldId]);
+  useEffect(() => { onDirty(dirty); }, [dirty, onDirty]);
+  useEffect(() => () => onDirty(false), [onDirty]);
+
+  const save = async () => {
+    if (text === null) return;
+    await window.lantern.scripts.write(worldId, text);
+    setSaved(text);
+    onReload();
+    setStatus(`Saved and reloaded at ${new Date().toLocaleTimeString()}`);
+  };
+  const reload = () => { onReload(); setStatus(`Reloaded at ${new Date().toLocaleTimeString()}`); };
+  const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void save(); return; }
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      const el = e.currentTarget;
+      const { selectionStart: a, selectionEnd: b, value } = el;
+      const next = value.slice(0, a) + '  ' + value.slice(b);
+      setText(next);
+      requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = a + 2; });
+    }
+  };
+
+  return (
+    <div className="auto-script">
+      <div className="auto-script-head">
+        <div>
+          <div>Lua script for this world</div>
+          <div className="muted small">Runs in every session on this world when it connects. Functions named on triggers, aliases and timers are looked up here.</div>
+        </div>
+        <span className="spacer" />
+        <button className="btn small ghost" title={file} onClick={() => window.lantern.scripts.open(worldId)}>Open in editor</button>
+        <button className="btn small ghost" title="Start a fresh Lua state from the file on disk (after editing it elsewhere)" onClick={reload}>Reload</button>
+        <button className="btn small primary" disabled={!dirty} onClick={save}>Save script</button>
+      </div>
+      <textarea
+        ref={area}
+        className="mono auto-script-text"
+        value={text ?? ''}
+        placeholder={text === null ? 'Loading…' : '-- Lua 5.4. Define functions here and name them on a trigger, alias or timer:\n\nfunction on_tell(name, line, wildcards)\n  ColourNote("yellow", "", wildcards[1] .. " says: " .. wildcards[2])\nend'}
+        spellCheck={false}
+        disabled={text === null}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={onKey}
+      />
+      <div className="muted small auto-script-foot">
+        <span>{status || (dirty ? 'Unsaved changes (Ctrl+S saves)' : 'Errors from the script show as red lines in the output.')}</span>
+        <span className="spacer" />
+        <span className="mono" title={file}>{file.split(/[\\/]/).slice(-2).join('/')}</span>
+      </div>
     </div>
   );
 }

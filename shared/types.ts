@@ -2,9 +2,11 @@
  * Types shared by the main process and the renderer: a world profile and the
  * automation it carries (triggers, aliases, timers). Pure data, no runtime deps.
  *
- * `script` on each item is the name of a Lua function stage 3 will call; it is
- * stored and shown but not executed yet. `scriptBody` keeps inline Lua pulled
- * from MUSHclient files so nothing is lost on import.
+ * `script` on each item is the name of a Lua function called when it fires, as
+ * fn(name, line, wildcards). `scriptBody` is inline Lua run when it fires (what
+ * MUSHclient calls "send to script"; %1..%9 are substituted into the text first,
+ * and `...` carries name, line, wildcards). Items a script adds with the
+ * Temporary flag are marked `temporary` and never written to disk.
  */
 
 export type SendTo = 'world' | 'output';
@@ -25,6 +27,7 @@ export interface Trigger {
   oneShot: boolean;        // disable itself after firing once
   script?: string;
   scriptBody?: string;
+  temporary?: boolean;
 }
 
 export interface Alias {
@@ -39,6 +42,7 @@ export interface Alias {
   sendTo: SendTo;
   script?: string;
   scriptBody?: string;
+  temporary?: boolean;
 }
 
 export interface Timer {
@@ -53,6 +57,7 @@ export interface Timer {
   oneShot: boolean;
   script?: string;
   scriptBody?: string;
+  temporary?: boolean;
 }
 
 export interface World {
@@ -70,6 +75,9 @@ export interface World {
   triggers: Trigger[];
   aliases: Alias[];
   timers: Timer[];
+
+  /** Script variables (Lua GetVariable/SetVariable), persisted with the world. */
+  variables: Record<string, string>;
 
   /** Command stacking: "look;inv" sends two commands. Off by default. */
   commandStacking: boolean;
@@ -95,6 +103,7 @@ export function normalizeWorld(w: Partial<World> & Pick<World, 'id'>): World {
     triggers: (w.triggers ?? []).map(normalizeTrigger),
     aliases: (w.aliases ?? []).map(normalizeAlias),
     timers: (w.timers ?? []).map(normalizeTimer),
+    variables: { ...(w.variables ?? {}) },
     commandStacking: w.commandStacking ?? false,
     commandStackChar: w.commandStackChar || DEFAULT_STACK_CHAR,
     speedwalk: w.speedwalk ?? false,

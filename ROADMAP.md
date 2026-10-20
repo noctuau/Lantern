@@ -1,6 +1,6 @@
 # Lantern roadmap
 
-Built in stages so each session is a bounded chunk of work. Stages 1 and 2 are done.
+Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are done.
 
 ## Stage 1 — Connect and read (done 2026-10-20)
 
@@ -26,12 +26,15 @@ Built in stages so each session is a bounded chunk of work. Stages 1 and 2 are d
 - Unit test `scripts/test-automation.mjs`
 - Not done: keypad / function-key macros (moved to stage 5 alongside the settings UI)
 
-## Stage 3 — Lua scripting
+## Stage 3 — Lua scripting (done 2026-10-20)
 
-- Lua 5.4 via wasmoon, one state per world
-- Core API in the spirit of MUSHclient's: `Send`, `Note`, `ColourNote`, `Execute`, `AddTrigger`, `AddAlias`, `AddTimer`, `GetVariable`/`SetVariable`, `world.*`
-- Script file per world, reload on save
-- Triggers/aliases/timers can call Lua functions
+- Lua 5.4 via wasmoon, one state per session, created on connect and closed with the tab; runs in the renderer with `glue.wasm` inlined as a data: URI so the packaged (file://) app can load it
+- Core API in the spirit of MUSHclient's, as globals and under `world`: `Send`, `Execute`, `Note`, `ColourNote`, `Tell`, `ColourTell`, `GetVariable`/`SetVariable`/`DeleteVariable`/`GetVariableList`, `AddTrigger`/`AddTriggerEx`/`AddAlias`/`AddTimer`, `Delete*`, `Enable*`, `EnableGroup` (+ per-kind), `Is*`, `GetInfo`, `WorldName`, `IsConnected`, `print`, `utils.timer`, `check`, and the `trigger_flag`/`alias_flag`/`timer_flag`/`sendto`/`error_code` tables
+- Variables persist per world in `worlds.json`; items a script adds with the Temporary flag never reach disk
+- Triggers, aliases and timers call their Lua function as `fn(name, line, wildcards)` and/or run their inline Lua (`scriptBody`, MUSHclient's "send to script") after their send
+- Script file per world in `%APPDATA%\lantern\scripts\<worldId>.lua`; Script tab on the Automation panel with Save (reloads), Reload and Open in editor; errors are red lines in the output; runaway calls are stopped after 5 s
+- Unit test `scripts/test-lua.mjs` (wasmoon under Node)
+- Not done: `SetTriggerOption`/`GetTriggerInfo` and friends, `expand_variables`, send-to-variable, sounds; a `/lua` command line in the input box; the smoke profile still persists between runs
 
 ## Stage 4 — Plugins
 

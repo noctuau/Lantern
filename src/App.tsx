@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { store, useStore, type World } from './lib/store';
-import { expandCommand } from './lib/automation';
 import { Sidebar } from './components/Sidebar';
 import { OutputPane } from './components/OutputPane';
 import { InputBar } from './components/InputBar';
@@ -13,6 +12,7 @@ export function App() {
   const [worlds, setWorlds] = useState<World[]>([]);
   const [editing, setEditing] = useState<World | null>(null);
   const [automating, setAutomating] = useState<World | null>(null);
+  const [panelTab, setPanelTab] = useState<'script' | undefined>(undefined);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const worldsRef = useRef<World[]>([]);
   worldsRef.current = worlds;
@@ -20,13 +20,13 @@ export function App() {
   const refreshWorlds = useCallback(async () => setWorlds(await window.lantern.worlds.list()), []);
   useEffect(() => { refreshWorlds(); }, [refreshWorlds]);
 
-  /** Persist one world and push it to any open session on it. */
+  /** Persist one world and push it to any open session on it (which may hand back script variables it owns). */
   const saveWorld = useCallback(async (w: World) => {
+    const applied = store.updateWorld(w);
     const cur = worldsRef.current;
-    const next = cur.some((x) => x.id === w.id) ? cur.map((x) => (x.id === w.id ? w : x)) : [...cur, w];
+    const next = cur.some((x) => x.id === w.id) ? cur.map((x) => (x.id === w.id ? applied : x)) : [...cur, applied];
     worldsRef.current = next;
     setWorlds(next);
-    store.updateWorld(w);
     setWorlds(await window.lantern.worlds.save(next));
   }, []);
 
@@ -35,6 +35,7 @@ export function App() {
     store.hooks = {
       send: (id, text) => { window.lantern.session.send(id, text); },
       worldChanged: (w) => { saveWorld(w); },
+      loadScript: (worldId) => window.lantern.scripts.read(worldId),
     };
     const offs = [
       window.lantern.session.onText((id, text) => store.text(id, text)),
@@ -54,21 +55,28 @@ export function App() {
     store.add(id, world);
   };
 
-  // Dev smoke test hook (see electron/main.ts). The throwaway world carries a demo trigger and alias
-  // so the screenshot shows the automation path end to end.
+  // Dev smoke test hook (see electron/main.ts). The throwaway world carries a demo trigger, alias and
+  // Lua script so the screenshot shows the automation and scripting paths end to end.
   useEffect(() => window.lantern.app.onSmoke(async ({ host, port, panel }) => {
     const w = await window.lantern.worlds.create({
       name: `Smoke ${host}`, host, port, logging: false,
       triggers: [
         { id: 'smoke-hl', name: 'Highlight game name', pattern: 'aardwolf', regex: true, enabled: true, group: 'demo', ignoreCase: true, send: '', sendTo: 'world', highlight: '11', highlightLine: false, gag: false, oneShot: false },
-        { id: 'smoke-note', name: 'Name prompt', pattern: 'thy name', regex: true, enabled: true, group: 'demo', ignoreCase: true, send: 'Trigger fired on "%0"', sendTo: 'output', highlight: null, highlightLine: false, gag: false, oneShot: true },
+        { id: 'smoke-note', name: 'Name prompt', pattern: 'thy name', regex: true, enabled: true, group: 'demo', ignoreCase: true, send: 'Trigger fired on "%0"', sendTo: 'output', highlight: null, highlightLine: false, gag: false, oneShot: true, script: 'on_name_prompt' },
       ],
       aliases: [
         { id: 'smoke-alias', name: 'look shortcut', pattern: 'l', regex: false, enabled: true, group: '', ignoreCase: true, send: 'look %1', sendTo: 'world' },
       ],
     });
+    await window.lantern.scripts.write(w.id, [
+      '-- smoke-test script',
+      'function on_name_prompt(name, line, wildcards)',
+      '  SetVariable("last_prompt", wildcards[0])',
+      '  ColourNote("#7fd37f", "", "Lua ", "yellow", "", name, "#7fd37f", "", " saw \\"" .. wildcards[0] .. "\\"; last_prompt = " .. GetVariable("last_prompt"))',
+      'end',
+    ].join('\n'));
     await connect(w);
-    if (panel) setAutomating(w);
+    if (panel) { setPanelTab(panel === 'script' ? 'script' : undefined); setAutomating(w); }
     setTimeout(() => sendCommandRef.current('look'), 3000);
   }), []);
   const sendCommandRef = useRef<(t: string) => void>(() => {});
@@ -81,11 +89,7 @@ export function App() {
     // Masked input (a password) is never expanded or echoed.
     if (!active.echo) { await window.lantern.session.send(active.id, text); return; }
     store.input(active.id, text);
-    const { outgoing } = expandCommand(active.world, text);
-    for (const out of outgoing) {
-      if (out.sendTo === 'output') store.note(active.id, out.text);
-      else await window.lantern.session.send(active.id, out.text);
-    }
+    store.execute(active.id, text, false);
   };
 
   sendCommandRef.current = sendCommand;
@@ -181,8 +185,10 @@ export function App() {
       {automating && (
         <AutomationPanel
           world={automating}
+          initialTab={panelTab}
           onSave={async (w) => { await saveWorld(w); setAutomating(null); }}
-          onClose={() => setAutomating(null)}
+          onReloadScript={() => store.reloadLua(automating.id)}
+          onClose={() => { setAutomating(null); setPanelTab(undefined); }}
         />
       )}
     </div>
