@@ -24,4 +24,13 @@ try {
   if ((back[0].triggers?.length ?? 0) === 1 && back[0].log?.format === 'raw') console.log('RESULT: save works — triggers and log persisted');
   else console.log('RESULT: BUG — changes did not persist');
 } catch (e) { console.log('saveWorlds THREW:', e.message); }
+
+// Regression: a world missing its triggers/aliases/timers arrays must not abort the save.
+try {
+  const bad = [{ id: 'x', name: 'Bad', host: 'h', port: 1, encoding: 'utf-8', logging: false, createdAt: 'now' }]; // no arrays
+  W.saveWorlds(bad);
+  const back2 = JSON.parse(fs.readFileSync(path.join(tmp, 'worlds.json'), 'utf-8'));
+  console.log('MISSING-ARRAYS CASE -> saved ok, triggers:', JSON.stringify(back2[0].triggers));
+} catch (e) { console.log('MISSING-ARRAYS CASE -> BUG, threw:', e.message); }
+
 fs.rmSync(tmp, { recursive: true, force: true });
