@@ -82,6 +82,39 @@ export function ChannelStrip({ session, onEdit }: Props) {
   );
 }
 
+/**
+ * The unread pills floated at the bottom right of the output pane (above "Jump to latest"
+ * when that is showing): one per view that received lines while another was showing, with
+ * the count. Clicking one switches to that view, which clears its count. The strip's own
+ * dot and count stay as they are; this is the same information where the eye already is.
+ */
+export function UnreadPills({ session }: { session: SessionState }) {
+  if (session.channelsOff) return null;
+  const items: { id: string; name: string; unread: number }[] = [];
+  if (session.view !== MAIN_VIEW && session.mainUnread > 0) items.push({ id: MAIN_VIEW, name: 'Main', unread: session.mainUnread });
+  for (const t of session.world.channelTabs) {
+    if (!t.enabled || session.view === t.id) continue;
+    const unread = session.channels[t.id]?.unread ?? 0;
+    if (unread > 0) items.push({ id: t.id, name: t.name || 'Channel', unread });
+  }
+  if (!items.length) return null;
+  return (
+    <div className="unread-pills">
+      {items.map((it) => (
+        <button
+          key={it.id}
+          className="unread-pill"
+          title={`${it.unread} new ${it.unread === 1 ? 'line' : 'lines'} in ${it.name}. Click to show that pane.`}
+          onClick={() => store.setView(session.id, it.id)}
+        >
+          <span className="udot" />
+          {it.name} {it.unread > 999 ? '999+' : it.unread}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Peek({ name, lines, timestamps }: { name: string; lines: Line[]; timestamps: boolean }) {
   const last = lines.slice(-PEEK_LINES);
   return (

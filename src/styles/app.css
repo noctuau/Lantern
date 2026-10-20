@@ -138,10 +138,20 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .line.kind-error { color: var(--danger); font-style: italic; }
 .line.prompt { margin-top: 2px; }
 .link { color: var(--ansi-12); text-decoration: underline; cursor: pointer; }
+/* Floated at the bottom right of a pane: the unread pills, then "Jump to latest" under them when it is showing. */
+.float-stack { position: absolute; right: 24px; bottom: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+.float-stack > * { pointer-events: auto; }
 .jump {
-  position: absolute; right: 24px; bottom: 14px; background: var(--accent); color: #1a1409; border: 0;
+  background: var(--accent); color: #1a1409; border: 0;
   border-radius: 20px; padding: 6px 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
 }
+.unread-pills { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.unread-pill {
+  display: inline-flex; align-items: center; gap: 6px; background: var(--bg-3); color: var(--accent); border: 1px solid var(--accent);
+  border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.unread-pill:hover { background: var(--accent); color: #1a1409; }
+.unread-pill .udot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
 
 /* ---------- input ---------- */
 .input-bar { border-top: 1px solid var(--line); background: var(--bg-2); padding: 10px 14px; }

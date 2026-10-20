@@ -4,7 +4,7 @@ import { activePrefix, applyCommandPrefix, havenChannelTab, helpChannelTab } fro
 import { cleanTyped } from './lib/automation';
 import { Sidebar, type SidebarMode } from './components/Sidebar';
 import { OutputPane } from './components/OutputPane';
-import { ChannelStrip } from './components/ChannelStrip';
+import { ChannelStrip, UnreadPills } from './components/ChannelStrip';
 import { InputBar } from './components/InputBar';
 import { WorldEditor } from './components/WorldEditor';
 import { ColourComposer } from './components/ColourComposer';
@@ -325,7 +325,7 @@ export function App() {
         {active ? (
           <>
             <ChannelStrip key={`strip-${active.id}`} session={active} onEdit={() => openAutomation(active.world, 'channels')} />
-            <OutputPane key={`out-${active.id}`} lines={active.lines} partial={active.partial} autoScroll={settings.autoScroll} visible={active.view === MAIN_VIEW} />
+            <OutputPane key={`out-${active.id}`} lines={active.lines} partial={active.partial} autoScroll={settings.autoScroll} visible={active.view === MAIN_VIEW} extras={<UnreadPills session={active} />} />
             {active.world.channelTabs.filter((t) => t.enabled).map((t) => (
               <OutputPane
                 key={`out-${active.id}-${t.id}`}
@@ -335,6 +335,7 @@ export function App() {
                 autoScroll={settings.autoScroll}
                 visible={active.view === t.id}
                 emptyHint={`Nothing captured for ${t.name || 'this tab'} yet. Lines matching its patterns will show here with the time they arrived.`}
+                extras={<UnreadPills session={active} />}
               />
             ))}
             <InputBar

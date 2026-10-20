@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { spanStyle } from '../lib/ansi';
 import type { Line } from '../lib/store';
 import type { Span } from '../lib/ansi';
@@ -52,13 +52,15 @@ interface Props {
   /** Hidden panes stay mounted so each keeps its own scroll position and scroll-lock. */
   visible?: boolean;
   emptyHint?: string;
+  /** Floated at the bottom right of the pane, above the jump button when that is showing (the unread pills). */
+  extras?: ReactNode;
 }
 
 /**
  * One scrollback: the main output or a channel tab. Scroll-lock ("pinned" to the bottom), the
  * missed-line count and the jump button belong to this pane alone.
  */
-export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap = 0, autoScroll = true, visible = true, emptyHint }: Props) {
+export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap = 0, autoScroll = true, visible = true, emptyHint, extras }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
   // "pinned" (at the bottom, following) is a ref so the content effect reads it without a stale
@@ -117,10 +119,15 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
         )}
         <div ref={bottom} className="output-bottom" aria-hidden="true" />
       </div>
-      {showJump && (
-        <button className="jump" onClick={jump}>
-          ↓ {missed > 0 ? `${missed} new line${missed === 1 ? '' : 's'}` : 'Jump to latest'}
-        </button>
+      {(showJump || extras) && (
+        <div className="float-stack">
+          {extras}
+          {showJump && (
+            <button className="jump" onClick={jump}>
+              ↓ {missed > 0 ? `${missed} new line${missed === 1 ? '' : 's'}` : 'Jump to latest'}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
