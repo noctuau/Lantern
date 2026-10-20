@@ -133,6 +133,9 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
               </div>
               <p className="hint">The box always grows as you type. "Lines shown" is its resting height; you can also drag its top edge.</p>
               <label className="check inline"><input type="checkbox" checked={s.echoInput} onChange={(e) => set('echoInput', e.target.checked)} /> Echo my commands in the output (in the pane they were typed from)</label>
+              <label className="check inline" title={'Curly quotes become straight ones, – and — become - and --, … becomes ..., non-breaking and other odd spaces become a space, and invisible characters are dropped. Accented letters, symbols and emoji are left alone. Passwords are never touched.'}>
+                <input type="checkbox" checked={s.cleanInput} onChange={(e) => set('cleanInput', e.target.checked)} /> Tidy what I type for the game (“curly” quotes → "straight", long dashes, ellipsis, odd spaces)
+              </label>
               <div className="settings-preview input-preview">A pose, typed here, in the command box font.</div>
             </>)}
 

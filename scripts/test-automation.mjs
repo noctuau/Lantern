@@ -214,4 +214,27 @@ assert.equal(w.timers[1].at, '18:00'); assert.equal(w.timers[1].everySeconds, 0)
 const t16 = M.importMclTriggers('<trigger custom_colour="3" enabled="y" match="x" regexp="y"></trigger>');
 assert.equal(t16[0].highlight, '12'); ok();
 
+/* ---------- cleanTyped: smart punctuation and invisibles → what a MUD expects ---------- */
+const C = A.cleanTyped;
+assert.equal(C('say hello'), 'say hello', 'plain ASCII is returned as is'); ok();
+assert.equal(C(''), ''); ok();
+assert.equal(C('say \u201CHello,\u201D she said. \u2018Hi.\u2019'), 'say "Hello," she said. \'Hi.\'', 'curly quotes become straight'); ok();
+assert.equal(C('pose doesn\u2019t'), "pose doesn't", 'curly apostrophe'); ok();
+assert.equal(C('\u00ABquoted\u00BB \u2039single\u203A'), '"quoted" \'single\'', 'guillemets'); ok();
+assert.equal(C('5\u203210\u2033'), '5\'10"', 'primes'); ok();
+assert.equal(C('pose waves \u2014 slowly \u2014 then stops'), 'pose waves -- slowly -- then stops', 'em dash becomes --'); ok();
+assert.equal(C('1\u20132 and non\u2011breaking and \u2212x'), '1-2 and non-breaking and -x', 'en dash, non-breaking hyphen and minus become -'); ok();
+assert.equal(C('say well\u2026'), 'say well...', 'ellipsis'); ok();
+assert.equal(C('1\u20442 \u2022 point'), '1/2 * point', 'fraction slash and bullet'); ok();
+assert.equal(C('say a\u00A0b\u2003c\u202Fd\u3000e'), 'say a b c d e', 'non-breaking, em, narrow and ideographic spaces become a space'); ok();
+assert.equal(C('say a\u200Bb\u200Dc\uFEFFd\u00ADe'), 'say abcde', 'zero-width characters, BOM and soft hyphen are dropped'); ok();
+assert.equal(C('line one\r\nline two\rline three\u2028four'), 'line one\nline two\nline three\nfour', 'Windows and Unicode line breaks become \\n'); ok();
+assert.equal(C('a\u0007b\u001Bc\td\u0085e\u009Ff'), 'abc\td\nef', 'control codes are dropped, tab kept, NEL is a line break'); ok();
+assert.equal(C('\uFF53\uFF41\uFF59\u3000\uFF28\uFF49\uFF01'), 'say Hi!', 'full-width ASCII from a CJK keyboard'); ok();
+assert.equal(C('say caf\u00E9 na\u00EFve \u00FC'), 'say caf\u00E9 na\u00EFve \u00FC', 'accented letters are left alone'); ok();
+assert.equal(C('say cafe\u0301'), 'say caf\u00E9', 'a combining accent is composed into one letter (NFC)'); ok();
+assert.equal(C('say \u{1F600} \u2665'), 'say \u{1F600} \u2665', 'emoji and symbols are left alone'); ok();
+assert.equal(C('look;inv #3n \\ooc'), 'look;inv #3n \\ooc', 'stacking, speedwalk and prefix-bypass characters are untouched'); ok();
+assert.equal(C('say \u201C\u2014\u2026\u201D'), 'say "--..."', 'several swaps in one string'); ok();
+
 console.log(`automation: all ${n} assertion groups passed`);

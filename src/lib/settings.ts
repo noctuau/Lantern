@@ -15,6 +15,7 @@ export interface AppSettings {
   inputWeight: number;       // font weight 100-900
   inputLines: number;        // minimum visible lines in the command box
   echoInput: boolean;        // show what you typed in the output pane
+  cleanInput: boolean;       // swap curly quotes, long dashes, odd spaces… in typed commands for plain ASCII (cleanTyped)
   autoScroll: boolean;       // follow new output when already at the bottom
   palette: PaletteName;      // ANSI colour palette: a preset, or 'custom' to use customPalette
   customPalette: string[];   // 16 hex colours used when palette === 'custom'
@@ -59,6 +60,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   inputWeight: 400,
   inputLines: 1,
   echoInput: true,
+  cleanInput: true,
   autoScroll: true,
   palette: 'warm',
   customPalette: PALETTES.warm.slice(),
@@ -101,6 +103,7 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
     inputWeight: Math.round(clamp(s?.inputWeight, 100, 900, DEFAULT_SETTINGS.inputWeight)),
     inputLines: Math.round(clamp(s?.inputLines, 1, 20, DEFAULT_SETTINGS.inputLines)),
     echoInput: typeof s?.echoInput === 'boolean' ? s.echoInput : DEFAULT_SETTINGS.echoInput,
+    cleanInput: typeof s?.cleanInput === 'boolean' ? s.cleanInput : DEFAULT_SETTINGS.cleanInput,
     autoScroll: typeof s?.autoScroll === 'boolean' ? s.autoScroll : DEFAULT_SETTINGS.autoScroll,
     palette: (['warm', 'classic', 'vga', 'custom'] as const).includes(s?.palette as PaletteName) ? (s!.palette as PaletteName) : 'warm',
     customPalette: Array.isArray(s?.customPalette) && s!.customPalette.length === 16

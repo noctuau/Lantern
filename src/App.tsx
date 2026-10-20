@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { store, useStore, MAIN_VIEW, type World } from './lib/store';
 import { activePrefix, applyCommandPrefix, havenChannelTab, helpChannelTab } from './lib/channels';
+import { cleanTyped } from './lib/automation';
 import { Sidebar, type SidebarMode } from './components/Sidebar';
 import { OutputPane } from './components/OutputPane';
 import { ChannelStrip } from './components/ChannelStrip';
@@ -238,14 +239,16 @@ export function App() {
 
   const active = s.active();
 
-  const sendCommand = async (typed: string) => {
+  const sendCommand = async (raw: string) => {
     if (!active) return;
     if (active.status !== 'connected') { store.note(active.id, 'Not connected.', 'error'); return; }
-    // Masked input (a password) is never expanded, prefixed or echoed.
-    if (!active.echo) { await window.lantern.session.send(active.id, typed); return; }
-    // A channel tab's command prefix goes on first (typed commands only: a script's Execute
-    // calls store.execute directly), then aliases, stacking and speedwalk see the whole thing.
-    // The echo and log show what was sent; history keeps what was typed.
+    // Masked input (a password) is never cleaned, expanded, prefixed or echoed.
+    if (!active.echo) { await window.lantern.session.send(active.id, raw); return; }
+    // Typed commands only (a script's Execute calls store.execute directly): first tidy smart
+    // punctuation into ASCII (Settings › "Tidy what I type"), then a channel tab's command
+    // prefix goes on, then aliases, stacking and speedwalk see the whole thing.
+    // The echo and log show what was sent; history keeps what was typed (tidied).
+    const typed = settings.cleanInput ? cleanTyped(raw) : raw;
     const { text } = applyCommandPrefix(activePrefix(active.world.channelTabs, active.view), typed);
     store.input(active.id, text, true, typed, settings.echoInput);
     store.execute(active.id, text, false);

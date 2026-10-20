@@ -55,6 +55,51 @@ export function splitSend(text: string): string[] {
   return text.split(/\r?\n/).map((l) => l.trimEnd()).filter((l) => l.trim().length > 0);
 }
 
+/* ---------- typed-command cleaning ---------- */
+
+/**
+ * Punctuation that phones, Word and web pages turn ordinary typing into, mapped to what a
+ * MUD expects. Letters with accents, symbols and emoji are left alone: those are a choice,
+ * and games on UTF-8 show them fine. See cleanTyped.
+ */
+const TYPED_SWAPS: Record<string, string> = {
+  // single quotes and apostrophes
+  '\u2018': "'", '\u2019': "'", '\u201A': "'", '\u201B': "'", '\u2032': "'", '\u2035': "'",
+  '\u02BC': "'", '\u00B4': "'", '\u2039': "'", '\u203A': "'",
+  // double quotes
+  '\u201C': '"', '\u201D': '"', '\u201E': '"', '\u201F': '"', '\u2033': '"', '\u2036': '"',
+  '\u00AB': '"', '\u00BB': '"',
+  // dashes: the short ones become a hyphen, the long ones the "--" roleplayers type
+  '\u2010': '-', '\u2011': '-', '\u2012': '-', '\u2013': '-', '\u2212': '-',
+  '\u2014': '--', '\u2015': '--',
+  // the rest
+  '\u2026': '...', '\u2044': '/', '\u2022': '*',
+};
+const SWAP_RE = new RegExp(`[${Object.keys(TYPED_SWAPS).join('')}]`, 'g');
+const LINE_BREAKS = /\r\n?|[\u2028\u2029\u0085]/g;                        // Windows and Unicode line breaks → \n
+const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF\u00AD\u034F\u180E]/g;       // zero-width spaces/joiners, BOM, soft hyphen
+const ODD_SPACES = /[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g;      // non-breaking, en, em, thin, ideographic…
+const CONTROLS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u0080-\u009F]/g; // everything but \t and \n
+const FULLWIDTH = /[\uFF01-\uFF5E]/g;                                     // ！Ａ１ from a CJK keyboard → !A1
+
+/**
+ * Tidy a typed command for the game: curly quotes to straight, dashes to hyphens, an ellipsis
+ * to three dots, odd spaces to a plain space, invisible characters and stray control codes
+ * removed, Windows line breaks to \n, full-width ASCII to ASCII, and accented letters composed
+ * (NFC) so a latin1 world can encode them. Plain ASCII comes back unchanged.
+ */
+export function cleanTyped(text: string): string {
+  if (!/[^\x20-\x7E\n\t]/.test(text)) return text;   // nothing to do for plain ASCII
+  return text
+    .normalize('NFC')
+    .replace(LINE_BREAKS, '\n')
+    .replace(INVISIBLE, '')
+    .replace(ODD_SPACES, ' ')
+    .replace(CONTROLS, '')
+    .replace(FULLWIDTH, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace(SWAP_RE, (ch) => TYPED_SWAPS[ch]);
+}
+
 /* ---------- triggers ---------- */
 
 export interface Highlight { start: number; end: number; colour: string | null; bg?: string | null }
