@@ -121,10 +121,10 @@ export function App() {
       // The "ooc " prefix shows in the input bar when LANTERN_SMOKE_VIEW=OOC.
       channelTabs: [{
         id: 'smoke-help', name: 'Help', enabled: true, keepInMain: false, trimBlanks: false, notify: 'badge', commandPrefix: '',
-        captureCommands: '^(help|look)\\b', captureQuietMs: 1500, patterns: [],
+        captureCommands: '^(help|look)\\b', captureQuietMs: 1500, messageGap: 0, patterns: [],
       }, {
         id: 'smoke-ooc', name: 'OOC', enabled: true, keepInMain: true, trimBlanks: true, notify: 'badge', commandPrefix: 'ooc ',
-        captureCommands: '', captureQuietMs: 1500,
+        captureCommands: '', captureQuietMs: 1500, messageGap: 6,
         patterns: [
           { id: 'smoke-p1', pattern: '^\\[OOC\\] ', ignoreCase: false, mode: 'capture' },
           { id: 'smoke-p2', pattern: '^\\[AFK\\]\\s*$', ignoreCase: false, mode: 'silence' },
@@ -250,6 +250,7 @@ export function App() {
                 key={`out-${active.id}-${t.id}`}
                 lines={active.channels[t.id]?.lines ?? NO_LINES}
                 timestamps
+                lineGap={t.messageGap}
                 visible={active.view === t.id}
                 emptyHint={`Nothing captured for ${t.name || 'this tab'} yet. Lines matching its patterns will show here with the time they arrived.`}
               />

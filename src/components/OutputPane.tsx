@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { spanStyle } from '../lib/ansi';
 import type { Line } from '../lib/store';
 import type { Span } from '../lib/ansi';
@@ -43,6 +43,8 @@ interface Props {
   partial?: Span[];
   /** Prefix each line with its time (channel tabs). */
   timestamps?: boolean;
+  /** Extra space (px) between lines, to space out chat in a channel pane. */
+  lineGap?: number;
   /** Hidden panes stay mounted so each keeps its own scroll position and scroll-lock. */
   visible?: boolean;
   emptyHint?: string;
@@ -52,7 +54,7 @@ interface Props {
  * One scrollback: the main output or a channel tab. Scroll-lock ("pinned" to the bottom), the
  * missed-line count and the jump button belong to this pane alone.
  */
-export function OutputPane({ lines, partial = NONE, timestamps = false, visible = true, emptyHint }: Props) {
+export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap = 0, visible = true, emptyHint }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
   const [missed, setMissed] = useState(0);
@@ -96,7 +98,8 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, visible 
 
   return (
     <div className={`output-wrap ${visible ? '' : 'hidden'}`}>
-      <div className="output" ref={ref} onScroll={onScroll} onWheel={onWheel} tabIndex={-1}>
+      <div className="output" ref={ref} onScroll={onScroll} onWheel={onWheel} tabIndex={-1}
+        style={lineGap ? ({ '--line-gap': `${lineGap}px` } as CSSProperties) : undefined}>
         {lines.length === 0 && emptyHint && <div className="line output-empty">{emptyHint}</div>}
         {lines.map((l) => <LineView key={l.id} line={l} showTime={timestamps} />)}
         {partial.length > 0 && (

@@ -604,6 +604,9 @@ function ChannelTabEditor({ t, patch }: { t: ChannelTab; patch(p: Partial<Channe
       <Field label="Command prefix" hint={`Put in front of whatever you type while this tab is showing, so "hello" is sent as "${t.commandPrefix || 'ooc '}hello". Keep the trailing space if the game needs one. Start a command with ${PREFIX_BYPASS} to send it without the prefix once (${PREFIX_BYPASS}look sends "look"). Leave empty to type to the game as usual. Applied before aliases, stacking and speedwalk; ↑ recalls what you typed, not the prefixed command.`}>
         <input className="mono" style={{ width: 160 }} value={t.commandPrefix} onChange={(e) => patch({ commandPrefix: e.target.value })} placeholder="ooc " spellCheck={false} />
       </Field>
+      <Field label="Space between messages (px)" hint="Extra blank space between lines in this tab, to make chat easier to read. 0 = none.">
+        <input type="number" min={0} max={40} step={1} style={{ width: 100 }} value={t.messageGap} onChange={(e) => patch({ messageGap: Math.max(0, Math.min(40, Number(e.target.value) || 0)) })} />
+      </Field>
       <div className="row">
         <Field label="Capture replies to commands matching" grow hint={`A regular expression tested against each command you send. When it matches, the command and everything the game sends after it land in this tab until the output has been quiet for the time on the right, or you send another command. Lines a pattern tab claims still go there. Leave empty to capture by line patterns only. Example: ^help\\b`}>
           <input className="mono" value={t.captureCommands} onChange={(e) => patch({ captureCommands: e.target.value })} placeholder="^help\\b" spellCheck={false} />

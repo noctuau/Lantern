@@ -45,6 +45,21 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
           <label>Size (px){num('outputSize', 1, 9, 40)}</label>
           <label>Line spacing{num('outputLineHeight', 0.05, 1, 2.5)}</label>
         </div>
+        <div className="row bg-row">
+          <label>Background
+            <div className="bg-choices">
+              <button type="button" className={`bg-chip ${s.outputBg === '' ? 'active' : ''}`} title="The warm theme background" onClick={() => set('outputBg', '')}>
+                <span className="bg-swatch" style={{ background: '#14120f' }} /> Theme
+              </button>
+              <button type="button" className={`bg-chip ${s.outputBg.toLowerCase() === '#000000' ? 'active' : ''}`} title="Fully black" onClick={() => set('outputBg', '#000000')}>
+                <span className="bg-swatch" style={{ background: '#000000' }} /> Black
+              </button>
+              <input type="color" title="Pick any background colour" value={/^#[0-9a-f]{6}$/i.test(s.outputBg) ? s.outputBg : '#000000'} onChange={(e) => set('outputBg', e.target.value)} />
+              <input className="mono" style={{ width: 110 }} value={s.outputBg} placeholder="theme" spellCheck={false}
+                onChange={(e) => set('outputBg', e.target.value.trim())} />
+            </div>
+          </label>
+        </div>
         <div className="settings-preview output-preview">
           Lantern flickers; the long night settles over the harbour. <span style={{ color: 'var(--ansi-11)' }}>Juliet</span> says, "Mind the step."
         </div>

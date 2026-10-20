@@ -1,12 +1,13 @@
 /**
- * App-wide display settings (fonts, sizes, input height). Persisted by the
- * main process in settings.json; applied here as CSS variables on :root so
+ * App-wide display settings (fonts, sizes, input height, colours). Persisted by
+ * the main process in settings.json; applied here as CSS variables on :root so
  * every pane picks them up without re-rendering.
  */
 export interface AppSettings {
   outputFont: string;
   outputSize: number;        // px
   outputLineHeight: number;  // multiplier
+  outputBg: string;          // output pane background: '' = theme default, else a CSS colour
   inputFont: string;
   inputSize: number;         // px
   inputLines: number;        // minimum visible lines in the command box
@@ -17,6 +18,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   outputFont: 'Cascadia Mono',
   outputSize: 15,
   outputLineHeight: 1.5,
+  outputBg: '',
   inputFont: 'Cascadia Mono',
   inputSize: 15,
   inputLines: 1,
@@ -44,6 +46,7 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
     outputFont: typeof s?.outputFont === 'string' ? s.outputFont : DEFAULT_SETTINGS.outputFont,
     outputSize: clamp(s?.outputSize, 9, 40, DEFAULT_SETTINGS.outputSize),
     outputLineHeight: clamp(s?.outputLineHeight, 1, 2.5, DEFAULT_SETTINGS.outputLineHeight),
+    outputBg: typeof s?.outputBg === 'string' ? s.outputBg : DEFAULT_SETTINGS.outputBg,
     inputFont: typeof s?.inputFont === 'string' ? s.inputFont : DEFAULT_SETTINGS.inputFont,
     inputSize: clamp(s?.inputSize, 9, 40, DEFAULT_SETTINGS.inputSize),
     inputLines: Math.round(clamp(s?.inputLines, 1, 20, DEFAULT_SETTINGS.inputLines)),
@@ -58,6 +61,9 @@ export function applySettings(s: AppSettings) {
   r.setProperty('--mud-line', String(s.outputLineHeight));
   r.setProperty('--font-input', fontStack(s.inputFont));
   r.setProperty('--input-size', `${s.inputSize}px`);
+  // '' falls back to the theme background in the CSS (var(--output-bg, var(--bg))).
+  if (s.outputBg) r.setProperty('--output-bg', s.outputBg);
+  else r.removeProperty('--output-bg');
 }
 
 const monoCache = new Map<string, boolean>();

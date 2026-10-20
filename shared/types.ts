@@ -92,6 +92,8 @@ export interface ChannelTab {
    * is sent without it, once. Applied before aliases, stacking and speedwalk.
    */
   commandPrefix: string;
+  /** Extra vertical space (px) between lines in this tab's pane, to make chat easier to read. 0 = none. */
+  messageGap: number;
 }
 
 export type ChannelNotify = 'badge' | 'badge+sound' | 'silent';
@@ -210,6 +212,7 @@ export function normalizeChannelTab(c: Partial<ChannelTab> & Pick<ChannelTab, 'i
     commandPrefix: typeof c.commandPrefix === 'string' ? c.commandPrefix : '',
     captureCommands: typeof c.captureCommands === 'string' ? c.captureCommands : '',
     captureQuietMs: typeof c.captureQuietMs === 'number' && c.captureQuietMs >= 200 ? c.captureQuietMs : 1500,
+    messageGap: typeof c.messageGap === 'number' && c.messageGap >= 0 ? Math.min(c.messageGap, 40) : 0,
     patterns: (c.patterns ?? []).map(normalizeChannelPattern),
   };
 }
