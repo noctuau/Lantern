@@ -152,6 +152,14 @@ export function importMcl(xml: string): Partial<World> {
   if (portMatch) w.port = Number(portMatch[1]);
   w.encoding = attr('utf_8') === 'y' ? 'utf-8' : 'latin1';
   const log = attr('log_output'); if (log) w.logging = log === 'y';
+  w.log = {
+    output: attr('log_output') !== 'n',
+    commands: attr('log_input') !== 'n',
+    notes: attr('log_notes') === 'y',
+    format: attr('log_html') === 'y' ? 'html' : 'text',
+    file: attr('auto_log_file_name') ?? '',
+    worldNameHeader: attr('write_world_name_to_log') !== 'n',
+  };
   const conn = attr('connect_text');
   if (conn) w.autoConnect = conn;
 

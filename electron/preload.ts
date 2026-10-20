@@ -20,7 +20,7 @@ contextBridge.exposeInMainWorld('lantern', {
     send: (sessionId: string, text: string) => ipcRenderer.invoke('session:send', sessionId, text),
     resize: (sessionId: string, width: number, height: number) =>
       ipcRenderer.invoke('session:resize', sessionId, width, height),
-    log: (sessionId: string, text: string) => ipcRenderer.send('session:log', sessionId, text),
+    log: (sessionId: string, text: string, kind: string, html?: string) => ipcRenderer.send('session:log', sessionId, text, kind, html),
     onText: on('session:text'),
     onStatus: on('session:status'),
     onPrompt: on('session:prompt'),
@@ -43,6 +43,8 @@ contextBridge.exposeInMainWorld('lantern', {
   },
   app: {
     openLogs: () => ipcRenderer.invoke('app:openLogs'),
+    chooseFolder: (title?: string) => ipcRenderer.invoke('app:chooseFolder', title),
+    logsDir: () => ipcRenderer.invoke('app:logsDir'),
     openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
     version: () => ipcRenderer.invoke('app:version'),
     onSmoke: on('smoke:run'),

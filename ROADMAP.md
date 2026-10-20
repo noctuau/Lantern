@@ -58,6 +58,8 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - Settings dialog: fonts, sizes and line spacing for output and command box, resting height of the command box (also draggable)
 - Quick "Highlight word or phrase" dialog on Ctrl+Alt+H / ✎ Highlight, creating a trigger in the Highlights group
 - Smoke-test windows no longer take keyboard focus
+- Font picker over the installed fonts (asked of Windows via .NET), each drawn in its own face, with a monospace-only filter
+- Per-world logging settings: what to log, plain text or HTML with colours, header on/off, file name pattern with strftime fields and Browse…; imported from .MCL
 
 ## Stage 5 — Modern-era features
 

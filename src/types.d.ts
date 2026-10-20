@@ -17,7 +17,7 @@ declare global {
         send(sessionId: string, text: string): Promise<boolean>;
         resize(sessionId: string, width: number, height: number): Promise<void>;
         /** One finished line for the world's daily log (fire and forget). */
-        log(sessionId: string, text: string): void;
+        log(sessionId: string, text: string, kind: 'output' | 'command' | 'note', html?: string): void;
         onText(cb: (id: string, text: string) => void): Unsub;
         onStatus(cb: (id: string, status: 'connecting' | 'connected' | 'disconnected' | 'error', message?: string) => void): Unsub;
         onPrompt(cb: (id: string) => void): Unsub;
@@ -40,6 +40,8 @@ declare global {
       };
       app: {
         openLogs(): Promise<string>;
+        chooseFolder(title?: string): Promise<string | null>;
+        logsDir(): Promise<string>;
         openExternal(url: string): Promise<void>;
         version(): Promise<string>;
         onSmoke(cb: (opts: { host: string; port: number; panel?: string; view?: string }) => void): Unsub;

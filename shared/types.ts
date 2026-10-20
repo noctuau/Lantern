@@ -93,6 +93,22 @@ export interface ChannelPattern {
 
 export type ChannelMode = 'capture' | 'silence';
 
+export type LogFormat = 'text' | 'html';
+export interface LogSettings {
+  output: boolean;          // game text
+  commands: boolean;        // what you typed
+  notes: boolean;           // client notes (connect/disconnect, trigger notes, Lua Note)
+  format: LogFormat;        // plain text, or HTML with colours
+  file: string;             // name pattern; see shared/logname.ts
+  worldNameHeader: boolean; // write a "world name, date" line at the start of each session
+}
+
+export const DEFAULT_LOG: LogSettings = { output: true, commands: true, notes: false, format: 'text', file: '', worldNameHeader: true };
+
+export function normalizeLog(l: Partial<LogSettings> | undefined): LogSettings {
+  return { ...DEFAULT_LOG, ...(l ?? {}), format: l?.format === 'html' ? 'html' : 'text' };
+}
+
 export interface World {
   id: string;
   name: string;
@@ -100,7 +116,8 @@ export interface World {
   port: number;
   encoding: string;         // 'utf-8' | 'latin1'
   notes?: string;
-  logging: boolean;
+  logging: boolean;         // master switch; details in `log`
+  log: LogSettings;
   /** Text sent automatically after connecting (e.g. "connect name password"). Plain text for now. */
   autoConnect?: string;
   createdAt: string;
@@ -138,6 +155,7 @@ export function normalizeWorld(w: Partial<World> & Pick<World, 'id'>): World {
     aliases: (w.aliases ?? []).map(normalizeAlias),
     timers: (w.timers ?? []).map(normalizeTimer),
     channelTabs: (w.channelTabs ?? []).map(normalizeChannelTab),
+    log: normalizeLog(w.log),
     variables: { ...(w.variables ?? {}) },
     commandStacking: w.commandStacking ?? false,
     commandStackChar: w.commandStackChar || DEFAULT_STACK_CHAR,

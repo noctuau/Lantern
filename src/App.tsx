@@ -82,7 +82,7 @@ export function App() {
       send: (id, text) => { window.lantern.session.send(id, text); },
       worldChanged: (w) => { saveWorld(w); },
       loadScript: (worldId) => window.lantern.scripts.read(worldId),
-      log: (id, text) => { window.lantern.session.log(id, text); },
+      log: (id, text, kind, html) => { window.lantern.session.log(id, text, kind, html); },
     };
     const offs = [
       window.lantern.session.onText((id, text) => store.text(id, text)),
@@ -106,7 +106,10 @@ export function App() {
   // Lua script and channel tab so the screenshot shows automation, scripting and capture end to end.
   useEffect(() => window.lantern.app.onSmoke(async ({ host, port, panel, view }) => {
     const w = await window.lantern.worlds.create({
-      name: `Smoke ${host}`, host, port, logging: false,
+      name: `Smoke ${host}`, host, port,
+      // LANTERN_SMOKE_PANEL=world also logs the run in HTML (into the throwaway profile) and opens the world editor.
+      logging: panel === 'world',
+      log: { output: true, commands: true, notes: true, format: 'html', file: '{world}/%Y-%m-%d %H%M', worldNameHeader: true },
       triggers: [
         { id: 'smoke-hl', name: 'Highlight game name', pattern: 'aardwolf', regex: true, enabled: true, group: 'demo', ignoreCase: true, send: '', sendTo: 'world', highlight: '11', highlightLine: false, gag: false, oneShot: false },
         { id: 'smoke-note', name: 'Name prompt', pattern: 'thy name', regex: true, enabled: true, group: 'demo', ignoreCase: true, send: 'Trigger fired on "%0"', sendTo: 'output', highlight: null, highlightLine: false, gag: false, oneShot: true, script: 'on_name_prompt' },
@@ -134,6 +137,7 @@ export function App() {
     ].join('\n'));
     await connect(w);
     if (panel === 'highlight') setHighlight({ worldId: w.id, text: 'Aardwolf' });
+    else if (panel === 'world') setTimeout(() => setEditing(w), 4500);
     else if (panel === 'settings') {
       setFonts(await listSystemFonts()); setSettingsOpen(true);
       // Open the first font dropdown so the screenshot shows the list.

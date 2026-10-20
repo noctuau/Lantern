@@ -19,6 +19,7 @@ import { AnsiParser, type Span } from './ansi';
 import type { World, SendTo, Timer, ChannelTab } from '../../shared/types';
 import { applyHighlights, splitSend, expandCommand, TimerScheduler, type Outgoing, type Match } from './automation';
 import { classifyLine, logPrefix, type Route } from './channels';
+import { lineHtml } from './loghtml';
 import { LuaSession, type LuaHost, type NoteSpan, type Scripted, type ScriptKind } from './lua';
 import { getLuaFactory } from './lua-wasm';
 
@@ -64,7 +65,7 @@ export interface StoreHooks {
   /** The text of the world's Lua script file ('' when there is none). */
   loadScript(worldId: string): Promise<string>;
   /** One finished line for the world's daily log (plain text, no newline). */
-  log(sessionId: string, text: string): void;
+  log(sessionId: string, text: string, kind: 'output' | 'command' | 'note', html?: string): void;
 }
 
 const MAX_LINES = 10_000;
@@ -266,7 +267,10 @@ class Store {
     }
 
     // The log records every line in order, gagged and silenced ones included, captured ones with their tab name.
-    if (s.world.logging) this.hooks.log(s.id, logPrefix(route) + text);
+    if (s.world.logging && s.world.log.output) {
+      const prefix = logPrefix(route);
+      this.hooks.log(s.id, prefix + text, 'output', s.world.log.format === 'html' ? lineHtml('output', prefix, merged) : undefined);
+    }
     if (!route) return;   // gagged: shown nowhere, and never reaches a tab
 
     const line: Line = { id: this.lineId++, kind, spans: merged, ts: Date.now(), prompt };
@@ -448,7 +452,14 @@ class Store {
     const s = this.sessions.get(id); if (!s) return;
     if (s.partial.length) this.commitPartial(s, 'mud');
     this.pushLine(s, { id: this.lineId++, kind, spans: [{ text, style: plain() }], ts: Date.now() });
+    this.logNote(s, [{ text, style: plain() }]);
     this.scheduleNotify();
+  }
+
+  private logNote(s: SessionState, spans: Span[]) {
+    if (!s.world.logging || !s.world.log.notes) return;
+    const text = spans.map((x) => x.text).join('');
+    this.hooks.log(s.id, text, 'note', s.world.log.format === 'html' ? lineHtml('note', '', spans) : undefined);
   }
 
   /** A note built from coloured pieces (ColourNote / ColourTell). */
@@ -457,6 +468,7 @@ class Store {
     if (s.partial.length) this.commitPartial(s, 'mud');
     const spans: Span[] = pieces.map((p) => ({ text: p.text, style: { ...plain(), fg: p.fg, bg: p.bg } }));
     this.pushLine(s, { id: this.lineId++, kind, spans: spans.length ? spans : [{ text: '', style: plain() }], ts: Date.now() });
+    this.logNote(s, spans);
     this.scheduleNotify();
   }
 
@@ -470,7 +482,7 @@ class Store {
     // If a prompt line is pending, the command visually completes it.
     if (s.partial.length) this.commitPartial(s, 'mud', true);
     this.pushLine(s, { id: this.lineId++, kind: 'input', spans: [{ text, style: plain() }], ts: Date.now() });
-    if (s.world.logging) this.hooks.log(id, `> ${text}`);
+    if (s.world.logging && s.world.log.commands) this.hooks.log(id, `> ${text}`, 'command', s.world.log.format === 'html' ? lineHtml('command', '', [{ text, style: plain() }]) : undefined);
     if (remember && typed.trim() && s.history[s.history.length - 1] !== typed) {
       s.history.push(typed);
       if (s.history.length > 500) s.history.shift();

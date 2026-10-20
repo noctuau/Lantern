@@ -5,12 +5,15 @@ import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { TelnetSession } from './telnet';
 import { loadWorlds, saveWorlds, newWorld, importMcl, type World } from './worlds';
+import { expandLogName } from '../shared/logname';
+import { LOG_HTML_HEAD } from '../src/lib/loghtml';
 
 interface Session {
   id: string;
   world: World;
   telnet: TelnetSession;
   log: fs.WriteStream | null;
+  logHtml: boolean;
 }
 
 // Smoke runs use a throwaway profile so they never touch the real world list or logs. Each run gets
@@ -98,21 +101,32 @@ function logsDir() {
 
 function openLog(world: World): fs.WriteStream | null {
   if (!world.logging) return null;
-  const safe = world.name.replace(/[<>:"/\\|?*]+/g, '_').trim() || 'world';
-  const stamp = new Date().toISOString().slice(0, 10);
-  const file = path.join(logsDir(), `${safe} ${stamp}.txt`);
-  const stream = fs.createWriteStream(file, { flags: 'a' });
-  stream.write(`\n===== ${world.name} — ${new Date().toLocaleString()} =====\n`);
-  return stream;
+  const html = world.log.format === 'html';
+  let file = expandLogName(world.log.file, world.name, world.log.format);
+  if (!path.isAbsolute(file)) file = path.join(logsDir(), file);
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const fresh = !fs.existsSync(file) || fs.statSync(file).size === 0;
+    const stream = fs.createWriteStream(file, { flags: 'a' });
+    if (html && fresh) stream.write(LOG_HTML_HEAD + '\n');
+    if (world.log.worldNameHeader) {
+      const header = `${world.name} — ${new Date().toLocaleString()}`;
+      stream.write(html ? `<p class="hdr">${header.replace(/</g, '&lt;')}</p>\n` : `\n===== ${header} =====\n`);
+    }
+    return stream;
+  } catch (e) {
+    console.error('log open failed', file, e);
+    return null;
+  }
 }
 
 /**
  * The renderer logs line by line (store.ts) once it knows what each finished line is: game text,
  * a typed command, a gagged line, or a line captured by a channel tab (prefixed with the tab name).
  */
-function logLine(s: Session, text: string) {
+function logLine(s: Session, text: string, html?: string) {
   if (!s.log) return;
-  s.log.write(String(text).replace(/\r/g, '') + '\n');
+  s.log.write((s.logHtml && html !== undefined ? html : String(text).replace(/\r/g, '')) + '\n');
 }
 
 /* ---------- IPC: worlds ---------- */
@@ -158,7 +172,7 @@ ipcMain.handle('session:connect', (_e, worldId: string, size: { width: number; h
     width: size?.width ?? 100,
     height: size?.height ?? 40,
   });
-  const s: Session = { id, world, telnet, log: openLog(world) };
+  const s: Session = { id, world, telnet, log: openLog(world), logHtml: world.log.format === 'html' };
   sessions.set(id, s);
 
   telnet.on('text', (text: string) => send('session:text', id, text));
@@ -188,9 +202,9 @@ ipcMain.handle('session:send', (_e, id: string, text: string) => {
   return true;
 });
 
-ipcMain.on('session:log', (_e, id: string, text: string) => {
+ipcMain.on('session:log', (_e, id: string, text: string, _kind: string, html?: string) => {
   const s = sessions.get(id);
-  if (s) logLine(s, text);
+  if (s) logLine(s, text, html);
 });
 
 ipcMain.handle('session:disconnect', (_e, id: string) => {
@@ -244,6 +258,11 @@ ipcMain.handle('scripts:open', async (_e, worldId: string) => {
 /* ---------- IPC: app ---------- */
 
 ipcMain.handle('app:openLogs', () => shell.openPath(logsDir()));
+ipcMain.handle('app:logsDir', () => logsDir());
+ipcMain.handle('app:chooseFolder', async (_e, title?: string) => {
+  const res = await dialog.showOpenDialog(win!, { title: title ?? 'Choose a folder', properties: ['openDirectory', 'createDirectory'] });
+  return res.canceled ? null : res.filePaths[0];
+});
 ipcMain.handle('app:openExternal', (_e, url: string) => { if (/^https?:/i.test(url)) shell.openExternal(url); });
 ipcMain.handle('app:version', () => app.getVersion());
 
