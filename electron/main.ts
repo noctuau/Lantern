@@ -15,6 +15,7 @@ interface Session {
   telnet: TelnetSession;
   log: fs.WriteStream | null;
   logHtml: boolean;
+  logRaw: boolean;
 }
 
 // Smoke runs use a throwaway profile so they never touch the real world list or logs. Each run gets
@@ -133,7 +134,25 @@ function logLine(s: Session, text: string, html?: string) {
 /* ---------- IPC: worlds ---------- */
 
 ipcMain.handle('worlds:list', () => loadWorlds());
-ipcMain.handle('worlds:save', (_e, worlds: World[]) => { saveWorlds(worlds); return loadWorlds(); });
+ipcMain.handle('worlds:save', (_e, worlds: World[]) => {
+  saveWorlds(worlds);
+  const saved = loadWorlds();
+  // Apply logging changes to any live session at once, so a format change (e.g. Raw) takes
+  // effect without reconnecting. The log stream and its format are reopened if they differ.
+  for (const s of sessions.values()) {
+    const w = saved.find((x) => x.id === s.world.id);
+    if (!w) continue;
+    const changed = JSON.stringify(w.log) !== JSON.stringify(s.world.log) || w.logging !== s.world.logging;
+    s.world = w;
+    if (changed) {
+      if (s.log) { const old = s.log; s.log = null; old.end(); }
+      s.log = openLog(w);
+      s.logHtml = w.log.format === 'html';
+      s.logRaw = w.logging && w.log.format === 'raw';
+    }
+  }
+  return saved;
+});
 ipcMain.handle('worlds:create', (_e, partial?: Partial<World>) => {
   const worlds = loadWorlds();
   const w = newWorld(partial);
@@ -190,15 +209,14 @@ ipcMain.handle('session:connect', (_e, worldId: string, size: { width: number; h
     width: size?.width ?? 100,
     height: size?.height ?? 40,
   });
-  const s: Session = { id, world, telnet, log: openLog(world), logHtml: world.log.format === 'html' };
+  const s: Session = { id, world, telnet, log: openLog(world), logHtml: world.log.format === 'html', logRaw: world.logging && world.log.format === 'raw' };
   sessions.set(id, s);
-  const logRaw = world.logging && world.log.format === 'raw';
 
   telnet.on('text', (text: string) => {
     send('session:text', id, text);
     // Raw diagnostic log: the exact bytes the game sent (telnet stripped), escapes shown as \e,
     // written here before the renderer parses ANSI out. Lets us see colour codes verbatim.
-    if (logRaw && s.log) s.log.write(text.replace(/\x1b/g, '\\e').replace(/\r/g, ''));
+    if (s.logRaw && s.log) s.log.write(text.replace(/\x1b/g, '\\e').replace(/\r/g, ''));
   });
   telnet.on('prompt', () => send('session:prompt', id));
   telnet.on('echo', (on: boolean) => send('session:echo', id, on));
