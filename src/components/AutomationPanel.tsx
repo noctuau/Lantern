@@ -37,6 +37,7 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
   const [tab, setTab] = useState<Tab>(initialTab ?? 'triggers');
   const [sel, setSel] = useState<string | null>(initialTab && !isList(initialTab) ? null : (world.triggers[0]?.id ?? null));
   const [test, setTest] = useState('');
+  const [importMsg, setImportMsg] = useState('');
   const [scriptDirty, setScriptDirty] = useState(false);
   const worldDirty = useMemo(() => JSON.stringify(w) !== JSON.stringify(world), [w, world]);
   const dirty = worldDirty || scriptDirty;
@@ -53,6 +54,33 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
   const switchTab = (t: Tab) => { setTab(t); setSel(isList(t) ? (w[t][0]?.id ?? null) : null); };
 
   const setList = (key: ListKey, items: Item[]) => setW((x) => ({ ...x, [key]: items }));
+
+  /** Merge triggers/aliases/timers parsed from MUSHclient XML into the draft, with fresh ids. */
+  const applyImport = (items: { triggers: Trigger[]; aliases: Alias[]; timers: Timer[] } | null, source: string) => {
+    if (!items) return;
+    const n = items.triggers.length + items.aliases.length + items.timers.length;
+    if (!n) { setImportMsg(`No MUSHclient triggers, aliases or timers found in ${source}.`); return; }
+    const fresh = <T extends { id: string }>(xs: T[]) => xs.map((x) => ({ ...x, id: uid() }));
+    setW((x) => ({
+      ...x,
+      triggers: [...x.triggers, ...fresh(items.triggers)],
+      aliases: [...x.aliases, ...fresh(items.aliases)],
+      timers: [...x.timers, ...fresh(items.timers)],
+    }));
+    const parts = [[items.triggers.length, 'trigger'], [items.aliases.length, 'alias'], [items.timers.length, 'timer']] as const;
+    const summary = parts.filter(([c]) => c > 0).map(([c, w]) => `${c} ${w}${c === 1 ? '' : w === 'alias' ? 'es' : 's'}`).join(', ');
+    setImportMsg(`Imported ${summary} from ${source}. Save to keep them.`);
+  };
+  const importFile = async () => {
+    const res = await window.lantern.mcl.importFile();
+    if (res) applyImport(res, res.file);
+  };
+  const pasteXml = async () => {
+    let xml = '';
+    try { xml = await navigator.clipboard.readText(); } catch { setImportMsg('Could not read the clipboard.'); return; }
+    if (!xml.trim()) { setImportMsg('The clipboard is empty.'); return; }
+    applyImport(await window.lantern.mcl.parse(xml), 'the clipboard');
+  };
   const patch = (patchObj: Partial<Item>) => {
     if (!isList(tab) || !selected) return;
     setList(tab, list.map((x) => (x.id === selected.id ? { ...x, ...patchObj } as Item : x)));
@@ -169,6 +197,8 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
               <div className="auto-list-actions">
                 <button className="btn small" onClick={addItem}>+ New</button>
                 <button className="btn small ghost" disabled={!selected} onClick={duplicate}>Duplicate</button>
+                <button className="btn small ghost" title="Import triggers, aliases and timers from a MUSHclient export (.xml) or world file (.MCL)" onClick={importFile}>Import…</button>
+                <button className="btn small ghost" title="Paste the XML that MUSHclient's Copy button puts on the clipboard" onClick={pasteXml}>Paste XML</button>
                 <span className="spacer" />
                 <button className="icon-btn" title="Move up" disabled={!selected} onClick={() => move(-1)}>↑</button>
                 <button className="icon-btn" title="Move down" disabled={!selected} onClick={() => move(1)}>↓</button>
@@ -189,7 +219,7 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
         )}
 
         <div className="modal-actions">
-          <span className="muted small">{worldDirty ? 'Unsaved changes' : scriptDirty ? 'Script not saved (use Save script above)' : 'Saved'}</span>
+          <span className="muted small">{importMsg || (worldDirty ? 'Unsaved changes' : scriptDirty ? 'Script not saved (use Save script above)' : 'Saved')}</span>
           <span className="spacer" />
           <button type="button" className="btn ghost" onClick={onClose}>{dirty ? 'Discard' : 'Close'}</button>
           <button type="button" className="btn primary" disabled={!worldDirty} onClick={() => onSave(w)}>Save</button>

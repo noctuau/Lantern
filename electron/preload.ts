@@ -28,6 +28,10 @@ contextBridge.exposeInMainWorld('lantern', {
     onGmcp: on('session:gmcp'),
     onInfo: on('session:info'),
   },
+  mcl: {
+    parse: (xml: string) => ipcRenderer.invoke('mcl:parse', xml),
+    importFile: () => ipcRenderer.invoke('mcl:importFile'),
+  },
   scripts: {
     read: (worldId: string) => ipcRenderer.invoke('scripts:read', worldId),
     write: (worldId: string, text: string) => ipcRenderer.invoke('scripts:write', worldId, text),

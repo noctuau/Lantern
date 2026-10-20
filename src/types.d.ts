@@ -1,4 +1,7 @@
 import type { World } from './lib/store';
+import type { Trigger, Alias, Timer } from '../shared/types';
+
+type MclItems = { triggers: Trigger[]; aliases: Alias[]; timers: Timer[] };
 
 type Unsub = () => void;
 
@@ -24,6 +27,10 @@ declare global {
         onEcho(cb: (id: string, on: boolean) => void): Unsub;
         onGmcp(cb: (id: string, pkg: string, data: unknown) => void): Unsub;
         onInfo(cb: (id: string, message: string) => void): Unsub;
+      };
+      mcl: {
+        parse(xml: string): Promise<MclItems>;
+        importFile(): Promise<(MclItems & { file: string }) | null>;
       };
       scripts: {
         read(worldId: string): Promise<string>;

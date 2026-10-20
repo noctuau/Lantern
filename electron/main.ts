@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { TelnetSession } from './telnet';
 import { loadWorlds, saveWorlds, newWorld, importMcl, type World } from './worlds';
+import { importMclTriggers, importMclAliases, importMclTimers } from './mcl';
 import { expandLogName } from '../shared/logname';
 import { LOG_HTML_HEAD } from '../src/lib/loghtml';
 
@@ -157,6 +158,23 @@ ipcMain.handle('worlds:importMcl', async () => {
   }
   saveWorlds(worlds);
   return added;
+});
+
+/* ---------- IPC: MUSHclient trigger/alias/timer XML (exports, clipboard copies, plugins) ---------- */
+
+function parseMclXml(xml: string) {
+  return { triggers: importMclTriggers(xml), aliases: importMclAliases(xml), timers: importMclTimers(xml) };
+}
+ipcMain.handle('mcl:parse', (_e, xml: string) => parseMclXml(String(xml)));
+ipcMain.handle('mcl:importFile', async () => {
+  const res = await dialog.showOpenDialog(win!, {
+    title: 'Import MUSHclient triggers, aliases or timers',
+    filters: [{ name: 'MUSHclient XML or world files', extensions: ['xml', 'mcl', 'MCL', 'txt'] }, { name: 'All files', extensions: ['*'] }],
+    properties: ['openFile'],
+  });
+  if (res.canceled) return null;
+  const file = res.filePaths[0];
+  return { file: path.basename(file), ...parseMclXml(fs.readFileSync(file, 'latin1')) };
 });
 
 /* ---------- IPC: sessions ---------- */
