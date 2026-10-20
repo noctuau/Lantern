@@ -21,8 +21,8 @@ const tab = (name, patterns, extra = {}) => ({ id: uid(), name, enabled: true, k
 /* ---------- the Haven preset ---------- */
 const haven = C.havenChannelTab(uid);
 assert.equal(haven.name, C.HAVEN_TAB_NAME);
-assert.equal(haven.patterns.length, 5);
-assert.equal(new Set(haven.patterns.map((p) => p.id)).size, 5, 'every pattern gets its own id');
+assert.equal(haven.patterns.length, 7);
+assert.equal(new Set(haven.patterns.map((p) => p.id)).size, 7, 'every pattern gets its own id');
 assert.equal(haven.keepInMain, false); assert.equal(haven.notify, 'badge');
 assert.equal(haven.commandPrefix, '', 'the preset carries no command prefix (the old setup had none to copy)'); ok();
 assert.equal(C.hasHavenPreset([haven]), true);
