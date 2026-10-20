@@ -35,8 +35,19 @@ export function App() {
   const [fonts, setFonts] = useState<string[]>(FALLBACK_FONTS);
   const [highlight, setHighlight] = useState<{ worldId: string; text: string } | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerSeed, setComposerSeed] = useState('');
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; text: string } | null>(null);
   const insertRef = useRef<(t: string) => void>(() => {});
   const registerInsert = useCallback((fn: (t: string) => void) => { insertRef.current = fn; }, []);
+  const inputSelRef = useRef<() => string>(() => '');
+  const registerGetSelection = useCallback((fn: () => string) => { inputSelRef.current = fn; }, []);
+
+  // The current selection to colour: the command box wins (it survives blur), else the output pane.
+  const grabSelection = useCallback(() => {
+    const inSel = inputSelRef.current?.() ?? '';
+    if (inSel.trim()) return inSel;
+    return window.getSelection()?.toString() ?? '';
+  }, []);
   const worldsRef = useRef<World[]>([]);
   worldsRef.current = worlds;
 
@@ -79,6 +90,30 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [openHighlight]);
+
+  // Right-click a selection in the output or command box to offer the colour composer.
+  const openComposer = useCallback((seed: string) => { setComposerSeed(seed.trim()); setComposerOpen(true); }, []);
+  useEffect(() => {
+    const onCtx = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t || !(t.closest('.output') || t.closest('.input'))) return;
+      const text = grabSelection().trim();
+      if (!text) return;
+      e.preventDefault();
+      setCtxMenu({ x: e.clientX, y: e.clientY, text });
+    };
+    document.addEventListener('contextmenu', onCtx);
+    return () => document.removeEventListener('contextmenu', onCtx);
+  }, [grabSelection]);
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCtxMenu(null); };
+    window.addEventListener('click', close);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('click', close); window.removeEventListener('scroll', close, true); window.removeEventListener('keydown', onKey); };
+  }, [ctxMenu]);
   const addHighlight = async (t: Trigger) => {
     if (!highlight) return;
     const w = worldsRef.current.find((x) => x.id === highlight.worldId) ?? store.active()?.world;
@@ -270,7 +305,7 @@ export function App() {
           <span className="spacer" />
           {active && (
             <>
-              <button className="btn small ghost" title="Compose coloured/gradient text to send" onClick={() => setComposerOpen(true)}>
+              <button className="btn small ghost" title="Compose coloured/gradient text to send. Select text first to pre-fill it." onMouseDown={() => setComposerSeed(grabSelection().trim())} onClick={() => setComposerOpen(true)}>
                 🎨 Colour
               </button>
               <button className="btn small ghost" title="Highlight a word or phrase (Ctrl+Alt+H). Select text in the output first to pre-fill it." onClick={openHighlight}>
@@ -307,6 +342,7 @@ export function App() {
               onSend={sendCommand}
               onReconnect={() => connect(active.world)}
               registerInsert={registerInsert}
+              registerGetSelection={registerGetSelection}
             />
             <StatusBar session={active} onToggleAutomation={() => store.setAutomation(active.id, !active.automation)} />
           </>
@@ -329,8 +365,16 @@ export function App() {
         />
       )}
 
+      {ctxMenu && (
+        <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="ctx-item" onClick={() => { openComposer(ctxMenu.text); setCtxMenu(null); }}>
+            🎨 Colour composer
+          </button>
+        </div>
+      )}
+
       {composerOpen && (
-        <ColourComposer onInsert={(t) => insertRef.current(t)} onClose={() => setComposerOpen(false)} />
+        <ColourComposer initialText={composerSeed} onInsert={(t) => insertRef.current(t)} onClose={() => setComposerOpen(false)} />
       )}
 
       {settingsOpen && (

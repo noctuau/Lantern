@@ -389,3 +389,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .composer-sw:hover { outline: 1px solid var(--fg); }
 .composer-preview-wrap { display: flex; flex-direction: column; gap: 4px; }
 .composer-preview { background: #000; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-family: var(--font-mud); font-size: var(--mud-size); white-space: pre-wrap; overflow-wrap: anywhere; min-height: 2.5em; }
+
+/* Colour composer: preset stepper + the right-click "Colour composer" menu */
+.preset-row { display: flex; gap: 6px; align-items: stretch; }
+.preset-row .grow { flex: 1; min-width: 0; }
+.btn.step { padding: 0; width: 30px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; flex-shrink: 0; }
+.ctx-menu { position: fixed; z-index: 20; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 170px; }
+.ctx-item { display: block; width: 100%; text-align: left; background: transparent; border: 0; border-radius: 6px; padding: 7px 10px; color: var(--fg); font-size: 13px; cursor: pointer; }
+.ctx-item:hover { background: var(--bg-3); color: var(--accent); }

@@ -11,12 +11,14 @@ interface Props {
   onReconnect(): void;
   /** Hand the parent a function to drop text into the box (used by the colour composer). */
   registerInsert?(fn: (text: string) => void): void;
+  /** Hand the parent a getter for the box's currently selected text (used to pre-fill the composer). */
+  registerGetSelection?(fn: () => string): void;
 }
 
 const MAX_LINES = 20;
 const BOX_PADDING = 18; // vertical padding + border of .input
 
-export function InputBar({ session, minLines, onResize, onSend, onReconnect, registerInsert }: Props) {
+export function InputBar({ session, minLines, onResize, onSend, onReconnect, registerInsert, registerGetSelection }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
   const [lines, setLines] = useState(minLines);
@@ -40,6 +42,14 @@ export function InputBar({ session, minLines, onResize, onSend, onReconnect, reg
     });
   }, []);
   useEffect(() => { registerInsert?.(insert); }, [registerInsert, insert]);
+
+  // Expose the currently selected text (selectionStart/End survive blur, so the composer button
+  // can read it even after focus moves to the button).
+  const getSelection = useCallback(() => {
+    const el = ref.current;
+    return el ? el.value.slice(el.selectionStart, el.selectionEnd) : '';
+  }, []);
+  useEffect(() => { registerGetSelection?.(getSelection); }, [registerGetSelection, getSelection]);
 
   const lineHeight = () => {
     const el = ref.current;

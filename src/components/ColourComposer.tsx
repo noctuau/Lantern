@@ -9,13 +9,17 @@ import { GRADIENT_PRESETS, makeGradient, parseBacktick, parseCodes, xtermHex } f
 interface Props {
   onInsert(text: string): void;
   onClose(): void;
+  /** Text to pre-fill (e.g. the current selection in the command box or output). */
+  initialText?: string;
 }
 
 const SWATCHES = Array.from({ length: 240 }, (_, i) => i + 16); // xterm 16-255, the colour cube + greys
 
-export function ColourComposer({ onInsert, onClose }: Props) {
-  const [text, setText] = useState('');
+export function ColourComposer({ onInsert, onClose, initialText }: Props) {
+  const [text, setText] = useState(initialText ?? '');
   const [codes, setCodes] = useState(GRADIENT_PRESETS[0].codes);
+  // The preset the codes currently match, so the dropdown shows what's selected; '' = Custom.
+  const [presetName, setPresetName] = useState(GRADIENT_PRESETS[0].name);
   const [bothways, setBothways] = useState(false);
   const [reverse, setReverse] = useState(false);
   const [random, setRandom] = useState(false);
@@ -28,7 +32,26 @@ export function ColourComposer({ onInsert, onClose }: Props) {
   const preview = useMemo(() => parseBacktick(output), [output]);
   const codeCount = parseCodes(codes).length;
 
-  const addCode = (n: number) => setCodes((c) => `${c.trim()} ${String(n).padStart(3, '0')}`.trim());
+  // Any code change re-syncs the dropdown: if the codes match a preset, show it, else "Custom".
+  const applyCodes = (c: string) => {
+    setCodes(c);
+    const hit = GRADIENT_PRESETS.find((p) => p.codes === c.trim());
+    setPresetName(hit ? hit.name : '');
+  };
+  const applyPreset = (name: string) => {
+    const p = GRADIENT_PRESETS.find((x) => x.name === name);
+    if (!p) { setPresetName(''); return; }
+    setPresetName(p.name);
+    setCodes(p.codes);
+  };
+  // Step up/down the preset list; from "Custom" the down arrow starts at the top, up at the bottom.
+  const stepPreset = (dir: 1 | -1) => {
+    const n = GRADIENT_PRESETS.length;
+    const i = GRADIENT_PRESETS.findIndex((p) => p.name === presetName);
+    const next = i < 0 ? (dir > 0 ? 0 : n - 1) : (i + dir + n) % n;
+    applyPreset(GRADIENT_PRESETS[next].name);
+  };
+  const addCode = (nn: number) => applyCodes(`${codes.trim()} ${String(nn).padStart(3, '0')}`.trim());
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(output); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ }
@@ -46,10 +69,14 @@ export function ColourComposer({ onInsert, onClose }: Props) {
 
         <div className="row">
           <label className="grow">Preset
-            <select value="" onChange={(e) => { if (e.target.value) setCodes(e.target.value); }}>
-              <option value="">Pick a gradient…</option>
-              {GRADIENT_PRESETS.map((p) => <option key={p.name} value={p.codes}>{p.name}</option>)}
-            </select>
+            <div className="preset-row">
+              <select className="grow" value={presetName} onChange={(e) => applyPreset(e.target.value)}>
+                <option value="">Custom</option>
+                {GRADIENT_PRESETS.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+              </select>
+              <button type="button" className="btn small ghost step" title="Previous preset" onClick={() => stepPreset(-1)}>▲</button>
+              <button type="button" className="btn small ghost step" title="Next preset" onClick={() => stepPreset(1)}>▼</button>
+            </div>
           </label>
           <label className="check inline"><input type="checkbox" checked={bothways} onChange={(e) => setBothways(e.target.checked)} /> Fade both ways</label>
           <label className="check inline"><input type="checkbox" checked={reverse} onChange={(e) => setReverse(e.target.checked)} /> Reverse</label>
@@ -58,8 +85,8 @@ export function ColourComposer({ onInsert, onClose }: Props) {
 
         <label>Colour codes (xterm 0-255, space-separated)
           <div className="row">
-            <input className="mono grow" value={codes} onChange={(e) => setCodes(e.target.value)} spellCheck={false} />
-            <button type="button" className="btn small ghost" onClick={() => setCodes('')}>Clear</button>
+            <input className="mono grow" value={codes} onChange={(e) => applyCodes(e.target.value)} spellCheck={false} />
+            <button type="button" className="btn small ghost" onClick={() => applyCodes('')}>Clear</button>
           </div>
         </label>
         <details className="composer-swatches">
