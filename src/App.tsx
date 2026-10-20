@@ -151,6 +151,8 @@ export function App() {
         const sess = store.active();
         const tab = sess?.world.channelTabs.find((t) => t.name.toLowerCase() === view.toLowerCase());
         if (sess && tab) store.setView(sess.id, tab.id);
+        // A command typed from the tab: its echo should appear in that tab, with the tab's prefix.
+        setTimeout(() => sendCommandRef.current('who'), 600);
       }, 4000);
     }
   }), []);
@@ -167,7 +169,7 @@ export function App() {
     // calls store.execute directly), then aliases, stacking and speedwalk see the whole thing.
     // The echo and log show what was sent; history keeps what was typed.
     const { text } = applyCommandPrefix(activePrefix(active.world.channelTabs, active.view), typed);
-    store.input(active.id, text, true, typed);
+    store.input(active.id, text, true, typed, settings.echoInput);
     store.execute(active.id, text, false);
   };
 

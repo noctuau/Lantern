@@ -58,6 +58,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
           <label>Lines shown{num('inputLines', 1, 1, 20)}</label>
         </div>
         <p className="hint">The box always grows as you type. "Lines shown" is its resting height; you can also drag its top edge.</p>
+        <label className="check inline"><input type="checkbox" checked={s.echoInput} onChange={(e) => set('echoInput', e.target.checked)} /> Echo my commands in the output (in the pane they were typed from)</label>
         <div className="settings-preview input-preview">A pose, typed here, in the command box font.</div>
 
         <div className="modal-actions">

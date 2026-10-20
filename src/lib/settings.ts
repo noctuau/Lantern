@@ -10,6 +10,7 @@ export interface AppSettings {
   inputFont: string;
   inputSize: number;         // px
   inputLines: number;        // minimum visible lines in the command box
+  echoInput: boolean;        // show what you typed in the output pane
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -19,6 +20,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   inputFont: 'Cascadia Mono',
   inputSize: 15,
   inputLines: 1,
+  echoInput: true,
 };
 
 /** Fonts offered when the system font list is unavailable. */
@@ -45,6 +47,7 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
     inputFont: typeof s?.inputFont === 'string' ? s.inputFont : DEFAULT_SETTINGS.inputFont,
     inputSize: clamp(s?.inputSize, 9, 40, DEFAULT_SETTINGS.inputSize),
     inputLines: Math.round(clamp(s?.inputLines, 1, 20, DEFAULT_SETTINGS.inputLines)),
+    echoInput: typeof s?.echoInput === 'boolean' ? s.echoInput : DEFAULT_SETTINGS.echoInput,
   };
 }
 

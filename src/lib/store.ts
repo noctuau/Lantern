@@ -477,11 +477,18 @@ class Store {
    * `typed` is what to remember when it differs from what was sent (a channel tab's command
    * prefix is echoed and logged, but ↑ recalls the words as typed so they are not prefixed twice).
    */
-  input(id: string, text: string, remember = true, typed = text) {
+  input(id: string, text: string, remember = true, typed = text, echo = true) {
     const s = this.sessions.get(id); if (!s) return;
     // If a prompt line is pending, the command visually completes it.
     if (s.partial.length) this.commitPartial(s, 'mud', true);
-    this.pushLine(s, { id: this.lineId++, kind: 'input', spans: [{ text, style: plain() }], ts: Date.now() });
+    if (echo) {
+      // The echo lands in the pane the command was typed from: a channel tab keeps its own
+      // conversation together, and the main RP pane stays free of OOC chatter.
+      const line: Line = { id: this.lineId++, kind: 'input', spans: [{ text, style: plain() }], ts: Date.now() };
+      const tab = s.view !== MAIN_VIEW ? s.world.channelTabs.find((t) => t.id === s.view && t.enabled) : undefined;
+      if (tab) this.pushChannelLine(s, tab, line, false);
+      else this.pushLine(s, line);
+    }
     if (s.world.logging && s.world.log.commands) this.hooks.log(id, `> ${text}`, 'command', s.world.log.format === 'html' ? lineHtml('command', '', [{ text, style: plain() }]) : undefined);
     if (remember && typed.trim() && s.history[s.history.length - 1] !== typed) {
       s.history.push(typed);

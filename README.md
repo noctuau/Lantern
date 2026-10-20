@@ -37,7 +37,7 @@ Smoke runs use a throwaway profile and never touch your worlds or logs. The smok
 
 ## Display settings and quick highlights
 
-⚙ Settings (sidebar) sets the font, size and line spacing of the output pane and the command box separately; the command box also has a resting height in lines and you can drag its top edge. Settings live in `%APPDATA%\lantern\settings.json`. ✎ Highlight (or Ctrl+Alt+H) adds a colour-only trigger for a word or phrase, pre-filled with any text selected in the output; it lands in the "Highlights" trigger group. Colour choices everywhere use a picker with palette swatches and an OS colour dialog for custom colours.
+⚙ Settings (sidebar) sets the font, size and line spacing of the output pane and the command box separately; the command box also has a resting height in lines and you can drag its top edge. Settings live in `%APPDATA%\lantern\settings.json`. ✎ Highlight (or Ctrl+Alt+H) adds a colour-only trigger for a word or phrase, pre-filled with any text selected in the output; it lands in the "Highlights" trigger group. Settings also has an "Echo my commands" switch; when on, the echo appears in the pane you typed from, so a command typed on a channel tab shows up in that tab. Colour choices everywhere use a picker with palette swatches and an OS colour dialog for custom colours.
 
 ## Automation
 
