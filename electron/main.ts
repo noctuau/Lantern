@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, session as electronSession } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, Menu, session as electronSession } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -70,6 +70,36 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // Apply the saved spell-check languages, if any.
+  try {
+    const sp = (readSettings()?.spellLanguages as string[]) ?? ['en-AU'];
+    applySpellLanguages(sp);
+  } catch { /* defaults are fine */ }
+
+  // Right-click: spelling suggestions, add-to-dictionary, and the usual edit items.
+  win.webContents.on('context-menu', (_e, params) => {
+    const items: Electron.MenuItemConstructorOptions[] = [];
+    if (params.misspelledWord) {
+      for (const s of params.dictionarySuggestions.slice(0, 6)) {
+        items.push({ label: s, click: () => win?.webContents.replaceMisspelling(s) });
+      }
+      if (params.dictionarySuggestions.length === 0) items.push({ label: 'No suggestions', enabled: false });
+      items.push({ type: 'separator' });
+      items.push({ label: 'Add to dictionary', click: () => win?.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord) });
+      items.push({ type: 'separator' });
+    }
+    if (params.isEditable || params.selectionText) {
+      items.push(
+        { role: 'cut', enabled: params.editFlags.canCut },
+        { role: 'copy', enabled: params.editFlags.canCopy },
+        { role: 'paste', enabled: params.editFlags.canPaste },
+        { type: 'separator' },
+        { role: 'selectAll' },
+      );
+    }
+    if (items.length) Menu.buildFromTemplate(items).popup({ window: win! });
   });
 
   win.on('closed', () => { win = null; });
@@ -330,12 +360,28 @@ ipcMain.handle('fonts:list', () => installedFonts());
 /* ---------- IPC: app settings (fonts etc.) ---------- */
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
-ipcMain.handle('settings:get', () => {
+function readSettings(): Record<string, unknown> | null {
   try { return JSON.parse(fs.readFileSync(settingsFile(), 'utf-8')); } catch { return null; }
-});
-ipcMain.handle('settings:set', (_e, settings: unknown) => {
+}
+ipcMain.handle('settings:get', () => readSettings());
+ipcMain.handle('settings:set', (_e, settings: Record<string, unknown>) => {
   fs.mkdirSync(path.dirname(settingsFile()), { recursive: true });
   fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2));
+  if (Array.isArray(settings?.spellLanguages)) applySpellLanguages(settings.spellLanguages as string[]);
+});
+
+/* ---------- spell check ---------- */
+
+function applySpellLanguages(langs: string[]) {
+  const ses = electronSession.defaultSession;
+  const available = ses.availableSpellCheckerLanguages;
+  // Keep only codes Chromium actually ships; fall back to en-US if nothing matches.
+  const use = langs.filter((l) => available.includes(l));
+  try { ses.setSpellCheckerLanguages(use.length ? use : available.includes('en-US') ? ['en-US'] : []); } catch { /* ignore */ }
+}
+ipcMain.handle('spell:languages', () => {
+  const ses = electronSession.defaultSession;
+  return { available: ses.availableSpellCheckerLanguages, active: ses.getSpellCheckerLanguages() };
 });
 
 app.whenReady().then(() => { createWindow(); installedFonts(); });

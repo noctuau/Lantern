@@ -1,7 +1,11 @@
 /** App settings: fonts and sizes for the output pane and the command box. Changes preview live; Cancel reverts. */
 import { useEffect, useState } from 'react';
-import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, type AppSettings } from '../lib/settings';
+import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, PALETTES, resolvePalette, type AppSettings, type PaletteName } from '../lib/settings';
 import { FontPicker } from './FontPicker';
+
+const ANSI_LABELS = ['Black', 'Red', 'Green', 'Yellow', 'Blue', 'Magenta', 'Cyan', 'White',
+  'Bright black', 'Bright red', 'Bright green', 'Bright yellow', 'Bright blue', 'Bright magenta', 'Bright cyan', 'Bright white'];
+const PALETTE_LABELS: Record<PaletteName, string> = { warm: 'Lantern (warm)', classic: 'Classic (MUSHclient)', vga: 'Classic, readable blue', custom: 'Custom' };
 
 interface Props {
   settings: AppSettings;
@@ -10,9 +14,23 @@ interface Props {
   onClose(): void;
 }
 
+const LANG_LABELS: Record<string, string> = {
+  'en-AU': 'English (Australia)', 'en-GB': 'English (UK)', 'en-US': 'English (US)', 'en-CA': 'English (Canada)',
+  'fr': 'French', 'fr-FR': 'French', 'de': 'German', 'es': 'Spanish', 'it': 'Italian', 'pt-BR': 'Portuguese (Brazil)',
+  'pt-PT': 'Portuguese', 'nl': 'Dutch', 'sv': 'Swedish', 'nb': 'Norwegian', 'da': 'Danish', 'pl': 'Polish', 'ru': 'Russian',
+};
+const langLabel = (c: string) => LANG_LABELS[c] ?? c;
+
 export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
   const [s, setS] = useState<AppSettings>(settings);
+  const [langs, setLangs] = useState<string[]>([]);
   const set = <K extends keyof AppSettings>(k: K, v: AppSettings[K]) => setS((x) => ({ ...x, [k]: v }));
+
+  useEffect(() => { window.lantern.spell.languages().then((r) => setLangs(r.available)); }, []);
+  const toggleLang = (code: string) => setS((x) => ({
+    ...x,
+    spellLanguages: x.spellLanguages.includes(code) ? x.spellLanguages.filter((l) => l !== code) : [...x.spellLanguages, code],
+  }));
 
   // Live preview; put the saved settings back if the dialog is cancelled.
   useEffect(() => { applySettings(normalizeSettings(s)); }, [s]);
@@ -69,6 +87,29 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
           Lantern flickers; the long night settles over the harbour. <span style={{ color: 'var(--ansi-11)' }}>Juliet</span> says, "Mind the step."
         </div>
 
+        <h3>Colours (ANSI palette)</h3>
+        <p className="hint">How the game's 16 colours look. Classic matches MUSHclient; pick it if colours look off or a line shows a bright blue that MUSHclient keeps dark.</p>
+        <div className="row">
+          <label className="grow">Palette
+            <select value={s.palette} onChange={(e) => set('palette', e.target.value as PaletteName)}>
+              {(['warm', 'classic', 'vga', 'custom'] as PaletteName[]).map((p) => <option key={p} value={p}>{PALETTE_LABELS[p]}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="palette-grid">
+          {resolvePalette(s).map((c, i) => (
+            <label key={i} className="palette-swatch" title={ANSI_LABELS[i]}>
+              <input type="color" value={/^#[0-9a-f]{6}$/i.test(c) ? c : '#000000'}
+                onChange={(e) => {
+                  const base = resolvePalette(s).slice();
+                  base[i] = e.target.value;
+                  setS((x) => ({ ...x, palette: 'custom', customPalette: base }));
+                }} />
+              <span>{i}</span>
+            </label>
+          ))}
+        </div>
+
         <h3>Command box</h3>
         <div className="row">
           <label className="grow">Font
@@ -80,6 +121,24 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
         <p className="hint">The box always grows as you type. "Lines shown" is its resting height; you can also drag its top edge.</p>
         <label className="check inline"><input type="checkbox" checked={s.echoInput} onChange={(e) => set('echoInput', e.target.checked)} /> Echo my commands in the output (in the pane they were typed from)</label>
         <div className="settings-preview input-preview">A pose, typed here, in the command box font.</div>
+
+        <h3>Spell check</h3>
+        <p className="hint">Underlines misspellings in the command box. Right-click a word for suggestions or to add it to your personal dictionary. Pick one or more dictionaries; none means spell check is off.</p>
+        <div className="lang-grid">
+          {(langs.length ? langs : ['en-AU', 'en-GB', 'en-US']).filter((c) => c.startsWith('en') || s.spellLanguages.includes(c)).map((c) => (
+            <label key={c} className="check inline"><input type="checkbox" checked={s.spellLanguages.includes(c)} onChange={() => toggleLang(c)} /> {langLabel(c)}</label>
+          ))}
+        </div>
+        {langs.length > 0 && (
+          <details className="lang-more">
+            <summary className="hint">Other languages</summary>
+            <div className="lang-grid">
+              {langs.filter((c) => !c.startsWith('en')).map((c) => (
+                <label key={c} className="check inline"><input type="checkbox" checked={s.spellLanguages.includes(c)} onChange={() => toggleLang(c)} /> {langLabel(c)}</label>
+              ))}
+            </div>
+          </details>
+        )}
 
         <div className="modal-actions">
           <button type="button" className="btn ghost" onClick={() => setS(DEFAULT_SETTINGS)}>Reset to defaults</button>

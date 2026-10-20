@@ -45,6 +45,9 @@ declare global {
         get(): Promise<Record<string, unknown> | null>;
         set(settings: Record<string, unknown>): Promise<void>;
       };
+      spell: {
+        languages(): Promise<{ available: string[]; active: string[] }>;
+      };
       app: {
         openLogs(): Promise<string>;
         chooseFolder(title?: string): Promise<string | null>;

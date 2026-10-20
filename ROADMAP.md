@@ -59,6 +59,8 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - Quick "Highlight word or phrase" dialog on Ctrl+Alt+H / ✎ Highlight, creating a trigger in the Highlights group
 - Smoke-test windows no longer take keyboard focus
 - Font picker over the installed fonts (asked of Windows via .NET), each drawn in its own face, with a monospace-only filter
+- ANSI palette presets (Warm / Classic-MUSHclient / readable-VGA) and full 16-colour custom editor
+- Spell check: choose dictionaries (defaults to en-AU), personal dictionary, right-click suggestions
 - Output width (wrap column, also sent to the game via NAWS)
 - Output pane background colour (Theme / Black / custom); per-channel-tab message spacing
 - Echo-my-commands switch; the echo lands in the pane it was typed from (channel tab or Main)

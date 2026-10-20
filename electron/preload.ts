@@ -45,6 +45,9 @@ contextBridge.exposeInMainWorld('lantern', {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (settings: unknown) => ipcRenderer.invoke('settings:set', settings),
   },
+  spell: {
+    languages: () => ipcRenderer.invoke('spell:languages'),
+  },
   app: {
     openLogs: () => ipcRenderer.invoke('app:openLogs'),
     chooseFolder: (title?: string) => ipcRenderer.invoke('app:chooseFolder', title),
