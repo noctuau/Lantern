@@ -7,10 +7,12 @@ export interface AppSettings {
   outputFont: string;
   outputSize: number;        // px
   outputLineHeight: number;  // multiplier
+  outputWeight: number;      // font weight 100-900 (400 regular, 500 medium, ...)
   outputWidth: number;       // max line width in characters; 0 = fit the window. Also the width told to the server (NAWS).
   outputBg: string;          // output pane background: '' = theme default, else a CSS colour
   inputFont: string;
   inputSize: number;         // px
+  inputWeight: number;       // font weight 100-900
   inputLines: number;        // minimum visible lines in the command box
   echoInput: boolean;        // show what you typed in the output pane
   autoScroll: boolean;       // follow new output when already at the bottom
@@ -49,10 +51,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   outputFont: 'Cascadia Mono',
   outputSize: 15,
   outputLineHeight: 1.5,
+  outputWeight: 400,
   outputWidth: 0,
   outputBg: '',
   inputFont: 'Cascadia Mono',
   inputSize: 15,
+  inputWeight: 400,
   inputLines: 1,
   echoInput: true,
   autoScroll: true,
@@ -89,10 +93,12 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
     outputFont: typeof s?.outputFont === 'string' ? s.outputFont : DEFAULT_SETTINGS.outputFont,
     outputSize: clamp(s?.outputSize, 9, 40, DEFAULT_SETTINGS.outputSize),
     outputLineHeight: clamp(s?.outputLineHeight, 1, 2.5, DEFAULT_SETTINGS.outputLineHeight),
+    outputWeight: Math.round(clamp(s?.outputWeight, 100, 900, DEFAULT_SETTINGS.outputWeight)),
     outputWidth: s?.outputWidth === 0 ? 0 : Math.round(clamp(s?.outputWidth, 20, 500, DEFAULT_SETTINGS.outputWidth)),
     outputBg: typeof s?.outputBg === 'string' ? s.outputBg : DEFAULT_SETTINGS.outputBg,
     inputFont: typeof s?.inputFont === 'string' ? s.inputFont : DEFAULT_SETTINGS.inputFont,
     inputSize: clamp(s?.inputSize, 9, 40, DEFAULT_SETTINGS.inputSize),
+    inputWeight: Math.round(clamp(s?.inputWeight, 100, 900, DEFAULT_SETTINGS.inputWeight)),
     inputLines: Math.round(clamp(s?.inputLines, 1, 20, DEFAULT_SETTINGS.inputLines)),
     echoInput: typeof s?.echoInput === 'boolean' ? s.echoInput : DEFAULT_SETTINGS.echoInput,
     autoScroll: typeof s?.autoScroll === 'boolean' ? s.autoScroll : DEFAULT_SETTINGS.autoScroll,
@@ -112,8 +118,10 @@ export function applySettings(s: AppSettings) {
   r.setProperty('--font-mud', fontStack(s.outputFont));
   r.setProperty('--mud-size', `${s.outputSize}px`);
   r.setProperty('--mud-line', String(s.outputLineHeight));
+  r.setProperty('--mud-weight', String(s.outputWeight));
   r.setProperty('--font-input', fontStack(s.inputFont));
   r.setProperty('--input-size', `${s.inputSize}px`);
+  r.setProperty('--input-weight', String(s.inputWeight));
   r.setProperty('--mud-max-width', s.outputWidth ? `${s.outputWidth}ch` : 'none');
   // '' falls back to the theme background in the CSS (var(--output-bg, var(--bg))).
   if (s.outputBg) r.setProperty('--output-bg', s.outputBg);

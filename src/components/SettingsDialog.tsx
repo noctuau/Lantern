@@ -79,6 +79,12 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
     <input type="number" step={step} min={min} max={max} value={s[k]}
       onChange={(e) => set(k, e.target.value === '' ? s[k] : Number(e.target.value))} style={{ width: 90 }} />
   );
+  const WEIGHTS: [number, string][] = [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold']];
+  const weightSelect = (k: 'outputWeight' | 'inputWeight') => (
+    <select value={s[k]} onChange={(e) => set(k, Number(e.target.value))} style={{ width: 110 }}>
+      {WEIGHTS.map(([w, label]) => <option key={w} value={w}>{label}</option>)}
+    </select>
+  );
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -101,6 +107,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
                 <label className="grow">Font
                   <FontPicker value={s.outputFont} fonts={fonts} onChange={(v) => set('outputFont', v)} />
                 </label>
+                <label title="Font weight, if the font family has more than one (e.g. Medium).">Weight{weightSelect('outputWeight')}</label>
                 <label>Size (px){num('outputSize', 1, 9, 40)}</label>
                 <label>Line spacing{num('outputLineHeight', 0.05, 1, 2.5)}</label>
                 <label title="Maximum characters per line. 0 fills the window. Also the width Lantern tells the game, so server-wrapped MUSHes follow it.">Width (chars)
@@ -119,6 +126,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
                 <label className="grow">Font
                   <FontPicker value={s.inputFont} fonts={fonts} onChange={(v) => set('inputFont', v)} />
                 </label>
+                <label title="Font weight.">Weight{weightSelect('inputWeight')}</label>
                 <label>Size (px){num('inputSize', 1, 9, 40)}</label>
                 <label>Lines shown{num('inputLines', 1, 1, 20)}</label>
               </div>
