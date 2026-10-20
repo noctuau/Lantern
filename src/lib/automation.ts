@@ -57,7 +57,7 @@ export function splitSend(text: string): string[] {
 
 /* ---------- triggers ---------- */
 
-export interface Highlight { start: number; end: number; colour: string }
+export interface Highlight { start: number; end: number; colour: string | null; bg?: string | null }
 
 /** What a trigger or alias matched: `wildcards[0]` is the whole match, 1..n the captures, plus any named groups. */
 export interface Match { wildcards: string[]; named: Record<string, string> }
@@ -92,14 +92,14 @@ export function runTriggers(triggers: readonly Trigger[], line: string): Trigger
     res.matches.push({ trigger: t, match: toMatch(first) });
     if (t.gag) res.gag = true;
     if (t.send) for (const cmd of splitSend(substitute(t.send, first))) res.outgoing.push({ text: cmd, sendTo: t.sendTo });
-    if (t.highlight) {
+    if (t.highlight || t.highlightBg) {
       if (t.highlightLine || first[0].length === 0) {
-        res.highlights.push({ start: 0, end: line.length, colour: t.highlight });
+        res.highlights.push({ start: 0, end: line.length, colour: t.highlight, ...(t.highlightBg ? { bg: t.highlightBg } : {}) });
       } else {
         // Colour every occurrence on the line (MUSHclient's "repeat on same line").
         let m: RegExpExecArray | null = first;
         while (m) {
-          if (m[0].length) res.highlights.push({ start: m.index, end: m.index + m[0].length, colour: t.highlight });
+          if (m[0].length) res.highlights.push({ start: m.index, end: m.index + m[0].length, colour: t.highlight, ...(t.highlightBg ? { bg: t.highlightBg } : {}) });
           if (m.index + m[0].length >= line.length) break;
           if (m[0].length === 0) re.lastIndex++;
           m = re.exec(line);
@@ -130,7 +130,7 @@ export function applyHighlights(spans: readonly Span[], highlights: readonly Hig
     if (!src) break;
     const text = src.text.slice(a - spanStart, b - spanStart);
     const hl = highlights.find((h) => h.start <= a && b <= h.end);
-    const style = hl ? { ...src.style, fg: hl.colour, bold: false, dim: false } : src.style;
+    const style = hl ? { ...src.style, fg: hl.colour ?? src.style.fg, bg: hl.bg != null ? hl.bg : src.style.bg, bold: false, dim: false } : src.style;
     const last = out[out.length - 1];
     if (last && last.style === style) last.text += text;
     else out.push({ text, style });

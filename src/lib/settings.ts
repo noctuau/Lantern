@@ -17,9 +17,20 @@ export interface AppSettings {
   palette: PaletteName;      // ANSI colour palette: a preset, or 'custom' to use customPalette
   customPalette: string[];   // 16 hex colours used when palette === 'custom'
   spellLanguages: string[];  // spell-check dictionaries, e.g. ['en-AU']; [] turns spell check off
+  customColours: CustomColour[]; // named colours for the trigger colour picker (up to MAX_CUSTOM_COLOURS)
 }
 
 export type PaletteName = 'warm' | 'classic' | 'vga' | 'custom';
+
+/** A named colour (text + optional background) for use when picking trigger colours. */
+export interface CustomColour { id: string; name: string; fg: string; bg: string }
+export const MAX_CUSTOM_COLOURS = 10;
+export const DEFAULT_CUSTOM_COLOURS: CustomColour[] = [
+  { id: 'c1', name: 'OOC blue', fg: '#6f9fd8', bg: '' },
+  { id: 'c2', name: 'Soft green', fg: '#86b867', bg: '' },
+  { id: 'c3', name: 'Rose', fg: '#dca9e6', bg: '' },
+  { id: 'c4', name: 'Warning', fg: '#fbf6ec', bg: '#9a3b2b' },
+];
 
 /** 16 ANSI colours: 0-7 normal, 8-15 bright. */
 export const PALETTES: Record<Exclude<PaletteName, 'custom'>, string[]> = {
@@ -48,6 +59,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   palette: 'warm',
   customPalette: PALETTES.warm.slice(),
   spellLanguages: ['en-AU'],
+  customColours: DEFAULT_CUSTOM_COLOURS.slice(),
 };
 
 /** Resolve the active 16 colours for a settings object. */
@@ -89,6 +101,9 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
       ? s!.customPalette.map((c) => (typeof c === 'string' ? c : '#000000'))
       : DEFAULT_SETTINGS.customPalette.slice(),
     spellLanguages: Array.isArray(s?.spellLanguages) ? s!.spellLanguages.filter((x) => typeof x === 'string') : DEFAULT_SETTINGS.spellLanguages.slice(),
+    customColours: Array.isArray(s?.customColours)
+      ? s!.customColours.filter((c) => c && typeof c.fg === 'string').slice(0, MAX_CUSTOM_COLOURS).map((c, i) => ({ id: c.id || `c${i}`, name: c.name || `Colour ${i + 1}`, fg: c.fg, bg: typeof c.bg === 'string' ? c.bg : '' }))
+      : DEFAULT_SETTINGS.customColours.slice(),
   };
 }
 

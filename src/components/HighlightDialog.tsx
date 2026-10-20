@@ -31,6 +31,7 @@ export function buildHighlightTrigger(text: string, colour: string, wholeWord: b
     send: '',
     sendTo: 'world',
     highlight: colour,
+    highlightBg: null,
     highlightLine: wholeLine,
     gag: false,
     oneShot: false,

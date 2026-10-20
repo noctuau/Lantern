@@ -1,6 +1,6 @@
 /** App settings: fonts and sizes for the output pane and the command box. Changes preview live; Cancel reverts. */
 import { useEffect, useState } from 'react';
-import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, PALETTES, resolvePalette, type AppSettings, type PaletteName } from '../lib/settings';
+import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, PALETTES, resolvePalette, MAX_CUSTOM_COLOURS, type AppSettings, type PaletteName, type CustomColour } from '../lib/settings';
 import { FontPicker } from './FontPicker';
 
 const ANSI_LABELS = ['Black', 'Red', 'Green', 'Yellow', 'Blue', 'Magenta', 'Cyan', 'White',
@@ -56,6 +56,14 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
     const base = resolvePalette(s).map((c, i) => (GREYSCALE.has(i) ? c : nudge(c, toward, 0.12)));
     setS((x) => ({ ...x, palette: 'custom', customPalette: base }));
   };
+
+  // Custom colours (named text/background pairs for the trigger picker).
+  const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+  const setCustom = (i: number, patch: Partial<CustomColour>) =>
+    setS((x) => ({ ...x, customColours: x.customColours.map((c, j) => (j === i ? { ...c, ...patch } : c)) }));
+  const addCustom = () =>
+    setS((x) => ({ ...x, customColours: [...x.customColours, { id: uid(), name: `Colour ${x.customColours.length + 1}`, fg: '#e8a94b', bg: '' }] }));
+  const removeCustom = (i: number) => setS((x) => ({ ...x, customColours: x.customColours.filter((_, j) => j !== i) }));
 
   // Live preview; put the saved settings back if the dialog is cancelled.
   useEffect(() => { applySettings(normalizeSettings(s)); }, [s]);
@@ -167,6 +175,27 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
               <div className="settings-preview output-preview">
                 Lantern flickers; the long night settles over the harbour. <span style={{ color: 'var(--ansi-11)' }}>Juliet</span> says, "Mind the step."
               </div>
+
+              <h3>Custom colours</h3>
+              <p className="hint">Named colours (text and optional background) separate from the ANSI palette. They appear when you pick a colour for a trigger. Up to {MAX_CUSTOM_COLOURS}.</p>
+              <div className="customcol-list">
+                {s.customColours.map((c, i) => (
+                  <div key={c.id} className="customcol-edit">
+                    <span className="customcol-preview" style={{ color: c.fg, background: c.bg || 'transparent' }}>Abc</span>
+                    <input className="customcol-name" value={c.name} placeholder={`Colour ${i + 1}`}
+                      onChange={(e) => setCustom(i, { name: e.target.value })} />
+                    <label className="customcol-pick">Text<input type="color" value={/^#[0-9a-f]{6}$/i.test(c.fg) ? c.fg : '#e6dfd2'} onChange={(e) => setCustom(i, { fg: e.target.value })} /></label>
+                    <label className="customcol-pick">Bg
+                      <input type="color" value={/^#[0-9a-f]{6}$/i.test(c.bg) ? c.bg : '#000000'} onChange={(e) => setCustom(i, { bg: e.target.value })} />
+                    </label>
+                    <button type="button" className="icon-btn" title={c.bg ? 'Remove background' : 'No background'} onClick={() => setCustom(i, { bg: '' })}>{c.bg ? '⌫' : '—'}</button>
+                    <button type="button" className="icon-btn danger" title="Delete this colour" onClick={() => removeCustom(i)}>×</button>
+                  </div>
+                ))}
+              </div>
+              {s.customColours.length < MAX_CUSTOM_COLOURS && (
+                <button type="button" className="btn small" onClick={addCustom}>+ Add colour</button>
+              )}
             </>)}
 
             {tab === 'spelling' && (<>

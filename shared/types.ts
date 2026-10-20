@@ -21,7 +21,8 @@ export interface Trigger {
   ignoreCase: boolean;
   send: string;            // text to send; %0 whole match, %1..%9 captures; one command per line
   sendTo: SendTo;          // where `send` goes: the game, or the output pane as a note
-  highlight: string | null; // CSS colour ('#rrggbb' or a named colour) or '0'..'15' for the ANSI palette
+  highlight: string | null; // text colour: CSS colour ('#rrggbb' or a name) or '0'..'15' for the ANSI palette
+  highlightBg: string | null;  // optional background colour, same forms
   highlightLine: boolean;  // colour the whole line instead of just the matched text
   gag: boolean;            // omit the line from the output
   oneShot: boolean;        // disable itself after firing once
@@ -184,7 +185,7 @@ export function normalizeWorld(w: Partial<World> & Pick<World, 'id'>): World {
 export function normalizeTrigger(t: Partial<Trigger> & Pick<Trigger, 'id'>): Trigger {
   return {
     name: '', pattern: '', regex: false, enabled: true, group: '', ignoreCase: false,
-    send: '', sendTo: 'world', highlight: null, highlightLine: false, gag: false, oneShot: false,
+    send: '', sendTo: 'world', highlight: null, highlightBg: null, highlightLine: false, gag: false, oneShot: false,
     ...t,
   };
 }

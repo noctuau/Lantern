@@ -21,6 +21,7 @@ const TAB_LABELS: Record<Tab, string> = { triggers: 'Triggers', aliases: 'Aliase
 
 interface Props {
   world: World;
+  customColours?: CustomColour[];
   initialTab?: Tab;
   onSave(w: World): void;
   /** The script file changed on disk: start a fresh Lua state in every session on this world. */
@@ -29,10 +30,11 @@ interface Props {
 }
 
 import { ColourPicker, colourCss } from './ColourPicker';
+import type { CustomColour } from '../lib/settings';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 
-export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onClose }: Props) {
+export function AutomationPanel({ world, initialTab, customColours = [], onSave, onReloadScript, onClose }: Props) {
   const [w, setW] = useState<World>(() => JSON.parse(JSON.stringify(world)) as World);
   const [tab, setTab] = useState<Tab>(initialTab ?? 'triggers');
   const [sel, setSel] = useState<string | null>(initialTab && !isList(initialTab) ? null : (world.triggers[0]?.id ?? null));
@@ -219,7 +221,7 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
 
             <div className="auto-editor">
               {!selected && <div className="muted pad">Select an item on the left, or add a new one.</div>}
-              {selected && tab === 'triggers' && <TriggerEditor t={selected as Trigger} patch={patch} />}
+              {selected && tab === 'triggers' && <TriggerEditor t={selected as Trigger} patch={patch} customColours={customColours} />}
               {selected && tab === 'aliases' && <AliasEditor a={selected as Alias} patch={patch} />}
               {selected && tab === 'timers' && <TimerEditor t={selected as Timer} patch={patch} />}
 
@@ -299,7 +301,7 @@ function SendToSelect({ value, onChange }: { value: SendTo; onChange(v: SendTo):
   );
 }
 
-function TriggerEditor({ t, patch }: { t: Trigger; patch(p: Partial<Trigger>): void }) {
+function TriggerEditor({ t, patch, customColours }: { t: Trigger; patch(p: Partial<Trigger>): void; customColours: CustomColour[] }) {
   const err = patternError(t.pattern, t.regex);
   return (
     <div className="auto-form">
@@ -316,14 +318,30 @@ function TriggerEditor({ t, patch }: { t: Trigger; patch(p: Partial<Trigger>): v
         <Check label="Hide the line (gag)" checked={t.gag} onChange={(v) => patch({ gag: v })} />
         <Check label="Fire once, then disable" checked={t.oneShot} onChange={(v) => patch({ oneShot: v })} />
       </div>
+      {customColours.length > 0 && (
+        <Field label="Custom colours" hint="Your saved colours (Settings › Colours). Picking one sets the text and background below.">
+          <div className="customcol-row">
+            {customColours.map((c) => (
+              <button type="button" key={c.id} className="customcol" title={c.name}
+                style={{ color: c.fg, background: c.bg || 'transparent', borderColor: c.bg ? c.bg : c.fg }}
+                onClick={() => patch({ highlight: c.fg, highlightBg: c.bg || null })}>
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </Field>
+      )}
       <div className="row">
-        <Field label="Colour" grow>
+        <Field label="Text colour" grow>
           <ColourPicker value={t.highlight} onChange={(v) => patch({ highlight: v })} sample={t.highlight ? (t.regex ? 'Sample text' : t.pattern || 'Sample text') : undefined} />
         </Field>
-        {t.highlight && (
-          <Check label="Whole line" title="Otherwise only the matching text is coloured" checked={t.highlightLine} onChange={(v) => patch({ highlightLine: v })} />
-        )}
+        <Field label="Background" grow>
+          <ColourPicker value={t.highlightBg} onChange={(v) => patch({ highlightBg: v })} noneLabel="None" />
+        </Field>
       </div>
+      {(t.highlight || t.highlightBg) && (
+        <Check label="Colour the whole line" title="Otherwise only the matching text is coloured" checked={t.highlightLine} onChange={(v) => patch({ highlightLine: v })} />
+      )}
       <Field label="Send" hint="One command per line. %0 is the whole match, %1–%9 the captures. Leave empty for a colour-only trigger.">
         <textarea rows={3} value={t.send} onChange={(e) => patch({ send: e.target.value })} spellCheck={false} />
       </Field>

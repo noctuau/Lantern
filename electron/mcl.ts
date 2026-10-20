@@ -53,6 +53,13 @@ function highlightOf(a: Record<string, string>): string | null {
   return null;
 }
 
+/** MUSHclient background highlight: only the "other" custom colour carries an explicit background. */
+function bgOf(a: Record<string, string>): string | null {
+  if (Number(a.custom_colour ?? 0) !== 17) return null;
+  const c = a.other_back_colour;
+  return c && c.toLowerCase() !== 'black' ? c : null;
+}
+
 let seq = 0;
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(seq++).toString(36)}`;
 
@@ -86,6 +93,7 @@ export function importMclTriggers(xml: string): Trigger[] {
         send: '',
         sendTo: 'world',
         highlight: highlightOf(a),
+        highlightBg: bgOf(a),
         // MUSHclient recolours just the match for regex triggers and the whole line for wildcard ones.
         highlightLine: !regex,
         gag: yes(a.omit_from_output),

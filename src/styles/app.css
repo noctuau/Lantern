@@ -353,3 +353,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .settings-pane { flex: 1; min-width: 0; overflow-y: auto; padding: 16px 22px; display: flex; flex-direction: column; gap: 12px; scrollbar-color: var(--line) transparent; }
 .settings-pane h3:first-child { margin-top: 0; }
 .modal.settings .modal-actions { padding: 12px 22px; border-top: 1px solid var(--line); margin: 0; }
+
+/* ---------- custom colours ---------- */
+.customcol-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.customcol { border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-family: var(--font-mud); }
+.customcol:hover { filter: brightness(1.15); }
+.customcol-list { display: flex; flex-direction: column; gap: 6px; }
+.customcol-edit { display: flex; align-items: center; gap: 8px; }
+.customcol-preview { font-family: var(--font-mud); font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; min-width: 42px; text-align: center; }
+.customcol-name { flex: 1; min-width: 0; }
+.customcol-pick { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-muted); }
+.customcol-pick input[type="color"] { width: 30px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); cursor: pointer; }
+.icon-btn.danger:hover { color: var(--danger); }

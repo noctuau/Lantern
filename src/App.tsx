@@ -131,8 +131,8 @@ export function App() {
       logging: panel === 'world',
       log: { output: true, commands: true, notes: true, format: 'html', file: '{world}/%Y-%m-%d %H%M', worldNameHeader: true },
       triggers: [
-        { id: 'smoke-hl', name: 'Highlight game name', pattern: 'aardwolf', regex: true, enabled: true, group: 'demo', ignoreCase: true, send: '', sendTo: 'world', highlight: '11', highlightLine: false, gag: false, oneShot: false },
-        { id: 'smoke-note', name: 'Name prompt', pattern: 'thy name', regex: true, enabled: true, group: 'demo', ignoreCase: true, send: 'Trigger fired on "%0"', sendTo: 'output', highlight: null, highlightLine: false, gag: false, oneShot: true, script: 'on_name_prompt' },
+        { id: 'smoke-hl', name: 'Highlight game name', pattern: 'aardwolf', regex: true, enabled: true, group: 'demo', ignoreCase: true, send: '', sendTo: 'world', highlight: '11', highlightBg: null, highlightLine: false, gag: false, oneShot: false },
+        { id: 'smoke-note', name: 'Name prompt', pattern: 'thy name', regex: true, enabled: true, group: 'demo', ignoreCase: true, send: 'Trigger fired on "%0"', sendTo: 'output', highlight: null, highlightBg: null, highlightLine: false, gag: false, oneShot: true, script: 'on_name_prompt' },
       ],
       aliases: [
         { id: 'smoke-alias', name: 'look shortcut', pattern: 'l', regex: false, enabled: true, group: '', ignoreCase: true, send: 'look %1', sendTo: 'world' },
@@ -328,6 +328,7 @@ export function App() {
         <AutomationPanel
           world={automating}
           initialTab={panelTab}
+          customColours={settings.customColours}
           onSave={async (w) => { await saveWorld(w); setAutomating(null); }}
           onReloadScript={() => store.reloadLua(automating.id)}
           onClose={() => { setAutomating(null); setPanelTab(undefined); }}
