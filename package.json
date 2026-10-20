@@ -2,6 +2,7 @@
   "name": "lantern",
   "productName": "Lantern",
   "version": "0.3.0",
+  "license": "MIT",
   "description": "A modern MUD/MUSH client — a fresh take on MUSHclient",
   "main": "dist-electron/main.js",
   "private": true,

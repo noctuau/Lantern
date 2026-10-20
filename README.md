@@ -2,11 +2,23 @@
 
 <!-- sidebar: the ‹ / 🏮 toggle cycles full → icon rail → hidden; the state is remembered. -->
 
-A modern MUD/MUSH client: a fresh take on MUSHclient, built for roleplay games.
+A modern MUD/MUSH client: a fresh take on MUSHclient, built for roleplay games. Lantern is a free, open-source desktop client for Windows, with ANSI and xterm-256 colour, triggers, aliases, timers, Lua scripting, channel tabs for keeping chatter off the roleplay screen, and MUSHclient import so you can bring your existing setup across.
 
-## Run it
+## Install
+
+Download the latest release from the [Releases page](../../releases) and pick one:
+
+- **`Lantern-<version>-x64.exe`** — the installer. Run it, and later versions install over the top; your worlds and settings are kept.
+- **`Lantern-<version>-portable.exe`** — a single file that runs without installing.
+
+Lantern is not code-signed, so Windows SmartScreen shows an "unknown publisher" warning on first run. Choose **More info › Run anyway**. Your worlds, scripts and logs live in `%APPDATA%\Lantern\`, separate from the program, so they survive reinstalls and uninstalls.
+
+## Build and run from source
+
+Requires [Node.js](https://nodejs.org/). Then:
 
 ```bash
+npm install
 npm start
 ```
 
@@ -17,6 +29,14 @@ For live-reload development:
 ```bash
 npm run dev
 ```
+
+To produce the installer and portable `.exe` yourself:
+
+```bash
+npm run dist
+```
+
+The artifacts land in `release/`.
 
 ## Where things live
 
@@ -65,3 +85,13 @@ The API is a familiar subset of MUSHclient's, available as globals and again as 
 - About the world: `GetInfo(1)` host, `GetInfo(2)` or `WorldName()` name, `GetInfo(4)` port, `GetInfo(106)` or `IsConnected()` connected; `utils.timer()` seconds since the state started; Lua's own `os.time`, `os.date`, `string`, `table` and `math` libraries.
 
 See `ROADMAP.md` for what comes next.
+
+## Credits
+
+Lantern is an independent client inspired by [MUSHclient](https://www.gammon.com.au/mushclient) by Nick Gammon, long the standard for MUD/MUSH roleplay. It is a clean reimplementation in TypeScript on Electron, not a fork: it shares none of MUSHclient's source code. For familiarity, its Lua API mirrors a subset of MUSHclient's function names and its `.MCL`/`.mct`/`.mca`/`.mcm` importers read MUSHclient's own export files, so you can carry your triggers, aliases and timers across. MUSHclient and its name belong to Nick Gammon; Lantern is not affiliated with or endorsed by him.
+
+Built with [Electron](https://www.electronjs.org/), [React](https://react.dev/), [Vite](https://vite.dev/) and [wasmoon](https://github.com/ceifa/wasmoon) (Lua 5.4 in WebAssembly).
+
+## License
+
+[MIT](LICENSE) © 2026 Noctua. Free to use, modify and share; provided as-is, with no warranty.
