@@ -8,7 +8,7 @@ const PALETTE = ['#3a3631', '#d9674f', '#86b867', '#e0b24a', '#6f9fd8', '#c58ad0
 export const LOG_HTML_HEAD = [
   '<!doctype html><html><head><meta charset="utf-8"><title>Lantern log</title><style>',
   'body{background:#14120f;color:#e6dfd2;font-family:"Cascadia Mono",Consolas,monospace;font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;padding:16px 24px}',
-  '.cmd{color:#e8a94b}.note{color:#8f8778;font-style:italic}.hdr{color:#8f8778;margin:1em 0 .5em;border-top:1px solid #2f2b24;padding-top:.5em}',
+  '.cmd{color:#e8a94b}.note{color:#8f8778;font-style:italic}.hdr{color:#8f8778;margin:1em 0 .5em;border-top:1px solid #2f2b24;padding-top:.5em}.hdr.reconnect{border-top:0;opacity:.6;font-size:.85em;margin:.4em 0}',
   PALETTE.map((c, i) => `.f${i}{color:${c}}.g${i}{background:${c}}`).join(''),
   '</style></head><body>',
 ].join('');

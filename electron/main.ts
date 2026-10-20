@@ -142,8 +142,15 @@ function openLog(world: World): fs.WriteStream | null {
     const stream = fs.createWriteStream(file, { flags: 'a' });
     if (html && fresh) stream.write(LOG_HTML_HEAD + '\n');
     if (world.log.worldNameHeader) {
-      const header = `${world.name} — ${new Date().toLocaleString()}`;
-      stream.write(html ? `<p class="hdr">${header.replace(/</g, '&lt;')}</p>\n` : `\n===== ${header} =====\n`);
+      // One clean log per day: a full header the first time the day's file is opened, then a slim
+      // "reconnected" marker on later connections that append to the same file.
+      if (fresh) {
+        const header = `${world.name} — ${new Date().toLocaleString()}`;
+        stream.write(html ? `<p class="hdr">${header.replace(/</g, '&lt;')}</p>\n` : `\n===== ${header} =====\n`);
+      } else {
+        const mark = `reconnected ${new Date().toLocaleTimeString()}`;
+        stream.write(html ? `<p class="hdr reconnect">— ${mark} —</p>\n` : `\n--- ${mark} ---\n`);
+      }
     }
     return stream;
   } catch (e) {
