@@ -241,9 +241,9 @@ export function App() {
             );
           })}
           {s.order.length === 0 && <div className="tab-hint">Pick a world on the left to connect.</div>}
+          <span className="spacer" />
           {active && (
             <>
-              <span className="spacer" />
               <button className="btn small ghost" title="Highlight a word or phrase (Ctrl+Alt+H). Select text in the output first to pre-fill it." onClick={openHighlight}>
                 ✎ Highlight
               </button>
@@ -252,6 +252,7 @@ export function App() {
               </button>
             </>
           )}
+          <button className="btn small ghost" title="Settings" onClick={openSettings}>⚙ Settings</button>
         </div>
 
         {active ? (
