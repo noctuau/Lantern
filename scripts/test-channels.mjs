@@ -21,8 +21,8 @@ const tab = (name, patterns, extra = {}) => ({ id: uid(), name, enabled: true, k
 /* ---------- the Haven preset ---------- */
 const haven = C.havenChannelTab(uid);
 assert.equal(haven.name, C.HAVEN_TAB_NAME);
-assert.equal(haven.patterns.length, 7);
-assert.equal(new Set(haven.patterns.map((p) => p.id)).size, 7, 'every pattern gets its own id');
+assert.equal(haven.patterns.length, 6);
+assert.equal(new Set(haven.patterns.map((p) => p.id)).size, 6, 'every pattern gets its own id');
 assert.equal(haven.keepInMain, false); assert.equal(haven.notify, 'badge');
 assert.equal(haven.commandPrefix, '', 'the preset carries no command prefix (the old setup had none to copy)'); ok();
 assert.equal(C.hasHavenPreset([haven]), true);
@@ -184,5 +184,17 @@ assert.equal(C.routeLine(w.channelTabs, 'Y not').action, 'silence'); ok();
   assert.equal(C.commandCaptureTab([{ ...help, captureCommands: '(' }], 'help'), null, 'bad regex ignored');
   assert.ok(C.hasHelpPreset(tabs) && !C.hasHelpPreset([tabs[0]]));
   n += 7;
+}
+// OOCly tells captured both directions by the single preset pattern
+{
+  const tab = C.havenChannelTab(uid);
+  const line1 = "Mirudus tells you OOCly 'I get it.'";
+  const line2 = "You tell Mirudus OOCly 'Agree.'";
+  const r1 = C.routeLine([tab], line1);
+  const r2 = C.routeLine([tab], line2);
+  assert.equal(r1.action, 'capture', 'incoming OOCly tell captured');
+  assert.equal(r2.action, 'capture', 'outgoing OOCly tell captured');
+  assert.equal(C.routeLine([tab], 'She walks away OOCly unbothered.').action, 'main', 'a bare "OOCly" in prose is not captured');
+  n += 3;
 }
 console.log(`test-channels: ${n} checks passed`);

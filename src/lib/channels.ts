@@ -150,9 +150,8 @@ export const HAVEN_CHANNEL_PATTERNS: Omit<ChannelPattern, 'id'>[] = [
   { pattern: '^\\[Guide\\] ', ignoreCase: false, mode: 'capture' },
   { pattern: '^\\[Newbie\\] ', ignoreCase: false, mode: 'capture' },
   { pattern: '^\\[HeyThere\\] ', ignoreCase: false, mode: 'capture' },
-  // OOCly tells, both directions: "<name> tells you OOCly, '…'" and "You tell <name> OOCly, '…'".
-  { pattern: 'tells you OOCly', ignoreCase: false, mode: 'capture' },
-  { pattern: '^You tell .+ OOCly', ignoreCase: false, mode: 'capture' },
+  // OOCly tells, both directions: "<name> tells you OOCly '…'" and "You tell <name> OOCly '…'".
+  { pattern: '(tells you OOCly|You tell .+ OOCly)', ignoreCase: false, mode: 'capture' },
   { pattern: '^\\[AFK\\]\\s*$', ignoreCase: false, mode: 'silence' },
 ];
 
