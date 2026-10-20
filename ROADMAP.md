@@ -36,6 +36,15 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - Unit test `scripts/test-lua.mjs` (wasmoon under Node)
 - Not done: `SetTriggerOption`/`GetTriggerInfo` and friends, `expand_variables`, send-to-variable, sounds; a `/lua` command line in the input box; the smoke profile still persists between runs
 
+## Channel tabs (done 2026-10-20)
+
+- Capture panes per world (`World.channelTabs`): regex patterns in tab order, `capture` moves a line to the tab (or copies it with keep-in-main), `silence` drops it everywhere; triggers run first and a gagged line never reaches a tab. Spec and as-built notes in `docs/channel-tabs.md`
+- Sub-tab strip under the session tabs (`Main` + one per enabled tab) with unread dot and count, hover peek of the last three lines, per-pane scrollback (5,000 lines), scroll-lock and timestamps; the input bar always talks to the game
+- Channels editor in the Automation panel with a Try-it box, and a one-click "Add Haven channel tabs" preset (`[OOC]`, `[Guide]`, `[Newbie]`, `[HeyThere]` captured, bare `[AFK]` silenced)
+- Daily logs now written line by line from the renderer, captured lines prefixed `[tab name]`
+- Unit test `scripts/test-channels.mjs`; `LANTERN_SMOKE_VIEW` / `LANTERN_SMOKE_PANEL=channels` for screenshots
+- Not done: per-tab command prefix (type in the OOC tab and have `ooc ` prepended)
+
 ## Stage 4 — Plugins
 
 - Plugin = folder with `plugin.json` + `main.lua` (plus a shim that loads the common MUSHclient XML plugin shape)

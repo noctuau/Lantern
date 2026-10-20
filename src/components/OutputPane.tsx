@@ -1,11 +1,12 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { spanStyle } from '../lib/ansi';
-import type { Line, SessionState } from '../lib/store';
+import type { Line } from '../lib/store';
 import type { Span } from '../lib/ansi';
 
 const URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
+const NONE: Span[] = [];
 
-function renderSpan(sp: Span, key: number) {
+export function renderSpan(sp: Span, key: number) {
   const style = spanStyle(sp.style);
   if (!URL_RE.test(sp.text)) return <span key={key} style={style}>{sp.text}</span>;
   URL_RE.lastIndex = 0;
@@ -21,19 +22,41 @@ function renderSpan(sp: Span, key: number) {
   );
 }
 
-const LineView = memo(function LineView({ line }: { line: Line }) {
+/** HH:MM for a line's timestamp (channel chat is read later, so when matters). */
+export function fmtTime(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+export const LineView = memo(function LineView({ line, showTime }: { line: Line; showTime?: boolean }) {
   return (
     <div className={`line kind-${line.kind} ${line.prompt ? 'prompt' : ''}`} data-ts={line.ts}>
-      {line.spans.length === 0 ? ' ' : line.spans.map(renderSpan)}
+      {showTime && <span className="ts" title={new Date(line.ts).toLocaleString()}>{fmtTime(line.ts)}</span>}
+      {line.spans.length === 0 ? ' ' : line.spans.map(renderSpan)}
     </div>
   );
 });
 
-export function OutputPane({ session }: { session: SessionState }) {
+interface Props {
+  lines: Line[];
+  /** The unfinished line (the prompt). Only the main pane has one. */
+  partial?: Span[];
+  /** Prefix each line with its time (channel tabs). */
+  timestamps?: boolean;
+  /** Hidden panes stay mounted so each keeps its own scroll position and scroll-lock. */
+  visible?: boolean;
+  emptyHint?: string;
+}
+
+/**
+ * One scrollback: the main output or a channel tab. Scroll-lock ("pinned" to the bottom), the
+ * missed-line count and the jump button belong to this pane alone.
+ */
+export function OutputPane({ lines, partial = NONE, timestamps = false, visible = true, emptyHint }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
   const [missed, setMissed] = useState(0);
-  const lastCount = useRef(session.lines.length);
+  const lastCount = useRef(lines.length);
 
   // Track whether the user has scrolled away from the bottom.
   const onScroll = () => {
@@ -44,24 +67,31 @@ export function OutputPane({ session }: { session: SessionState }) {
 
   useLayoutEffect(() => {
     const el = ref.current; if (!el) return;
-    if (pinned) el.scrollTop = el.scrollHeight;
+    if (pinned) { if (visible) el.scrollTop = el.scrollHeight; }
     else {
-      const added = session.lines.length - lastCount.current;
+      const added = lines.length - lastCount.current;
       if (added > 0) setMissed((m) => m + added);
     }
-    lastCount.current = session.lines.length;
+    lastCount.current = lines.length;
   });
 
-  useEffect(() => { ref.current?.focus(); }, []);
+  // Coming back into view: a pinned pane (display:none has no height) snaps to its latest line.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (visible && el) { if (pinned) el.scrollTop = el.scrollHeight; el.focus(); }
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { if (visible) ref.current?.focus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const jump = () => { const el = ref.current; if (el) { el.scrollTop = el.scrollHeight; setPinned(true); setMissed(0); } };
 
   return (
-    <div className="output-wrap">
+    <div className={`output-wrap ${visible ? '' : 'hidden'}`}>
       <div className="output" ref={ref} onScroll={onScroll} tabIndex={-1}>
-        {session.lines.map((l) => <LineView key={l.id} line={l} />)}
-        {session.partial.length > 0 && (
-          <div className="line kind-mud partial">{session.partial.map(renderSpan)}</div>
+        {lines.length === 0 && emptyHint && <div className="line output-empty">{emptyHint}</div>}
+        {lines.map((l) => <LineView key={l.id} line={l} showTime={timestamps} />)}
+        {partial.length > 0 && (
+          <div className="line kind-mud partial">{partial.map(renderSpan)}</div>
         )}
       </div>
       {!pinned && (

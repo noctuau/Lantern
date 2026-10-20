@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { store, useStore, type World } from './lib/store';
+import { store, useStore, MAIN_VIEW, type World } from './lib/store';
 import { Sidebar } from './components/Sidebar';
 import { OutputPane } from './components/OutputPane';
+import { ChannelStrip } from './components/ChannelStrip';
 import { InputBar } from './components/InputBar';
 import { WorldEditor } from './components/WorldEditor';
-import { AutomationPanel } from './components/AutomationPanel';
+import { AutomationPanel, type PanelTab } from './components/AutomationPanel';
 import { StatusBar } from './components/StatusBar';
+
+const NO_LINES: never[] = [];
 
 export function App() {
   const s = useStore();
   const [worlds, setWorlds] = useState<World[]>([]);
   const [editing, setEditing] = useState<World | null>(null);
   const [automating, setAutomating] = useState<World | null>(null);
-  const [panelTab, setPanelTab] = useState<'script' | undefined>(undefined);
+  const [panelTab, setPanelTab] = useState<PanelTab | undefined>(undefined);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const worldsRef = useRef<World[]>([]);
   worldsRef.current = worlds;
@@ -36,6 +39,7 @@ export function App() {
       send: (id, text) => { window.lantern.session.send(id, text); },
       worldChanged: (w) => { saveWorld(w); },
       loadScript: (worldId) => window.lantern.scripts.read(worldId),
+      log: (id, text) => { window.lantern.session.log(id, text); },
     };
     const offs = [
       window.lantern.session.onText((id, text) => store.text(id, text)),
@@ -55,9 +59,9 @@ export function App() {
     store.add(id, world);
   };
 
-  // Dev smoke test hook (see electron/main.ts). The throwaway world carries a demo trigger, alias and
-  // Lua script so the screenshot shows the automation and scripting paths end to end.
-  useEffect(() => window.lantern.app.onSmoke(async ({ host, port, panel }) => {
+  // Dev smoke test hook (see electron/main.ts). The throwaway world carries a demo trigger, alias,
+  // Lua script and channel tab so the screenshot shows automation, scripting and capture end to end.
+  useEffect(() => window.lantern.app.onSmoke(async ({ host, port, panel, view }) => {
     const w = await window.lantern.worlds.create({
       name: `Smoke ${host}`, host, port, logging: false,
       triggers: [
@@ -67,6 +71,15 @@ export function App() {
       aliases: [
         { id: 'smoke-alias', name: 'look shortcut', pattern: 'l', regex: false, enabled: true, group: '', ignoreCase: true, send: 'look %1', sendTo: 'world' },
       ],
+      // The Haven starter patterns plus one that copies the login banner, so a login screen lights the badge.
+      channelTabs: [{
+        id: 'smoke-ooc', name: 'OOC', enabled: true, keepInMain: true, notify: 'badge',
+        patterns: [
+          { id: 'smoke-p1', pattern: '^\\[OOC\\] ', ignoreCase: false, mode: 'capture' },
+          { id: 'smoke-p2', pattern: '^\\[AFK\\]\\s*$', ignoreCase: false, mode: 'silence' },
+          { id: 'smoke-p3', pattern: 'aardwolf|thy name', ignoreCase: true, mode: 'capture' },
+        ],
+      }],
     });
     await window.lantern.scripts.write(w.id, [
       '-- smoke-test script',
@@ -76,8 +89,16 @@ export function App() {
       'end',
     ].join('\n'));
     await connect(w);
-    if (panel) { setPanelTab(panel === 'script' ? 'script' : undefined); setAutomating(w); }
+    if (panel) { setPanelTab(panel === 'script' ? 'script' : panel === 'channels' ? 'channels' : undefined); setAutomating(w); }
     setTimeout(() => sendCommandRef.current('look'), 3000);
+    if (view) {
+      // LANTERN_SMOKE_VIEW=<tab name> screenshots that channel tab instead of Main.
+      setTimeout(() => {
+        const sess = store.active();
+        const tab = sess?.world.channelTabs.find((t) => t.name.toLowerCase() === view.toLowerCase());
+        if (sess && tab) store.setView(sess.id, tab.id);
+      }, 4000);
+    }
   }), []);
   const sendCommandRef = useRef<(t: string) => void>(() => {});
 
@@ -107,7 +128,7 @@ export function App() {
   };
 
   /** Open the automation panel on the latest saved copy of a world. */
-  const openAutomation = (w: World) => setAutomating(worlds.find((x) => x.id === w.id) ?? w);
+  const openAutomation = (w: World, tab?: PanelTab) => { setPanelTab(tab); setAutomating(worlds.find((x) => x.id === w.id) ?? w); };
 
   return (
     <div className={`app ${sidebarOpen ? '' : 'sidebar-closed'}`}>
@@ -117,7 +138,7 @@ export function App() {
         onToggle={() => setSidebarOpen((o) => !o)}
         onConnect={connect}
         onEdit={setEditing}
-        onAutomation={openAutomation}
+        onAutomation={(w) => openAutomation(w)}
         onNew={async () => setEditing(await window.lantern.worlds.create())}
         onImport={async () => { await window.lantern.worlds.importMcl(); refreshWorlds(); }}
       />
@@ -145,7 +166,7 @@ export function App() {
           {active && (
             <>
               <span className="spacer" />
-              <button className="btn small ghost" title="Triggers, aliases and timers for this world" onClick={() => openAutomation(active.world)}>
+              <button className="btn small ghost" title="Triggers, aliases, timers and channel tabs for this world" onClick={() => openAutomation(active.world)}>
                 ⚡ Automation
               </button>
             </>
@@ -154,7 +175,17 @@ export function App() {
 
         {active ? (
           <>
-            <OutputPane key={active.id} session={active} />
+            <ChannelStrip key={`strip-${active.id}`} session={active} onEdit={() => openAutomation(active.world, 'channels')} />
+            <OutputPane key={`out-${active.id}`} lines={active.lines} partial={active.partial} visible={active.view === MAIN_VIEW} />
+            {active.world.channelTabs.filter((t) => t.enabled).map((t) => (
+              <OutputPane
+                key={`out-${active.id}-${t.id}`}
+                lines={active.channels[t.id]?.lines ?? NO_LINES}
+                timestamps
+                visible={active.view === t.id}
+                emptyHint={`Nothing captured for ${t.name || 'this tab'} yet. Lines matching its patterns will show here with the time they arrived.`}
+              />
+            ))}
             <InputBar
               key={`in-${active.id}`}
               session={active}

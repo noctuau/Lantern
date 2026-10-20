@@ -60,6 +60,33 @@ export interface Timer {
   temporary?: boolean;
 }
 
+/**
+ * A channel tab: a capture pane beside the main output. Every finished line is
+ * tested against each tab's patterns (tabs in order, patterns in order, after
+ * triggers); the first match decides where the line goes. See docs/channel-tabs.md.
+ */
+export interface ChannelTab {
+  id: string;
+  name: string;              // shown on the sub-tab
+  enabled: boolean;
+  patterns: ChannelPattern[];
+  keepInMain: boolean;       // false (default) = lines move to the tab; true = copy, main keeps them
+  notify: ChannelNotify;
+}
+
+export type ChannelNotify = 'badge' | 'badge+sound' | 'silent';
+
+export interface ChannelPattern {
+  id: string;
+  pattern: string;           // JS regex source
+  ignoreCase: boolean;
+  mode: ChannelMode;
+  // capture  = line goes to the tab (and is removed from main unless keepInMain)
+  // silence  = line is dropped from main AND not shown in the tab (noise like a bare "[AFK]" line)
+}
+
+export type ChannelMode = 'capture' | 'silence';
+
 export interface World {
   id: string;
   name: string;
@@ -75,6 +102,7 @@ export interface World {
   triggers: Trigger[];
   aliases: Alias[];
   timers: Timer[];
+  channelTabs: ChannelTab[];
 
   /** Script variables (Lua GetVariable/SetVariable), persisted with the world. */
   variables: Record<string, string>;
@@ -103,6 +131,7 @@ export function normalizeWorld(w: Partial<World> & Pick<World, 'id'>): World {
     triggers: (w.triggers ?? []).map(normalizeTrigger),
     aliases: (w.aliases ?? []).map(normalizeAlias),
     timers: (w.timers ?? []).map(normalizeTimer),
+    channelTabs: (w.channelTabs ?? []).map(normalizeChannelTab),
     variables: { ...(w.variables ?? {}) },
     commandStacking: w.commandStacking ?? false,
     commandStackChar: w.commandStackChar || DEFAULT_STACK_CHAR,
@@ -131,5 +160,23 @@ export function normalizeTimer(t: Partial<Timer> & Pick<Timer, 'id'>): Timer {
   return {
     name: '', enabled: true, group: '', everySeconds: 300, at: null, send: '', sendTo: 'world', oneShot: false,
     ...t,
+  };
+}
+
+export function normalizeChannelTab(c: Partial<ChannelTab> & Pick<ChannelTab, 'id'>): ChannelTab {
+  const notify: ChannelNotify = c.notify === 'badge+sound' || c.notify === 'silent' ? c.notify : 'badge';
+  return {
+    name: 'Channel', enabled: true, keepInMain: false,
+    ...c,
+    notify,
+    patterns: (c.patterns ?? []).map(normalizeChannelPattern),
+  };
+}
+
+export function normalizeChannelPattern(p: Partial<ChannelPattern> & Pick<ChannelPattern, 'id'>): ChannelPattern {
+  return {
+    pattern: '', ignoreCase: false,
+    ...p,
+    mode: p.mode === 'silence' ? 'silence' : 'capture',
   };
 }

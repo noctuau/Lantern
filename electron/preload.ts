@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('lantern', {
     send: (sessionId: string, text: string) => ipcRenderer.invoke('session:send', sessionId, text),
     resize: (sessionId: string, width: number, height: number) =>
       ipcRenderer.invoke('session:resize', sessionId, width, height),
+    log: (sessionId: string, text: string) => ipcRenderer.send('session:log', sessionId, text),
     onText: on('session:text'),
     onStatus: on('session:status'),
     onPrompt: on('session:prompt'),

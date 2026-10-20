@@ -10,20 +10,23 @@ interface Session {
   world: World;
   telnet: TelnetSession;
   log: fs.WriteStream | null;
-  logLineBuf: string;
 }
 
-// Smoke runs use a throwaway profile so they never touch the real world list or logs.
+// Smoke runs use a throwaway profile so they never touch the real world list or logs. Each run gets
+// its own folder (by pid): a previous run's GPU or crash-handler child can still hold files open for a
+// moment, and a failed delete here would stop the window ever opening. Old folders are swept best-effort.
 if (process.env.LANTERN_SMOKE) {
-  const smokeDir = path.join(app.getPath('temp'), 'lantern-smoke');
-  fs.rmSync(smokeDir, { recursive: true, force: true });
-  app.setPath('userData', smokeDir);
+  const smokeRoot = path.join(app.getPath('temp'), 'lantern-smoke');
+  try {
+    for (const old of fs.existsSync(smokeRoot) ? fs.readdirSync(smokeRoot) : []) {
+      try { fs.rmSync(path.join(smokeRoot, old), { recursive: true, force: true, maxRetries: 2, retryDelay: 100 }); } catch { /* still in use: leave it */ }
+    }
+  } catch { /* nothing to sweep */ }
+  app.setPath('userData', path.join(smokeRoot, String(process.pid)));
 }
 
 const sessions = new Map<string, Session>();
 let win: BrowserWindow | null = null;
-
-const ANSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
 
 function createWindow() {
   win = new BrowserWindow({
@@ -62,7 +65,7 @@ function createWindow() {
   if (smoke) {
     const [host, port, out] = smoke.split('|');
     win.webContents.on('did-finish-load', () => {
-      setTimeout(() => send('smoke:run', { host, port: Number(port), panel: process.env.LANTERN_SMOKE_PANEL }), 500);
+      setTimeout(() => send('smoke:run', { host, port: Number(port), panel: process.env.LANTERN_SMOKE_PANEL, view: process.env.LANTERN_SMOKE_VIEW }), 500);
       setTimeout(async () => {
         const img = await win!.webContents.capturePage();
         fs.writeFileSync(out, img.toPNG());
@@ -94,15 +97,13 @@ function openLog(world: World): fs.WriteStream | null {
   return stream;
 }
 
-function logText(s: Session, text: string) {
+/**
+ * The renderer logs line by line (store.ts) once it knows what each finished line is: game text,
+ * a typed command, a gagged line, or a line captured by a channel tab (prefixed with the tab name).
+ */
+function logLine(s: Session, text: string) {
   if (!s.log) return;
-  // Buffer up to the last newline so escape sequences split across chunks are stripped cleanly.
-  s.logLineBuf += text;
-  const nl = s.logLineBuf.lastIndexOf('\n');
-  if (nl === -1) return;
-  const complete = s.logLineBuf.slice(0, nl + 1);
-  s.logLineBuf = s.logLineBuf.slice(nl + 1);
-  s.log.write(complete.replace(ANSI_RE, '').replace(/\r/g, ''));
+  s.log.write(String(text).replace(/\r/g, '') + '\n');
 }
 
 /* ---------- IPC: worlds ---------- */
@@ -148,10 +149,10 @@ ipcMain.handle('session:connect', (_e, worldId: string, size: { width: number; h
     width: size?.width ?? 100,
     height: size?.height ?? 40,
   });
-  const s: Session = { id, world, telnet, log: openLog(world), logLineBuf: '' };
+  const s: Session = { id, world, telnet, log: openLog(world) };
   sessions.set(id, s);
 
-  telnet.on('text', (text: string) => { send('session:text', id, text); logText(s, text); });
+  telnet.on('text', (text: string) => send('session:text', id, text));
   telnet.on('prompt', () => send('session:prompt', id));
   telnet.on('echo', (on: boolean) => send('session:echo', id, on));
   telnet.on('gmcp', (pkg: string, data: unknown) => send('session:gmcp', id, pkg, data));
@@ -162,7 +163,9 @@ ipcMain.handle('session:connect', (_e, worldId: string, size: { width: number; h
       for (const line of world.autoConnect.split(/\r?\n/)) if (line.trim()) telnet.sendLine(line);
     }
     if (status === 'disconnected' || status === 'error') {
-      if (s.log) { logText(s, '\n'); s.log.end(); s.log = null; }
+      // Give the renderer a moment to log the last lines it is still committing.
+      const log = s.log; s.log = null;
+      if (log) setTimeout(() => { log.write('\n'); log.end(); }, 500);
     }
   });
   telnet.connect();
@@ -173,8 +176,12 @@ ipcMain.handle('session:send', (_e, id: string, text: string) => {
   const s = sessions.get(id);
   if (!s) return false;
   s.telnet.sendLine(text);
-  if (!s.telnet.serverEcho) logText(s, `> ${text}\n`);
   return true;
+});
+
+ipcMain.on('session:log', (_e, id: string, text: string) => {
+  const s = sessions.get(id);
+  if (s) logLine(s, text);
 });
 
 ipcMain.handle('session:disconnect', (_e, id: string) => {

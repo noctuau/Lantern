@@ -7,13 +7,18 @@
  * state (src/lib/lua.ts) that is created when the session is added, loaded
  * from the world's script file, and closed when the session is removed; the
  * store is the script's host (Send, Note, variables, AddTrigger, EnableGroup...).
+ * Channel tabs (src/lib/channels.ts) are routed here too: after triggers, each
+ * finished line is tested against the world's channel patterns and lands in the
+ * main pane, a tab's own scrollback, both, or nowhere. The daily log is written
+ * from here as well, line by line, so captured lines can carry their tab name.
  * Anything that has to leave the renderer (sending text, persisting a changed
- * world, reading the script file) goes through `hooks`, which App wires up.
+ * world, reading the script file, logging) goes through `hooks`, which App wires up.
  */
 import { useSyncExternalStore } from 'react';
 import { AnsiParser, type Span } from './ansi';
-import type { World, SendTo, Timer } from '../../shared/types';
-import { runTriggers, applyHighlights, splitSend, expandCommand, TimerScheduler, type Outgoing, type Match } from './automation';
+import type { World, SendTo, Timer, ChannelTab } from '../../shared/types';
+import { applyHighlights, splitSend, expandCommand, TimerScheduler, type Outgoing, type Match } from './automation';
+import { classifyLine, logPrefix, type Route } from './channels';
 import { LuaSession, type LuaHost, type NoteSpan, type Scripted, type ScriptKind } from './lua';
 import { getLuaFactory } from './lua-wasm';
 
@@ -21,6 +26,12 @@ export type { World } from '../../shared/types';
 
 export type LineKind = 'mud' | 'input' | 'note' | 'error';
 export interface Line { id: number; kind: LineKind; spans: Span[]; ts: number; prompt?: boolean }
+
+/** A channel tab's own scrollback. Scroll position and lock live in its OutputPane. */
+export interface ChannelView { lines: Line[]; unread: number }
+
+/** Which pane a session is showing: the main output or one channel tab (by id). */
+export const MAIN_VIEW = 'main';
 
 export interface SessionState {
   id: string;
@@ -32,6 +43,9 @@ export interface SessionState {
   echo: boolean;         // false while the server is masking input (password)
   history: string[];
   unread: number;
+  view: string;          // MAIN_VIEW or a channel tab id
+  channels: Record<string, ChannelView>;   // channel tab id → its lines
+  mainUnread: number;    // game lines that reached the main pane while a channel tab was showing
   connectedAt?: number;
   gmcp: Record<string, unknown>;
   automation: boolean;   // master switch for triggers/timers on this session
@@ -49,16 +63,20 @@ export interface StoreHooks {
   worldChanged(world: World): void;
   /** The text of the world's Lua script file ('' when there is none). */
   loadScript(worldId: string): Promise<string>;
+  /** One finished line for the world's daily log (plain text, no newline). */
+  log(sessionId: string, text: string): void;
 }
 
 const MAX_LINES = 10_000;
+const MAX_CHANNEL_LINES = 5_000;
 const MAX_SCRIPT_DEPTH = 8;
+const PING_GAP_MS = 2000;
 
 class Store {
   sessions = new Map<string, SessionState>();
   order: string[] = [];
   activeId: string | null = null;
-  hooks: StoreHooks = { send() {}, worldChanged() {}, loadScript: async () => '' };
+  hooks: StoreHooks = { send() {}, worldChanged() {}, loadScript: async () => '', log() {} };
   private parsers = new Map<string, AnsiParser>();
   private timers = new Map<string, TimerScheduler>();
   private varSaves = new Map<string, ReturnType<typeof setTimeout>>();
@@ -66,6 +84,8 @@ class Store {
   private lineId = 1;
   private snapshot = 0;
   private flushTimer: number | null = null;
+  private lastPing = 0;
+  private audio: AudioContext | null = null;
 
   subscribe = (cb: () => void) => { this.listeners.add(cb); return () => { this.listeners.delete(cb); }; };
   getSnapshot = () => this.snapshot;
@@ -83,6 +103,7 @@ class Store {
   add(id: string, world: World) {
     const s: SessionState = {
       id, world, status: 'connecting', lines: [], partial: [], echo: true, history: [], unread: 0, gmcp: {},
+      view: MAIN_VIEW, channels: {}, mainUnread: 0,
       automation: true, fired: 0, lua: null, luaStatus: 'starting', luaGen: 0, scriptDepth: 0,
     };
     this.sessions.set(id, s);
@@ -109,9 +130,26 @@ class Store {
   setActive(id: string) {
     this.activeId = id;
     const s = this.sessions.get(id);
-    if (s) s.unread = 0;
+    if (s) { s.unread = 0; this.markViewed(s); }
     this.notify();
   }
+
+  /** Show the main pane (MAIN_VIEW) or one channel tab. The input bar is unaffected: it always talks to the game. */
+  setView(id: string, view: string) {
+    const s = this.sessions.get(id); if (!s) return;
+    if (view !== MAIN_VIEW && !s.world.channelTabs.some((t) => t.id === view && t.enabled)) view = MAIN_VIEW;
+    s.view = view;
+    this.markViewed(s);
+    this.notify();
+  }
+
+  private markViewed(s: SessionState) {
+    if (s.view === MAIN_VIEW) s.mainUnread = 0;
+    else { const v = s.channels[s.view]; if (v) v.unread = 0; }
+  }
+
+  /** The channel tab's scrollback (empty until something lands there). */
+  channel(id: string, tabId: string): ChannelView | undefined { return this.sessions.get(id)?.channels[tabId]; }
 
   get(id: string) { return this.sessions.get(id); }
   active() { return this.activeId ? this.sessions.get(this.activeId) : undefined; }
@@ -155,6 +193,9 @@ class Store {
         timers: keepTemp(world.timers, s.world.timers),
       };
       s.world = applied;
+      // A tab that was deleted or disabled takes its pane with it; its lines stay in case it comes back.
+      if (s.view !== MAIN_VIEW && !applied.channelTabs.some((t) => t.id === s.view && t.enabled)) { s.view = MAIN_VIEW; s.mainUnread = 0; }
+      for (const tabId of Object.keys(s.channels)) if (!applied.channelTabs.some((t) => t.id === tabId)) delete s.channels[tabId];
       if (s.status === 'connected') this.startTimers(s);
     }
     this.notify();
@@ -191,10 +232,15 @@ class Store {
   private commitPartial(s: SessionState, kind: LineKind, prompt = false) {
     let merged = mergeSpans(s.partial);
     s.partial = [];
+    if (kind !== 'mud') { this.pushLine(s, { id: this.lineId++, kind, spans: merged, ts: Date.now(), prompt }); return; }
 
-    if (kind === 'mud' && s.automation && s.world.triggers.length) {
-      const text = merged.map((sp) => sp.text).join('');
-      const r = runTriggers(s.world.triggers, text);
+    // Triggers first (paused with the automation switch), then channel patterns (always on).
+    const text = merged.map((sp) => sp.text).join('');
+    let route: Route | null = null;
+    const triggers = s.automation ? s.world.triggers : [];
+    if (triggers.length || s.world.channelTabs.length) {
+      const c = classifyLine(triggers, s.world.channelTabs, text);
+      const r = c.triggers;
       if (r.fired.length) {
         s.fired += r.fired.length;
         if (r.highlights.length) merged = applyHighlights(merged, r.highlights);
@@ -209,11 +255,50 @@ class Store {
           this.updateWorld(world);
           this.hooks.worldChanged(world);
         }
-        if (r.gag) return;
       }
+      route = c.route;
+    } else {
+      route = { action: 'main', tab: null, pattern: null, showInMain: true, showInTab: false };
     }
 
-    this.pushLine(s, { id: this.lineId++, kind, spans: merged, ts: Date.now(), prompt });
+    // The log records every line in order, gagged and silenced ones included, captured ones with their tab name.
+    if (s.world.logging) this.hooks.log(s.id, logPrefix(route) + text);
+    if (!route) return;   // gagged: shown nowhere, and never reaches a tab
+
+    const line: Line = { id: this.lineId++, kind, spans: merged, ts: Date.now(), prompt };
+    if (route.showInTab && route.tab) this.pushChannelLine(s, route.tab, line, !route.showInMain);
+    if (route.showInMain) this.pushLine(s, line);
+  }
+
+  /** A captured line lands in its tab's scrollback; `countSession` adds it to the session tab's badge when the line is not also in main. */
+  private pushChannelLine(s: SessionState, tab: ChannelTab, line: Line, countSession: boolean) {
+    const v = s.channels[tab.id] ?? (s.channels[tab.id] = { lines: [], unread: 0 });
+    v.lines.push(line);
+    if (v.lines.length > MAX_CHANNEL_LINES) v.lines.splice(0, v.lines.length - MAX_CHANNEL_LINES);
+    const viewing = s.id === this.activeId && s.view === tab.id;
+    if (!viewing && tab.notify !== 'silent') {
+      v.unread++;
+      if (tab.notify === 'badge+sound') this.ping();
+    }
+    if (countSession && s.id !== this.activeId) s.unread++;
+  }
+
+  /** A short, quiet blip for tabs set to badge+sound; at most one every couple of seconds. */
+  private ping() {
+    const now = Date.now();
+    if (now - this.lastPing < PING_GAP_MS || typeof AudioContext === 'undefined') return;
+    this.lastPing = now;
+    try {
+      this.audio ??= new AudioContext();
+      const ctx = this.audio;
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    } catch { /* no audio device, or autoplay blocked: the badge still shows */ }
   }
 
   /** Output from a trigger, alias, timer or script: to the game (echoed, not in history) or to the pane as a note. */
@@ -352,6 +437,7 @@ class Store {
     s.lines.push(line);
     if (s.lines.length > MAX_LINES) s.lines.splice(0, s.lines.length - MAX_LINES);
     if (s.id !== this.activeId) s.unread++;
+    if (line.kind === 'mud' && s.view !== MAIN_VIEW) s.mainUnread++;
   }
 
   note(id: string, text: string, kind: LineKind = 'note') {
@@ -376,6 +462,7 @@ class Store {
     // If a prompt line is pending, the command visually completes it.
     if (s.partial.length) this.commitPartial(s, 'mud', true);
     this.pushLine(s, { id: this.lineId++, kind: 'input', spans: [{ text, style: plain() }], ts: Date.now() });
+    if (s.world.logging) this.hooks.log(id, `> ${text}`);
     if (remember && text.trim() && s.history[s.history.length - 1] !== text) {
       s.history.push(text);
       if (s.history.length > 500) s.history.shift();

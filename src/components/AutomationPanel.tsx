@@ -1,20 +1,23 @@
 /**
- * Per-world automation: triggers, aliases, timers, the Lua script and the
- * command options. Edits a draft copy of the world; nothing is persisted until
- * Save. The Script tab is separate: it reads and writes the world's script
- * file directly and asks the app to reload it into any live session.
+ * Per-world automation: triggers, aliases, timers, channel tabs, the Lua
+ * script and the command options. Edits a draft copy of the world; nothing is
+ * persisted until Save. The Script tab is separate: it reads and writes the
+ * world's script file directly and asks the app to reload it into any live session.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { World, Trigger, Alias, Timer, SendTo } from '../../shared/types';
-import { normalizeTrigger, normalizeAlias, normalizeTimer } from '../../shared/types';
+import type { World, Trigger, Alias, Timer, SendTo, ChannelTab, ChannelPattern, ChannelNotify, ChannelMode } from '../../shared/types';
+import { normalizeTrigger, normalizeAlias, normalizeTimer, normalizeChannelTab } from '../../shared/types';
 import { runTriggers, applyHighlights, patternError, describeTimer, expandCommand } from '../lib/automation';
+import { classifyLine, channelPatternError, havenChannelTab, hasHavenPreset, HAVEN_TAB_NAME } from '../lib/channels';
 import { spanStyle, EMPTY_STYLE } from '../lib/ansi';
 
-type Tab = 'triggers' | 'aliases' | 'timers' | 'script' | 'options';
+export type PanelTab = 'triggers' | 'aliases' | 'timers' | 'channels' | 'script' | 'options';
+type Tab = PanelTab;
 type Item = Trigger | Alias | Timer;
 type ListKey = 'triggers' | 'aliases' | 'timers';
 const LIST_TABS: ListKey[] = ['triggers', 'aliases', 'timers'];
 const isList = (t: Tab): t is ListKey => (LIST_TABS as Tab[]).includes(t);
+const TAB_LABELS: Record<Tab, string> = { triggers: 'Triggers', aliases: 'Aliases', timers: 'Timers', channels: 'Channels', script: 'Script', options: 'Options' };
 
 interface Props {
   world: World;
@@ -106,7 +109,7 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
     setList(tab, list.map((x) => (x.group === g ? { ...x, enabled: on } as Item : x)));
   };
 
-  const counts: Partial<Record<Tab, number>> = { triggers: w.triggers.length, aliases: w.aliases.length, timers: w.timers.length };
+  const counts: Partial<Record<Tab, number>> = { triggers: w.triggers.length, aliases: w.aliases.length, timers: w.timers.length, channels: w.channelTabs.length };
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget && !dirty) onClose(); }}>
@@ -117,9 +120,9 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
             <div className="muted small">{w.name}</div>
           </div>
           <div className="auto-tabs">
-            {(['triggers', 'aliases', 'timers', 'script', 'options'] as Tab[]).map((t) => (
+            {(['triggers', 'aliases', 'timers', 'channels', 'script', 'options'] as Tab[]).map((t) => (
               <button key={t} className={`auto-tab ${tab === t ? 'active' : ''}`} onClick={() => switchTab(t)}>
-                {t[0].toUpperCase() + t.slice(1)}
+                {TAB_LABELS[t]}
                 {(counts[t] ?? 0) > 0 && <span className="count">{counts[t]}</span>}
                 {t === 'script' && scriptDirty && <span className="count" title="Unsaved script">●</span>}
               </button>
@@ -129,6 +132,8 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
 
         {tab === 'options' ? (
           <OptionsTab w={w} setW={setW} />
+        ) : tab === 'channels' ? (
+          <ChannelsTab w={w} setW={setW} />
         ) : tab === 'script' ? (
           <ScriptTab worldId={w.id} onDirty={setScriptDirty} onReload={onReloadScript} />
         ) : (
@@ -437,6 +442,183 @@ function AliasTest({ world }: { world: World }) {
           {r.outgoing.map((o, k) => <div key={k} className="mono muted">{o.sendTo === 'output' ? '(note) ' : '› '}{o.text}</div>)}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- channel tabs ---------- */
+
+function ChannelsTab({ w, setW }: { w: World; setW: React.Dispatch<React.SetStateAction<World>> }) {
+  const tabs = w.channelTabs;
+  const [sel, setSel] = useState<string | null>(tabs[0]?.id ?? null);
+  const selected = tabs.find((t) => t.id === sel) ?? null;
+  const setTabs = (items: ChannelTab[]) => setW((x) => ({ ...x, channelTabs: items }));
+  const patch = (p: Partial<ChannelTab>) => { if (selected) setTabs(tabs.map((t) => (t.id === selected.id ? { ...t, ...p } : t))); };
+
+  const add = () => {
+    const id = uid();
+    setTabs([...tabs, normalizeChannelTab({ id, name: 'New tab', patterns: [{ id: uid(), pattern: '', ignoreCase: false, mode: 'capture' }] })]);
+    setSel(id);
+  };
+  const addPreset = () => {
+    const t = havenChannelTab(uid);
+    setTabs([...tabs, t]);
+    setSel(t.id);
+  };
+  const duplicate = () => {
+    if (!selected) return;
+    const copy: ChannelTab = { ...selected, id: uid(), name: `${selected.name} (copy)`, patterns: selected.patterns.map((p) => ({ ...p, id: uid() })) };
+    const i = tabs.findIndex((t) => t.id === selected.id);
+    setTabs([...tabs.slice(0, i + 1), copy, ...tabs.slice(i + 1)]);
+    setSel(copy.id);
+  };
+  const remove = () => {
+    if (!selected) return;
+    const i = tabs.findIndex((t) => t.id === selected.id);
+    const next = tabs.filter((t) => t.id !== selected.id);
+    setTabs(next);
+    setSel(next[Math.min(i, next.length - 1)]?.id ?? null);
+  };
+  const move = (dir: -1 | 1) => {
+    if (!selected) return;
+    const i = tabs.findIndex((t) => t.id === selected.id);
+    const j = i + dir;
+    if (j < 0 || j >= tabs.length) return;
+    const next = tabs.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    setTabs(next);
+  };
+  const havenDone = hasHavenPreset(tabs);
+
+  return (
+    <div className="auto-body">
+      <div className="auto-side">
+        <div className="auto-list">
+          {tabs.length === 0 && (
+            <div className="auto-empty-actions">
+              <div className="muted small">No channel tabs yet. A channel tab collects matching lines (OOC chatter, guide channels…) in its own pane under the session tab, so the roleplay screen stays clean.</div>
+              <button className="btn small primary" onClick={addPreset}>Add Haven channel tabs</button>
+            </div>
+          )}
+          {tabs.map((t) => (
+            <div key={t.id} className={`auto-item ${t.id === sel ? 'selected' : ''} ${t.enabled ? '' : 'disabled'}`} onClick={() => setSel(t.id)}>
+              <input type="checkbox" checked={t.enabled} title="Enabled" onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setTabs(tabs.map((x) => (x.id === t.id ? { ...x, enabled: e.target.checked } : x)))} />
+              <div className="auto-item-main">
+                <div className="auto-item-title">{t.name || '(unnamed tab)'}</div>
+                <div className="auto-item-sub muted">{channelSub(t)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="auto-list-actions">
+          <button className="btn small" onClick={add}>+ New</button>
+          <button className="btn small ghost" disabled={!selected} onClick={duplicate}>Duplicate</button>
+          <span className="spacer" />
+          <button className="icon-btn" title="Move up (tabs are tried in this order)" disabled={!selected} onClick={() => move(-1)}>↑</button>
+          <button className="icon-btn" title="Move down" disabled={!selected} onClick={() => move(1)}>↓</button>
+          <button className="btn small ghost danger" disabled={!selected} onClick={remove}>Delete</button>
+        </div>
+      </div>
+
+      <div className="auto-editor">
+        {!selected && tabs.length > 0 && <div className="muted pad">Select a tab on the left, or add a new one.</div>}
+        {!selected && tabs.length === 0 && (
+          <div className="muted pad small">
+            The preset adds one tab, "{HAVEN_TAB_NAME}", capturing <span className="mono">[OOC]</span>, <span className="mono">[Guide]</span>, <span className="mono">[Newbie]</span> and <span className="mono">[HeyThere]</span> lines and silencing the bare <span className="mono">[AFK]</span> line Haven prints before each one while you are away.
+          </div>
+        )}
+        {selected && <ChannelTabEditor t={selected} patch={patch} />}
+        {tabs.length > 0 && (
+          <div className="row">
+            <button className="btn small ghost" disabled={havenDone} title={havenDone ? 'A tab with the Haven patterns already exists' : 'Add a tab with the Haven OOC / Guide / Newbie / HeyThere patterns'} onClick={addPreset}>
+              {havenDone ? '✓ Haven channel tabs added' : 'Add Haven channel tabs'}
+            </button>
+          </div>
+        )}
+        <ChannelTest world={w} />
+      </div>
+    </div>
+  );
+}
+
+function channelSub(t: ChannelTab): string {
+  const live = t.patterns.filter((p) => p.pattern);
+  const bits = [`${live.length} pattern${live.length === 1 ? '' : 's'}`];
+  const silenced = live.filter((p) => p.mode === 'silence').length;
+  if (silenced) bits.push(`${silenced} silenced`);
+  if (t.keepInMain) bits.push('copy, main keeps them');
+  if (t.notify !== 'badge') bits.push(t.notify === 'silent' ? 'no badge' : 'badge + sound');
+  return bits.join(' · ');
+}
+
+function ChannelTabEditor({ t, patch }: { t: ChannelTab; patch(p: Partial<ChannelTab>): void }) {
+  const setPattern = (id: string, p: Partial<ChannelPattern>) => patch({ patterns: t.patterns.map((x) => (x.id === id ? { ...x, ...p } : x)) });
+  const addPattern = () => patch({ patterns: [...t.patterns, { id: uid(), pattern: '', ignoreCase: false, mode: 'capture' }] });
+  const removePattern = (id: string) => patch({ patterns: t.patterns.filter((x) => x.id !== id) });
+  return (
+    <div className="auto-form">
+      <div className="row">
+        <Field label="Tab name" grow><input value={t.name} onChange={(e) => patch({ name: e.target.value })} placeholder="OOC channels" /></Field>
+        <Field label="When a line arrives while you are elsewhere">
+          <select value={t.notify} onChange={(e) => patch({ notify: e.target.value as ChannelNotify })}>
+            <option value="badge">show a dot and count</option>
+            <option value="badge+sound">dot, count and a quiet blip</option>
+            <option value="silent">nothing</option>
+          </select>
+        </Field>
+      </div>
+      <div className="row wrap">
+        <Check label="Keep a copy in Main" title="Otherwise matching lines move to this tab and leave the main pane" checked={t.keepInMain} onChange={(v) => patch({ keepInMain: v })} />
+      </div>
+      <Field label="Patterns" hint="JavaScript regular expressions, tested against the plain text of each finished line after triggers have run. Tabs are tried top to bottom, patterns top to bottom; the first match wins. Capture sends the line to this tab; silence drops it everywhere (noise such as a bare [AFK] line).">
+        <div className="chan-patterns">
+          {t.patterns.map((p) => {
+            const err = channelPatternError(p.pattern);
+            return (
+              <div key={p.id} className="chan-pattern" title={err ?? ''}>
+                <input className={`mono ${err && p.pattern ? 'invalid' : ''}`} value={p.pattern} onChange={(e) => setPattern(p.id, { pattern: e.target.value })} placeholder="^\[OOC\] " spellCheck={false} />
+                <Check label="Ignore case" checked={p.ignoreCase} onChange={(v) => setPattern(p.id, { ignoreCase: v })} />
+                <select value={p.mode} onChange={(e) => setPattern(p.id, { mode: e.target.value as ChannelMode })}>
+                  <option value="capture">capture</option>
+                  <option value="silence">silence</option>
+                </select>
+                <button type="button" className="icon-btn" title="Remove this pattern" onClick={() => removePattern(p.id)}>×</button>
+              </div>
+            );
+          })}
+          <button type="button" className="btn small ghost self-start" onClick={addPattern}>+ Add pattern</button>
+        </div>
+      </Field>
+    </div>
+  );
+}
+
+function ChannelTest({ world }: { world: World }) {
+  const [text, setText] = useState('');
+  const lines = text.split('\n').filter((l) => l.length > 0);
+  return (
+    <div className="auto-test">
+      <div className="auto-test-head">
+        <span>Try it</span>
+        <span className="muted small">Paste a line or two of game output to see which tab each would land in.</span>
+      </div>
+      <textarea className="mono" rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="[OOC] Someone says, &quot;anyone around?&quot;" spellCheck={false} />
+      {lines.map((line, i) => {
+        const c = classifyLine(world.triggers, world.channelTabs, line);
+        const r = c.route;
+        return (
+          <div key={i} className="auto-test-result">
+            <div className={`mono preview ${!r || r.action === 'silence' ? 'gagged' : ''}`}>{line}</div>
+            <div className="small">
+              {!r && <><span className="route-tag gag">gagged</span>Hidden by trigger {c.triggers.fired.filter((t) => t.gag).map((t) => t.name || t.pattern).join(', ')}; never reaches a tab.</>}
+              {r && r.action === 'main' && <><span className="route-tag">Main</span>No channel pattern matches; stays in the main pane.</>}
+              {r && r.action === 'silence' && r.tab && <><span className="route-tag silence">silenced</span>Dropped by "{r.tab.name}" ({r.pattern?.pattern}); shown nowhere.</>}
+              {r && r.action === 'capture' && r.tab && <><span className="route-tag capture">{r.tab.name}</span>{r.showInMain ? 'Copied to the tab; Main keeps it.' : 'Moves to the tab; leaves Main.'} <span className="muted mono">{r.pattern?.pattern}</span></>}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

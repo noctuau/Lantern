@@ -19,9 +19,9 @@ npm run dev
 ## Where things live
 
 - `electron/` — main process: `telnet.ts` (protocol engine), `worlds.ts` (world profiles), `mcl.ts` (MUSHclient import), `main.ts` (window, IPC, logging)
-- `shared/types.ts` — the world profile and its triggers, aliases and timers (used by both processes)
-- `src/` — React UI: `lib/ansi.ts` (colour parser), `lib/store.ts` (session state, runs triggers, timers and scripts), `lib/automation.ts` (matching engine, alias/speedwalk expansion), `lib/lua.ts` (the Lua API and one state per session), `lib/lua-wasm.ts` (loads wasmoon), `components/`
-- `scripts/` — `probe.mjs <host> <port>` checks telnet negotiation; `test-ansi.mjs` unit-tests the colour parser; `test-automation.mjs` unit-tests triggers, aliases, timers and `.MCL` import; `test-lua.mjs` unit-tests the Lua layer under Node
+- `shared/types.ts` — the world profile and its triggers, aliases, timers and channel tabs (used by both processes)
+- `src/` — React UI: `lib/ansi.ts` (colour parser), `lib/store.ts` (session state, runs triggers, timers and scripts, routes lines to channel tabs, writes the log), `lib/automation.ts` (matching engine, alias/speedwalk expansion), `lib/channels.ts` (channel-tab routing and the Haven preset), `lib/lua.ts` (the Lua API and one state per session), `lib/lua-wasm.ts` (loads wasmoon), `components/`
+- `scripts/` — `probe.mjs <host> <port>` checks telnet negotiation; `test-ansi.mjs` unit-tests the colour parser; `test-automation.mjs` unit-tests triggers, aliases, timers and `.MCL` import; `test-channels.mjs` unit-tests channel-tab routing and world normalisation; `test-lua.mjs` unit-tests the Lua layer under Node
 
 Your data is in `%APPDATA%\lantern\`: `worlds.json` (profiles, including script variables), `scripts\<worldId>.lua` (one Lua script per world) and `logs\` (one plain-text file per world per day).
 
@@ -33,11 +33,17 @@ Connects to a login screen, screenshots the window and quits:
 LANTERN_SMOKE="aardwolf.org|4000|C:\path\to\out.png" npx electron .
 ```
 
-Smoke runs use a throwaway profile and never touch your worlds or logs. The smoke world carries a demo highlight trigger, a one-shot note trigger that also calls a Lua function, a Lua script and an alias, so the screenshot also exercises automation and scripting. Set `LANTERN_SMOKE_PANEL=1` to screenshot with the Automation panel open (`=script` opens it on the Script tab), and `LANTERN_SMOKE_WAIT=<ms>` to wait longer before the capture.
+Smoke runs use a throwaway profile and never touch your worlds or logs. The smoke world carries a demo highlight trigger, a one-shot note trigger that also calls a Lua function, a Lua script, an alias and an `OOC` channel tab, so the screenshot also exercises automation, scripting and capture. Set `LANTERN_SMOKE_PANEL=1` to screenshot with the Automation panel open (`=script` or `=channels` opens it on that tab), `LANTERN_SMOKE_VIEW=OOC` to screenshot the channel tab instead of Main, and `LANTERN_SMOKE_WAIT=<ms>` to wait longer before the capture.
 
 ## Automation
 
 Open ⚡ Automation from the tab bar (or the ⚡ on a world in the sidebar). Triggers watch each finished line of output and can recolour it, hide it, or send something back; aliases rewrite what you type; timers send on a schedule while connected. Plain patterns match anywhere in the line, `*` is a wildcard (and then the pattern must match the whole line); regex patterns are JavaScript regular expressions. `%1`–`%9` are the captures, `%0` the whole match. Command stacking and speedwalk live under Options and are off unless you turn them on for a world.
+
+## Channel tabs
+
+A world can have channel tabs: capture panes that keep chatter off the roleplay screen. Each tab has a name and a list of regex patterns; every finished line is tested after triggers have run, tabs in order and patterns in order, and the first match wins. A `capture` pattern moves the line to that tab (or copies it, if the tab keeps a copy in Main); a `silence` pattern drops the line everywhere, for noise like the bare `[AFK]` line Haven prints while you are away. A line a trigger gags never reaches a tab.
+
+When a world has tabs, a strip of sub-tabs appears under the session tabs: `Main` plus one per tab. Click to switch panes (the input box always sends to the game), hover to peek at the last three lines, and watch the dot and count for lines that arrived while you were elsewhere. Each tab keeps its own 5,000-line scrollback, scroll-lock and timestamps. Set them up on the Channels tab of the Automation panel, which has a Try-it box and a one-click "Add Haven channel tabs" preset (`[OOC]`, `[Guide]`, `[Newbie]`, `[HeyThere]`). The daily log still records every line in order, with captured lines prefixed `[tab name]`. Details in `docs/channel-tabs.md`.
 
 ## Scripting
 
