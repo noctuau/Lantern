@@ -253,13 +253,14 @@ export function App() {
         {active ? (
           <>
             <ChannelStrip key={`strip-${active.id}`} session={active} onEdit={() => openAutomation(active.world, 'channels')} />
-            <OutputPane key={`out-${active.id}`} lines={active.lines} partial={active.partial} visible={active.view === MAIN_VIEW} />
+            <OutputPane key={`out-${active.id}`} lines={active.lines} partial={active.partial} autoScroll={settings.autoScroll} visible={active.view === MAIN_VIEW} />
             {active.world.channelTabs.filter((t) => t.enabled).map((t) => (
               <OutputPane
                 key={`out-${active.id}-${t.id}`}
                 lines={active.channels[t.id]?.lines ?? NO_LINES}
                 timestamps
                 lineGap={t.messageGap}
+                autoScroll={settings.autoScroll}
                 visible={active.view === t.id}
                 emptyHint={`Nothing captured for ${t.name || 'this tab'} yet. Lines matching its patterns will show here with the time they arrived.`}
               />

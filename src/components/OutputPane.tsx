@@ -45,6 +45,8 @@ interface Props {
   timestamps?: boolean;
   /** Extra space (px) between lines, to space out chat in a channel pane. */
   lineGap?: number;
+  /** Follow new output when already at the bottom (the scroll-lock setting). */
+  autoScroll?: boolean;
   /** Hidden panes stay mounted so each keeps its own scroll position and scroll-lock. */
   visible?: boolean;
   emptyHint?: string;
@@ -54,7 +56,7 @@ interface Props {
  * One scrollback: the main output or a channel tab. Scroll-lock ("pinned" to the bottom), the
  * missed-line count and the jump button belong to this pane alone.
  */
-export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap = 0, visible = true, emptyHint }: Props) {
+export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap = 0, autoScroll = true, visible = true, emptyHint }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
   const [missed, setMissed] = useState(0);
@@ -78,7 +80,8 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
     lastCount.current = lines.length;
     lastPartial.current = partial;
     if (!changed) return;
-    if (pinned) { if (visible) el.scrollTop = el.scrollHeight; }
+    // Follow the latest only when auto-scroll is on and we are already at the bottom.
+    if (autoScroll && pinned) { if (visible) el.scrollTop = el.scrollHeight; }
     else if (added > 0) setMissed((m) => m + added);
   });
 

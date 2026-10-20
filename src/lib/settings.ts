@@ -13,6 +13,7 @@ export interface AppSettings {
   inputSize: number;         // px
   inputLines: number;        // minimum visible lines in the command box
   echoInput: boolean;        // show what you typed in the output pane
+  autoScroll: boolean;       // follow new output when already at the bottom
   palette: PaletteName;      // ANSI colour palette: a preset, or 'custom' to use customPalette
   customPalette: string[];   // 16 hex colours used when palette === 'custom'
   spellLanguages: string[];  // spell-check dictionaries, e.g. ['en-AU']; [] turns spell check off
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   inputSize: 15,
   inputLines: 1,
   echoInput: true,
+  autoScroll: true,
   palette: 'warm',
   customPalette: PALETTES.warm.slice(),
   spellLanguages: ['en-AU'],
@@ -81,6 +83,7 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
     inputSize: clamp(s?.inputSize, 9, 40, DEFAULT_SETTINGS.inputSize),
     inputLines: Math.round(clamp(s?.inputLines, 1, 20, DEFAULT_SETTINGS.inputLines)),
     echoInput: typeof s?.echoInput === 'boolean' ? s.echoInput : DEFAULT_SETTINGS.echoInput,
+    autoScroll: typeof s?.autoScroll === 'boolean' ? s.autoScroll : DEFAULT_SETTINGS.autoScroll,
     palette: (['warm', 'classic', 'vga', 'custom'] as const).includes(s?.palette as PaletteName) ? (s!.palette as PaletteName) : 'warm',
     customPalette: Array.isArray(s?.customPalette) && s!.customPalette.length === 16
       ? s!.customPalette.map((c) => (typeof c === 'string' ? c : '#000000'))

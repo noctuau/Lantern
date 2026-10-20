@@ -85,6 +85,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
           </label>
         </div>
         <p className="hint">Width caps how wide lines get (0 = fill the window) and is the size Lantern reports to the game, so games that wrap text themselves use it too.</p>
+        <label className="check inline"><input type="checkbox" checked={s.autoScroll} onChange={(e) => set('autoScroll', e.target.checked)} /> Scroll to new output while I'm at the bottom (stays put if I've scrolled up)</label>
         <div className="row bg-row">
           <label>Background
             <div className="bg-choices">
