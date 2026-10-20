@@ -26,11 +26,18 @@ export function InputBar({ session, minLines, onResize, onSend, onReconnect, reg
   useEffect(() => { ref.current?.focus(); }, []);
   useEffect(() => { setLines(minLines); }, [minLines]);
 
-  // Let the parent insert text (e.g. from the colour composer) at the caret.
+  // Let the parent insert text (e.g. from the colour composer). An empty box takes the text as-is;
+  // if there's already something in it, the insert lands on its own new line at the end so it never
+  // gets jammed onto an existing command.
   const insert = useCallback((t: string) => {
     const el = ref.current;
-    setValue((v) => (el ? v.slice(0, el.selectionStart) + t + v.slice(el.selectionEnd) : v + t));
-    requestAnimationFrame(() => { if (el) { el.focus(); } });
+    setValue((v) => {
+      if (v.trim() === '') return t;
+      return v.replace(/\n+$/, '') + '\n' + t;
+    });
+    requestAnimationFrame(() => {
+      if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    });
   }, []);
   useEffect(() => { registerInsert?.(insert); }, [registerInsert, insert]);
 
