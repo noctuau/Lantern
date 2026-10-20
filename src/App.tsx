@@ -6,6 +6,7 @@ import { OutputPane } from './components/OutputPane';
 import { ChannelStrip } from './components/ChannelStrip';
 import { InputBar } from './components/InputBar';
 import { WorldEditor } from './components/WorldEditor';
+import { ColourComposer } from './components/ColourComposer';
 import { AutomationPanel, type PanelTab } from './components/AutomationPanel';
 import { StatusBar } from './components/StatusBar';
 import { SettingsDialog } from './components/SettingsDialog';
@@ -33,6 +34,9 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fonts, setFonts] = useState<string[]>(FALLBACK_FONTS);
   const [highlight, setHighlight] = useState<{ worldId: string; text: string } | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const insertRef = useRef<(t: string) => void>(() => {});
+  const registerInsert = useCallback((fn: (t: string) => void) => { insertRef.current = fn; }, []);
   const worldsRef = useRef<World[]>([]);
   worldsRef.current = worlds;
 
@@ -266,6 +270,9 @@ export function App() {
           <span className="spacer" />
           {active && (
             <>
+              <button className="btn small ghost" title="Compose coloured/gradient text to send" onClick={() => setComposerOpen(true)}>
+                🎨 Colour
+              </button>
               <button className="btn small ghost" title="Highlight a word or phrase (Ctrl+Alt+H). Select text in the output first to pre-fill it." onClick={openHighlight}>
                 ✎ Highlight
               </button>
@@ -299,6 +306,7 @@ export function App() {
               onResize={(lines) => saveSettings({ ...settings, inputLines: lines })}
               onSend={sendCommand}
               onReconnect={() => connect(active.world)}
+              registerInsert={registerInsert}
             />
             <StatusBar session={active} onToggleAutomation={() => store.setAutomation(active.id, !active.automation)} />
           </>
@@ -319,6 +327,10 @@ export function App() {
           onDelete={deleteWorld}
           onClose={() => { setEditing(null); refreshWorlds(); }}
         />
+      )}
+
+      {composerOpen && (
+        <ColourComposer onInsert={(t) => insertRef.current(t)} onClose={() => setComposerOpen(false)} />
       )}
 
       {settingsOpen && (

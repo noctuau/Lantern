@@ -376,3 +376,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .subtab-toggle { background: var(--bg-3); border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px; font-size: 12px; color: var(--fg-muted); cursor: pointer; }
 .subtab-toggle:hover { border-color: var(--accent-2); color: var(--fg); }
 .subtab-toggle.off { color: var(--accent); border-color: var(--accent-2); background: rgba(232,169,75,0.12); }
+
+/* ---------- colour composer ---------- */
+.modal.composer { width: 640px; }
+.composer label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-muted); }
+.composer textarea, .composer input, .composer select { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; color: var(--fg); font-size: 14px; }
+.composer textarea.mono, .composer input.mono { font-family: var(--font-mud); font-size: 13px; }
+.composer .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.composer-swatches summary { cursor: pointer; }
+.composer-grid { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; margin-top: 6px; }
+.composer-sw { height: 14px; border: 0; border-radius: 2px; cursor: pointer; padding: 0; }
+.composer-sw:hover { outline: 1px solid var(--fg); }
+.composer-preview-wrap { display: flex; flex-direction: column; gap: 4px; }
+.composer-preview { background: #000; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-family: var(--font-mud); font-size: var(--mud-size); white-space: pre-wrap; overflow-wrap: anywhere; min-height: 2.5em; }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SessionState } from '../lib/store';
 import { activePrefix, PREFIX_BYPASS } from '../lib/channels';
 
@@ -9,12 +9,14 @@ interface Props {
   onResize(lines: number): void;
   onSend(text: string): void;
   onReconnect(): void;
+  /** Hand the parent a function to drop text into the box (used by the colour composer). */
+  registerInsert?(fn: (text: string) => void): void;
 }
 
 const MAX_LINES = 20;
 const BOX_PADDING = 18; // vertical padding + border of .input
 
-export function InputBar({ session, minLines, onResize, onSend, onReconnect }: Props) {
+export function InputBar({ session, minLines, onResize, onSend, onReconnect, registerInsert }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
   const [lines, setLines] = useState(minLines);
@@ -23,6 +25,14 @@ export function InputBar({ session, minLines, onResize, onSend, onReconnect }: P
 
   useEffect(() => { ref.current?.focus(); }, []);
   useEffect(() => { setLines(minLines); }, [minLines]);
+
+  // Let the parent insert text (e.g. from the colour composer) at the caret.
+  const insert = useCallback((t: string) => {
+    const el = ref.current;
+    setValue((v) => (el ? v.slice(0, el.selectionStart) + t + v.slice(el.selectionEnd) : v + t));
+    requestAnimationFrame(() => { if (el) { el.focus(); } });
+  }, []);
+  useEffect(() => { registerInsert?.(insert); }, [registerInsert, insert]);
 
   const lineHeight = () => {
     const el = ref.current;

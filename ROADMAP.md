@@ -81,6 +81,11 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - Secure storage for passwords (Electron `safeStorage`) instead of plain text in `worlds.json`
 - Installer via `electron-builder` and auto-update
 
+## Colour composer (done 2026-10-20)
+
+- Gradient/colour composer ported from Noctua's MUD Gradient Maker: 87 presets, hand-pick xterm colours, fade-both-ways / reverse / randomise, live preview in Lantern's own colours, emits backtick codes, inserts into the command box or copies. `src/lib/gradient.ts`, `ColourComposer.tsx`, test `scripts/test-gradient.mjs`.
+- Follow-up: render the game's backtick colour codes in the output/echo so your own screen shows the colours, not the codes.
+
 ## Later / ideas
 
 - MXP and Pueblo link support (MUSHes still send Pueblo)
