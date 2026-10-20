@@ -89,6 +89,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose }: Props) {
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <form className="modal settings" onSubmit={(e) => { e.preventDefault(); onSave(normalizeSettings(s)); }}>
+        <button type="button" className="modal-x" title="Close" onClick={onClose}>×</button>
         <div className="settings-head"><h2>Settings</h2></div>
         <div className="settings-body">
           <nav className="settings-nav">

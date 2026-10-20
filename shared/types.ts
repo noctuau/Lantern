@@ -155,6 +155,8 @@ export interface World {
   /** Speedwalk: "#3n2e" sends n n n e e. Off by default. */
   speedwalk: boolean;
   speedwalkPrefix: string;
+  /** Set once we've pre-loaded sensible defaults (e.g. Haven channel tabs), so we don't re-add them. */
+  seededDefaults?: boolean;
 }
 
 export const DEFAULT_STACK_CHAR = ';';

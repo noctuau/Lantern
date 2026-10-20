@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { store, useStore, MAIN_VIEW, type World } from './lib/store';
-import { activePrefix, applyCommandPrefix } from './lib/channels';
+import { activePrefix, applyCommandPrefix, havenChannelTab, helpChannelTab } from './lib/channels';
 import { Sidebar, type SidebarMode } from './components/Sidebar';
 import { OutputPane } from './components/OutputPane';
 import { ChannelStrip } from './components/ChannelStrip';
@@ -83,7 +83,17 @@ export function App() {
   };
 
   /** Persist one world and push it to any open session on it (which may hand back script variables it owns). */
-  const saveWorld = useCallback(async (w: World) => {
+  const saveWorld = useCallback(async (w0: World) => {
+    // First save of a Haven world: pre-load its channel tabs (OOC/Guide/Newbie/tells + Help),
+    // all disabled, so new players can just tick on what they want instead of configuring it.
+    let w = w0;
+    if (!w.seededDefaults && /(^|\.)havenrpg\.net$/i.test(w.host.trim()) && (w.channelTabs?.length ?? 0) === 0) {
+      const nid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+      w = { ...w, seededDefaults: true, channelTabs: [
+        { ...havenChannelTab(nid), enabled: false },
+        { ...helpChannelTab(nid), enabled: false },
+      ] };
+    }
     // Apply to the live session, but never let that step block the disk write: a failure here
     // once meant edits (imported triggers, channel tabs, log settings) were live but never saved.
     let applied = w;

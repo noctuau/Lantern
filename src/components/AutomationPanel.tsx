@@ -156,6 +156,7 @@ export function AutomationPanel({ world, initialTab, customColours = [], onSave,
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget && !dirty) onClose(); }}>
       <div className="modal auto">
+        <button type="button" className="modal-x" title={dirty ? 'Close (discards unsaved changes)' : 'Close'} onClick={onClose}>×</button>
         <div className="auto-head">
           <div>
             <h2>Automation</h2>

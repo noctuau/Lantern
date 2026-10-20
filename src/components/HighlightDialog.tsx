@@ -58,6 +58,7 @@ export function HighlightDialog({ worldName, initialText = '', onSave, onClose }
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <form className="modal narrow" onSubmit={(e) => { e.preventDefault(); if (valid) onSave(buildHighlightTrigger(text, colour!, wholeWord, matchCase, wholeLine)); }}>
+        <button type="button" className="modal-x" title="Close" onClick={onClose}>×</button>
         <h2>Highlight word or phrase</h2>
         <p className="muted small">Adds a colour trigger to {worldName}. Edit or remove it later under ⚡ Automation › Triggers, group "Highlights".</p>
         <label>Highlight

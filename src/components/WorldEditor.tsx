@@ -34,6 +34,7 @@ export function WorldEditor({ world, onSave, onDelete, onClose }: Props) {
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <form className="modal wide" onSubmit={(e) => { e.preventDefault(); if (valid) onSave(w); }}>
+        <button type="button" className="modal-x" title="Close" onClick={onClose}>×</button>
         <h2>World settings</h2>
 
         <h3>Connection</h3>

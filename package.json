@@ -33,12 +33,30 @@
   "build": {
     "appId": "au.noctua.lantern",
     "productName": "Lantern",
+    "artifactName": "Lantern-${version}-${arch}.${ext}",
+    "directories": { "output": "release" },
     "files": [
       "dist/**",
       "dist-electron/**"
     ],
     "win": {
-      "target": "nsis"
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": "x64" },
+        { "target": "portable", "arch": "x64" }
+      ]
+    },
+    "portable": {
+      "artifactName": "Lantern-${version}-portable.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Lantern",
+      "uninstallDisplayName": "Lantern ${version}"
     }
   }
 }

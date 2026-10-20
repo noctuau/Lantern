@@ -187,7 +187,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* ---------- automation panel ---------- */
 .modal.auto { width: 920px; height: min(680px, calc(100vh - 40px)); padding: 0; gap: 0; overflow: hidden; }
-.auto-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 18px 22px 0; border-bottom: 1px solid var(--line); }
+.auto-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 18px 44px 0 22px; border-bottom: 1px solid var(--line); }
 .auto-head h2 { margin: 0; }
 .auto-tabs { display: flex; gap: 2px; }
 .auto-tab { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px; color: var(--fg-muted); cursor: pointer; display: flex; align-items: center; gap: 6px; }
@@ -368,3 +368,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .customcol.active { outline: 2px solid var(--accent); }
 .customcol-linked { font-size: 12px; color: var(--fg-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--bg-3); border-radius: 8px; padding: 8px 10px; }
 .settings-pane .row { flex-wrap: wrap; row-gap: 10px; }
+
+/* ---------- modal close X (top-right) ---------- */
+.modal { position: relative; }
+.modal-x { position: absolute; top: 10px; right: 12px; z-index: 5; width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--fg-muted); font-size: 22px; line-height: 1; cursor: pointer; }
+.modal-x:hover { background: var(--bg-3); color: var(--fg); }
