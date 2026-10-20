@@ -134,6 +134,14 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
     if (!isList(tab)) return;
     setList(tab, list.map((x) => (x.group === g ? { ...x, enabled: on } as Item : x)));
   };
+  const deleteGroup = (g: string) => {
+    if (!isList(tab)) return;
+    const n = list.filter((x) => x.group === g).length;
+    if (!confirm(`Delete all ${n} item${n === 1 ? '' : 's'} in the "${g}" group? This can't be undone (until you close without saving).`)) return;
+    const next = list.filter((x) => x.group !== g);
+    setList(tab, next);
+    if (selected && selected.group === g) setSel(next[0]?.id ?? null);
+  };
 
   const counts: Partial<Record<Tab, number>> = { triggers: w.triggers.length, aliases: w.aliases.length, timers: w.timers.length, channels: w.channelTabs.length };
 
@@ -166,11 +174,14 @@ export function AutomationPanel({ world, initialTab, onSave, onReloadScript, onC
           <div className="auto-body">
             <div className="auto-side">
               {groups.length > 0 && (
-                <div className="chips" title="Click a group to turn all of it on or off">
+                <div className="chips" title="Click a group to turn all of it on or off; the × deletes the whole group">
                   {groups.map(([g, c]) => (
-                    <button key={g} className={`chip ${c.on === 0 ? 'off' : c.on < c.total ? 'mixed' : ''}`} onClick={() => toggleGroup(g, c.on === 0)}>
-                      {g} <span className="muted">{c.on}/{c.total}</span>
-                    </button>
+                    <span key={g} className={`chip ${c.on === 0 ? 'off' : c.on < c.total ? 'mixed' : ''}`}>
+                      <button className="chip-toggle" onClick={() => toggleGroup(g, c.on === 0)} title="Turn this group on or off">
+                        {g} <span className="muted">{c.on}/{c.total}</span>
+                      </button>
+                      <button className="chip-del" onClick={() => deleteGroup(g)} title={`Delete all ${c.total} in "${g}"`}>×</button>
+                    </span>
                   ))}
                 </div>
               )}
