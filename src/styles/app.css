@@ -115,7 +115,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .line { max-width: var(--mud-max-width); content-visibility: auto; contain-intrinsic-size: auto 1.5em; }
 .line.kind-input { color: var(--accent); }
-.line.kind-input::before { content: "› "; color: var(--accent-2); }
+
 .line.kind-note { color: var(--fg-muted); font-style: italic; }
 .line.kind-error { color: var(--danger); font-style: italic; }
 .line.prompt { margin-top: 2px; }

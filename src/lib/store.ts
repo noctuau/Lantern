@@ -481,7 +481,8 @@ class Store {
     const s = this.sessions.get(id); if (!s) return;
     // If a prompt line is pending, the command visually completes it.
     if (s.partial.length) this.commitPartial(s, 'mud', true);
-    if (echo) {
+    // An empty line is sent (MUSHes use it to nudge the prompt) but there is nothing to show for it.
+    if (echo && text.trim()) {
       // The echo lands in the pane the command was typed from: a channel tab keeps its own
       // conversation together, and the main RP pane stays free of OOC chatter.
       const line: Line = { id: this.lineId++, kind: 'input', spans: [{ text, style: plain() }], ts: Date.now() };
