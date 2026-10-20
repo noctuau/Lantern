@@ -34,16 +34,27 @@
     "appId": "au.noctua.lantern",
     "productName": "Lantern",
     "artifactName": "Lantern-${version}-${arch}.${ext}",
-    "directories": { "output": "release" },
+    "directories": {
+      "output": "release"
+    },
     "files": [
       "dist/**",
-      "dist-electron/**"
+      "dist-electron/main.js",
+      "dist-electron/main.js.map",
+      "dist-electron/preload.js",
+      "dist-electron/preload.js.map"
     ],
     "win": {
       "icon": "build/icon.ico",
       "target": [
-        { "target": "nsis", "arch": "x64" },
-        { "target": "portable", "arch": "x64" }
+        {
+          "target": "nsis",
+          "arch": "x64"
+        },
+        {
+          "target": "portable",
+          "arch": "x64"
+        }
       ]
     },
     "portable": {
