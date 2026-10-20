@@ -72,9 +72,13 @@ export function App() {
 
   /** Persist one world and push it to any open session on it (which may hand back script variables it owns). */
   const saveWorld = useCallback(async (w: World) => {
-    const applied = store.updateWorld(w);
+    // Apply to the live session, but never let that step block the disk write: a failure here
+    // once meant edits (imported triggers, channel tabs, log settings) were live but never saved.
+    let applied = w;
+    try { applied = store.updateWorld(w); }
+    catch (e) { console.error('Applying the world to the live session failed; saving to disk anyway', e); }
     const cur = worldsRef.current;
-    const next = cur.some((x) => x.id === w.id) ? cur.map((x) => (x.id === w.id ? applied : x)) : [...cur, applied];
+    const next = cur.some((x) => x.id === applied.id) ? cur.map((x) => (x.id === applied.id ? applied : x)) : [...cur, applied];
     worldsRef.current = next;
     setWorlds(next);
     setWorlds(await window.lantern.worlds.save(next));

@@ -201,10 +201,14 @@ class Store {
         timers: keepTemp(world.timers, s.world.timers),
       };
       s.world = applied;
-      // A tab that was deleted or disabled takes its pane with it; its lines stay in case it comes back.
-      if (s.view !== MAIN_VIEW && !applied.channelTabs.some((t) => t.id === s.view && t.enabled)) { s.view = MAIN_VIEW; s.mainUnread = 0; }
-      for (const tabId of Object.keys(s.channels)) if (!applied.channelTabs.some((t) => t.id === tabId)) delete s.channels[tabId];
-      if (s.status === 'connected') this.startTimers(s);
+      // Side-effects are wrapped so one bad item (e.g. an imported timer) can't abort the update
+      // and, through it, the caller's save to disk.
+      try {
+        // A tab that was deleted or disabled takes its pane with it; its lines stay in case it comes back.
+        if (s.view !== MAIN_VIEW && !applied.channelTabs.some((t) => t.id === s.view && t.enabled)) { s.view = MAIN_VIEW; s.mainUnread = 0; }
+        for (const tabId of Object.keys(s.channels)) if (!applied.channelTabs.some((t) => t.id === tabId)) delete s.channels[tabId];
+        if (s.status === 'connected') this.startTimers(s);
+      } catch (e) { console.error('updateWorld side-effects failed for session', s.id, e); }
     }
     this.notify();
     return applied;
