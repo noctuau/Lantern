@@ -102,20 +102,7 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
           <div className="row">
             <input className="mono grow" value={codes} onChange={(e) => applyCodes(e.target.value)} spellCheck={false} />
             <button type="button" className="btn small ghost" onClick={() => applyCodes('')}>Clear</button>
-            {onSavePreset && !saving && (
-              <button type="button" className="btn small ghost" disabled={!codeCount} title="Keep these colours as a preset (Settings › Presets lists and edits them)" onClick={() => { setSaveName(presetName || ''); setSaving(true); }}>Save as preset…</button>
-            )}
           </div>
-          {saving && (
-            <div className="row preset-save">
-              <input className="grow" autoFocus value={saveName} placeholder="Preset name" onChange={(e) => setSaveName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); savePreset(); } if (e.key === 'Escape') { e.stopPropagation(); setSaving(false); } }} />
-              <button type="button" className="btn small primary" disabled={!saveName.trim()} onClick={savePreset}>
-                {presets.some((p) => p.name === saveName.trim()) ? 'Replace preset' : 'Save preset'}
-              </button>
-              <button type="button" className="btn small ghost" onClick={() => setSaving(false)}>Cancel</button>
-            </div>
-          )}
         </label>
         <details className="composer-swatches">
           <summary className="hint">Pick colours by hand ({codeCount} in use) — click to add</summary>
@@ -138,9 +125,23 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
           <textarea className="mono" rows={2} readOnly value={output} onFocus={(e) => e.currentTarget.select()} />
         </label>
 
+        {saving && (
+          <div className="row preset-save">
+            <input className="grow" autoFocus value={saveName} placeholder="Preset name" onChange={(e) => setSaveName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); savePreset(); } if (e.key === 'Escape') { e.stopPropagation(); setSaving(false); } }} />
+            <button type="button" className="btn small primary" disabled={!saveName.trim()} onClick={savePreset}>
+              {presets.some((p) => p.name === saveName.trim()) ? 'Replace preset' : 'Save preset'}
+            </button>
+            <button type="button" className="btn small ghost" onClick={() => setSaving(false)}>Cancel</button>
+          </div>
+        )}
+
         <div className="modal-actions">
           <span className="muted small">{copied ? 'Copied.' : `${text.length} chars · ${codeCount} colours`}</span>
           <span className="spacer" />
+          {onSavePreset && !saving && (
+            <button type="button" className="btn ghost" disabled={!codeCount} title="Keep these colours as a preset (Settings › Presets lists and edits them)" onClick={() => { setSaveName(presetName || ''); setSaving(true); }}>Save as preset…</button>
+          )}
           <button type="button" className="btn ghost" onClick={copy} disabled={!output}>Copy</button>
           <button type="button" className="btn primary" disabled={!output} onClick={() => { onInsert(output); onClose(); }}>Insert into command box</button>
         </div>
