@@ -158,10 +158,11 @@ export interface World {
   /** *italic*, **bold** and __underline__ in typed chat commands become the game's format codes. Off by default. */
   markup: MarkupSettings;
   /**
-   * Answer a game's Pueblo offer ("This world is Pueblo 1.10 enhanced") and render the HTML-style
-   * formatting it then sends (shared/pueblo.ts). On by default: games that never offer it are unaffected.
+   * Accept the game's offer of MXP (telnet option 91) and render the <B>, <I>, <U>, <COLOR>, <SEND>
+   * and <A> tags it then sends (shared/mxp.ts); the same switch answers a Pueblo announcement
+   * (shared/pueblo.ts). On by default: games that offer neither are unaffected.
    */
-  pueblo: boolean;
+  mxp: boolean;
   /** Set once we've pre-loaded sensible defaults (e.g. Haven channel tabs), so we don't re-add them. */
   seededDefaults?: boolean;
 }
@@ -224,7 +225,8 @@ export function normalizeWorld(w: Partial<World> & Pick<World, 'id'>): World {
     speedwalk: w.speedwalk ?? false,
     speedwalkPrefix: w.speedwalkPrefix || DEFAULT_SPEEDWALK_PREFIX,
     markup: normalizeMarkup(w.markup),
-    pueblo: w.pueblo !== false,
+    // `pueblo` was this switch's name for one unreleased commit.
+    mxp: w.mxp !== false && (w as { pueblo?: boolean }).pueblo !== false,
   };
 }
 

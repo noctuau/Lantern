@@ -179,6 +179,7 @@ export function importMcl(xml: string): Partial<World> {
   const stack = attr('command_stack_character'); if (stack) w.commandStackChar = stack;
   w.speedwalk = attr('enable_speed_walk') === 'y';
   const swp = attr('speed_walk_prefix'); if (swp) w.speedwalkPrefix = swp;
-  const pueblo = attr('pueblo'); if (pueblo) w.pueblo = pueblo === 'y';
+  // MUSHclient's use_mxp: 0 on command, 1 query (the default when absent), 2 always, 3 never.
+  const mxp = attr('use_mxp'); if (mxp) w.mxp = mxp !== '3';
   return w;
 }

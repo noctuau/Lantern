@@ -11,11 +11,13 @@ import { LOG_HTML_HEAD } from '../src/lib/loghtml';
 import { aboutInfo, checkForUpdates, downloadUpdate, installUpdate } from './updates';
 import type { ReleaseAsset, UpdateFlavour } from '../shared/updates';
 import { PuebloFilter } from '../shared/pueblo';
+import { MxpFilter } from '../shared/mxp';
 
 interface Session {
   id: string;
   world: World;
   telnet: TelnetSession;
+  mxp: MxpFilter;
   pueblo: PuebloFilter;
   log: fs.WriteStream | null;
   logHtml: boolean;
@@ -113,7 +115,9 @@ function createWindow() {
   if (smoke) {
     const [host, port, out] = smoke.split('|');
     win.webContents.on('did-finish-load', () => {
-      setTimeout(() => send('smoke:run', { host, port: Number(port), panel: process.env.LANTERN_SMOKE_PANEL, view: process.env.LANTERN_SMOKE_VIEW }), 500);
+      // LANTERN_SMOKE_AUTO="y\nlook" gives the smoke world "Send on connect" lines (\n separates them).
+      const auto = process.env.LANTERN_SMOKE_AUTO?.replace(/\\n/g, '\n');
+      setTimeout(() => send('smoke:run', { host, port: Number(port), panel: process.env.LANTERN_SMOKE_PANEL, view: process.env.LANTERN_SMOKE_VIEW, auto }), 500);
       setTimeout(async () => {
         const img = await win!.webContents.capturePage();
         fs.writeFileSync(out, img.toPNG());
@@ -249,36 +253,59 @@ ipcMain.handle('session:connect', (_e, worldId: string, size: { width: number; h
     encoding: world.encoding,
     width: size?.width ?? 100,
     height: size?.height ?? 40,
+    mxp: world.mxp,
   });
-  // Pueblo (shared/pueblo.ts): answers the game's offer and turns its HTML-style tags into ANSI
-  // before the renderer sees the text. The switch is read once per connection.
-  const pueblo = new PuebloFilter({ enabled: world.pueblo, hash: () => randomBytes(16).toString('hex') });
-  const s: Session = { id, world, telnet, pueblo, log: openLog(world), logHtml: world.log.format === 'html', logRaw: world.logging && world.log.format === 'raw' };
+  // MXP (shared/mxp.ts) and Pueblo (shared/pueblo.ts) turn the formatting tags a game sends into
+  // ANSI before the renderer sees the text. One switch covers both; it is read once per connection.
+  const mxp = new MxpFilter({ clientVersion: app.getVersion() });
+  const pueblo = new PuebloFilter({ enabled: world.mxp, hash: () => randomBytes(16).toString('hex') });
+  const s: Session = { id, world, telnet, mxp, pueblo, log: openLog(world), logHtml: world.log.format === 'html', logRaw: world.logging && world.log.format === 'raw' };
   sessions.set(id, s);
 
-  telnet.on('text', (text: string) => {
-    // Raw diagnostic log: the exact bytes the game sent (telnet stripped), escapes shown as \e,
-    // written here before Pueblo translation and before the renderer parses ANSI out. Lets us
-    // see colour codes and Pueblo tags verbatim.
-    if (s.logRaw && s.log) s.log.write(text.replace(/\x1b/g, '\\e').replace(/\r/g, ''));
-    for (const ev of pueblo.feed(text)) {
+  // "Send on connect": held until the game has said something (or 1.5 s), then one line every
+  // 250 ms. Sent the instant the socket opened, the first line (Haven's "y" to its colour
+  // question) often arrived before the server was reading input and was lost.
+  let autoTimer: NodeJS.Timeout | null = null;
+  let autoSent = false;
+  const sendAutoConnect = () => {
+    if (autoSent) return;
+    autoSent = true;
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    const lines = (world.autoConnect ?? '').split(/\r?\n/).filter((l) => l.trim());
+    lines.forEach((line, i) => setTimeout(() => { if (sessions.get(id) === s) telnet.sendLine(line); }, 250 * (i + 1)));
+  };
+
+  const deliver = (events: { kind: string; text?: string; line?: string }[]) => {
+    for (const ev of events) {
       if (ev.kind === 'text') send('session:text', id, ev.text);
-      else if (ev.kind === 'send') telnet.sendLine(ev.line);
+      else if (ev.kind === 'send') telnet.sendLine(ev.line!);
       else send('session:info', id, ev.text);
     }
+  };
+  telnet.on('text', (text: string) => {
+    // Raw diagnostic log: the exact bytes the game sent (telnet stripped), escapes shown as \e,
+    // written here before MXP/Pueblo translation and before the renderer parses ANSI out. Lets
+    // us see colour codes and formatting tags verbatim.
+    if (s.logRaw && s.log) s.log.write(text.replace(/\x1b/g, '\\e').replace(/\r/g, ''));
+    if (autoTimer) sendAutoConnect();
+    for (const ev of mxp.feed(text)) {
+      if (ev.kind === 'text') deliver(pueblo.feed(ev.text));
+      else deliver([ev]);
+    }
   });
+  telnet.on('mxp', () => { mxp.on = true; });
   telnet.on('prompt', () => send('session:prompt', id));
   telnet.on('echo', (on: boolean) => send('session:echo', id, on));
   telnet.on('gmcp', (pkg: string, data: unknown) => send('session:gmcp', id, pkg, data));
   telnet.on('info', (msg: string) => send('session:info', id, msg));
   telnet.on('status', (status: string, message?: string) => {
     send('session:status', id, status, message);
-    if (status === 'connected' && world.autoConnect) {
-      for (const line of world.autoConnect.split(/\r?\n/)) if (line.trim()) telnet.sendLine(line);
-    }
+    if (status === 'connected' && world.autoConnect?.trim()) autoTimer = setTimeout(sendAutoConnect, 1500);
     if (status === 'disconnected' || status === 'error') {
-      // Anything Pueblo was holding back for a tag that never finished is shown as text.
-      for (const ev of pueblo.flush()) if (ev.kind === 'text') send('session:text', id, ev.text);
+      if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+      // Anything MXP or Pueblo was holding back for a tag that never finished is shown as text.
+      for (const ev of mxp.flush()) if (ev.kind === 'text') deliver(pueblo.feed(ev.text));
+      deliver(pueblo.flush());
       // Give the renderer a moment to log the last lines it is still committing.
       const log = s.log; s.log = null;
       if (log) setTimeout(() => { log.write('\n'); log.end(); }, 500);

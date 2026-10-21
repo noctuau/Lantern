@@ -256,7 +256,7 @@ export class PuebloFilter {
   }
 }
 
-function parseAttrs(s: string): Record<string, string> {
+export function parseAttrs(s: string): Record<string, string> {
   const out: Record<string, string> = {};
   const re = /([a-zA-Z_:][\w:.-]*)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
   let m: RegExpExecArray | null;
@@ -321,7 +321,7 @@ export function cssColour(v: string): string | null {
   return NAMED_COLOURS[s] ?? null;
 }
 
-function fgSgr(hex: string): string {
+export function fgSgr(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
   return SGR(`38;2;${r};${g};${b}`);
 }

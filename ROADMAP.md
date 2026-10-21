@@ -70,14 +70,17 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - Unread pills (2026-10-21): the channel-tab and Main unread counts also float at the bottom right of the output pane, stacked above "Jump to latest"; click to switch
 - "Tidy what I type" switch (2026-10-21, on by default): curly quotes, long dashes, ellipsis, odd spaces, invisibles, control codes and full-width ASCII in typed commands become plain ASCII before aliases run (`cleanTyped` in `src/lib/automation.ts`); passwords and script sends untouched
 - Per-world logging settings: what to log, plain text or HTML with colours, header on/off, file name pattern with strftime fields and Browse…; imported from .MCL
+- "Send on connect" lines (2026-10-21) wait for the game's first output (or 1.5 s), then go one every 250 ms, so Haven's "y" to its colour question is no longer lost; `LANTERN_SMOKE_AUTO` smokes it against `fake-mxp.mjs`
 
-## Pueblo (done 2026-10-21)
+## MXP and Pueblo (done 2026-10-21)
 
-- Why: Haven's `` `2 … `5 `` italics never reached the screen. MUSHclient's own source (ProcessPreviousLine.cpp, doc.cpp, mxp/mxpOpenAtomic.cpp) shows how it showed them: the game prints "This world is Pueblo 1.10 enhanced.", the client answers `PUEBLOCLIENT 1.10 md5="…"`, the game sends `</xch_mudtext>` and from then on formatting is HTML-style tags
-- `World.pueblo` (default true, `normalizeWorld`, imported from `.MCL` `pueblo="y"`), checkbox in World settings › Connection
-- `shared/pueblo.ts`: `PuebloFilter` does the handshake and translates tags to ANSI in `electron/main.ts` before the renderer sees the text: b/strong, i/em, u, font color (truecolour), a href (underlined, URL after the text), br/p/hr, entities, `<img xch_mode=purehtml>` newline suppression, `<xch_page>` reset; everything else dropped; tags and entities split across packets are buffered; `<3` and `a < b` stay text. The raw log still shows the tags
-- `scripts/test-pueblo.mjs` unit test; `scripts/fake-pueblo.mjs` is a stand-in game for `LANTERN_SMOKE`
-- Not done: clickable `xch_cmd` links, `<img src>`, panes/alerts; MXP proper (the `\e[1z` secure-line tags MUDs use) is still an idea below
+- Why: Haven's `` `2 … `5 `` italics never reached the screen. A raw log showed Haven strips the format codes for a client that has not accepted MXP (telnet option 91); MUSHclient accepts it by default, so it saw `<I>` tags
+- `World.mxp` (default true, `normalizeWorld`, imported from `.MCL` `use_mxp`), checkbox "MXP formatting" in World settings › Connection
+- `electron/telnet.ts` answers IAC DO/WILL MXP (WILL/DO) when the switch is on, emits `mxp`, and notes every option a server offers or asks for and what Lantern did with it (one note per option; ECHO excluded)
+- `shared/mxp.ts`: `MxpFilter` runs in `electron/main.ts` between the raw log and the renderer: `ESC[Nz` line modes (open/secure/locked, reset, temp secure, the three locks, 10+ as secure), open-mode tags B/I/U/S/H/COLOR/FONT, secure-mode A/SEND/BR/SBR/HR/P/NOBR, `<VERSION>` and `<SUPPORT>` replies, `<!ELEMENT>` expansion, entities, everything else dropped with its text kept, tags/entities/escapes split across packets buffered, `<3` and `a < b` left alone
+- Pueblo too (`shared/pueblo.ts`, same switch): announcement → `PUEBLOCLIENT 1.10 md5="…"`, `</xch_mudtext>` → HTML-style tags, built first on the Pueblo hypothesis and kept since it is harmless and some MUSHes still offer it
+- `scripts/test-mxp.mjs`, `scripts/test-pueblo.mjs`; `scripts/fake-mxp.mjs` / `scripts/fake-pueblo.mjs` stand-in games for `LANTERN_SMOKE`
+- Not done: clickable `<SEND>` commands and hover hints, `<IMAGE>`, `<SOUND>`, gauges/stats, `<VAR>`/`<!ENTITY>` values, `<FRAME>`/`<DEST>` panes
 
 ## Stage 5 — Modern-era features
 
@@ -99,7 +102,7 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 
 ## Later / ideas
 
-- MXP link support (Pueblo is done above; MXP's secure-line tags and clickable `xch_cmd`/`send` links are not)
+- MXP extras: clickable `<SEND>` commands with hints, images, sounds, gauges (formatting, links-as-text, VERSION/SUPPORT and elements are done above)
 - MSP sounds
 - Shared timers and reminders across worlds
 - AresMUSH web-portal integration for games that have one

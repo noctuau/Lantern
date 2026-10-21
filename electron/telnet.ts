@@ -25,7 +25,16 @@ export interface TelnetOptions {
   height?: number;
   gmcpHello?: Record<string, string>;
   gmcpSupports?: string[];
+  /** Accept MXP (option 91) when the server offers it; the session then emits 'mxp'. Default false. */
+  mxp?: boolean;
 }
+
+/** Names for the 'info' lines about what a server offers. */
+const OPT_NAMES: Record<number, string> = {
+  1: 'ECHO', 3: 'SGA', 24: 'TTYPE', 25: 'EOR', 31: 'NAWS', 42: 'CHARSET', 69: 'MSDP', 70: 'MSSP',
+  85: 'MCCP1', 86: 'MCCP2', 90: 'MSP', 91: 'MXP', 93: 'ZMP', 102: 'Aardwolf', 200: 'ATCP', 201: 'GMCP',
+};
+const optName = (opt: number) => OPT_NAMES[opt] ? `${OPT_NAMES[opt]} (${opt})` : `option ${opt}`;
 
 export type TelnetStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -46,7 +55,9 @@ export class TelnetSession extends EventEmitter {
   serverEcho = false;      // true while the server has taken over echo (password entry)
   compressed = false;
   gmcpEnabled = false;
+  mxpEnabled = false;
   bytesIn = 0;
+  private offered = new Set<number>();   // options already reported, so a chatty server does not repeat the note
 
   constructor(opts: TelnetOptions) {
     super();
@@ -204,19 +215,37 @@ export class TelnetSession extends EventEmitter {
     this.sock?.write(Buffer.from(out));
   }
 
+  /** One note per option about what the server offered and what we did with it, so a raw log or the screen shows the negotiation. */
+  private offer(opt: number, verb: 'offered' | 'asked for', outcome: string) {
+    if (opt === OPT.ECHO || this.offered.has(opt)) return;   // ECHO flips on every password prompt; not news
+    this.offered.add(opt);
+    this.emit('info', `Server ${verb} ${optName(opt)}: ${outcome}`);
+  }
+
+  private enableMxp(reply: number, opt: number) {
+    this.cmd(reply, opt);
+    if (!this.mxpEnabled) { this.mxpEnabled = true; this.emit('mxp'); }
+  }
+
   private onWill(opt: number) {
     switch (opt) {
       case OPT.ECHO:
         this.serverEcho = true; this.emit('echo', false); this.cmd(DO, opt); break;
       case OPT.SGA: case OPT.EOR: case OPT.MCCP2:
-        this.cmd(DO, opt); break;
+        this.offer(opt, 'offered', 'enabled'); this.cmd(DO, opt); break;
       case OPT.GMCP:
+        this.offer(opt, 'offered', 'enabled');
         this.gmcpEnabled = true;
         this.cmd(DO, opt);
         this.sendGmcp('Core.Hello', this.opts.gmcpHello ?? { client: 'Lantern', version: '0.1.0' });
         this.sendGmcp('Core.Supports.Set', this.opts.gmcpSupports ?? ['Char 1', 'Char.Vitals 1', 'Room 1', 'Comm 1']);
         break;
-      default: this.cmd(DONT, opt);
+      case OPT.MXP:
+        // Servers offer MXP either way round: IAC WILL MXP (answer DO) or IAC DO MXP (answer WILL).
+        if (this.opts.mxp) { this.offer(opt, 'offered', 'enabled'); this.enableMxp(DO, opt); }
+        else { this.offer(opt, 'offered', 'declined (MXP formatting is off for this world)'); this.cmd(DONT, opt); }
+        break;
+      default: this.offer(opt, 'offered', 'not supported'); this.cmd(DONT, opt);
     }
   }
 
@@ -227,10 +256,14 @@ export class TelnetSession extends EventEmitter {
 
   private onDo(opt: number) {
     switch (opt) {
-      case OPT.TTYPE: this.cmd(WILL, opt); break;
-      case OPT.NAWS: this.nawsEnabled = true; this.cmd(WILL, opt); this.sendNaws(); break;
-      case OPT.SGA: this.cmd(WILL, opt); break;
-      default: this.cmd(WONT, opt);
+      case OPT.TTYPE: this.offer(opt, 'asked for', 'enabled'); this.cmd(WILL, opt); break;
+      case OPT.NAWS: this.offer(opt, 'asked for', 'enabled'); this.nawsEnabled = true; this.cmd(WILL, opt); this.sendNaws(); break;
+      case OPT.SGA: this.offer(opt, 'asked for', 'enabled'); this.cmd(WILL, opt); break;
+      case OPT.MXP:
+        if (this.opts.mxp) { this.offer(opt, 'asked for', 'enabled'); this.enableMxp(WILL, opt); }
+        else { this.offer(opt, 'asked for', 'declined (MXP formatting is off for this world)'); this.cmd(WONT, opt); }
+        break;
+      default: this.offer(opt, 'asked for', 'not supported'); this.cmd(WONT, opt);
     }
   }
 

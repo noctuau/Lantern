@@ -196,9 +196,9 @@ export function App() {
 
   // Dev smoke test hook (see electron/main.ts). The throwaway world carries a demo trigger, alias,
   // Lua script and channel tab so the screenshot shows automation, scripting and capture end to end.
-  useEffect(() => window.lantern.app.onSmoke(async ({ host, port, panel, view }) => {
+  useEffect(() => window.lantern.app.onSmoke(async ({ host, port, panel, view, auto }) => {
     const w = await window.lantern.worlds.create({
-      name: `Smoke ${host}`, host, port,
+      name: `Smoke ${host}`, host, port, autoConnect: auto,
       // LANTERN_SMOKE_PANEL=world also logs the run in HTML (into the throwaway profile) and opens the world editor.
       logging: panel === 'world',
       log: { output: true, commands: true, notes: true, format: 'html', file: '{world}/%Y-%m-%d %H%M', worldNameHeader: true },

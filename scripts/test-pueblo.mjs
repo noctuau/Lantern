@@ -24,9 +24,9 @@ let n = 0;
 const ok = () => { n++; };
 
 /* ---------- world switch ---------- */
-assert.equal(normalizeWorld({ id: 'w' }).pueblo, true, 'default on');
-assert.equal(normalizeWorld({ id: 'w', pueblo: false }).pueblo, false);
-assert.equal(normalizeWorld({ id: 'w', pueblo: 'yes' }).pueblo, true, 'junk values fall back to on'); ok();
+assert.equal(normalizeWorld({ id: 'w' }).mxp, true, 'default on (the switch is shared with MXP)');
+assert.equal(normalizeWorld({ id: 'w', mxp: false }).mxp, false);
+assert.equal(normalizeWorld({ id: 'w', pueblo: false }).mxp, false, 'the old field name still turns it off'); ok();
 
 /* ---------- handshake ---------- */
 let f = fresh();

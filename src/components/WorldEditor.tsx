@@ -52,8 +52,8 @@ export function WorldEditor({ world, onSave, onDelete, onClose }: Props) {
         <label>Send on connect
           <textarea rows={2} value={w.autoConnect ?? ''} onChange={(e) => set('autoConnect', e.target.value)} placeholder={'connect Name password\n(one line per command — stored as plain text)'} />
         </label>
-        <label className="check inline" title="When the game announces 'This world is Pueblo … enhanced', Lantern replies PUEBLOCLIENT and renders the <i>, <b>, <u>, <font> and link tags it then sends. Games that never offer Pueblo are not affected. Haven sends its italics this way.">
-          <input type="checkbox" checked={w.pueblo} onChange={(e) => set('pueblo', e.target.checked)} /> Pueblo (older MUSHes send formatting this way)
+        <label className="check inline" title="When the game offers MXP (telnet option 91), Lantern accepts and renders the <B>, <I>, <U>, <COLOR>, <SEND> and <A> tags it then sends; a game that announces Pueblo instead is answered too. Games that offer neither are not affected. Haven sends its italics this way, so leave it on for Haven.">
+          <input type="checkbox" checked={w.mxp} onChange={(e) => set('mxp', e.target.checked)} /> MXP formatting (older MUSHes send italics, bold and colours this way)
         </label>
 
         <h3>Logging</h3>

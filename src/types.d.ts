@@ -56,7 +56,7 @@ declare global {
         openExternal(url: string): Promise<void>;
         version(): Promise<string>;
         about(): Promise<{ version: string; electron: string; chrome: string; node: string; packaged: boolean; flavour: UpdateFlavour }>;
-        onSmoke(cb: (opts: { host: string; port: number; panel?: string; view?: string }) => void): Unsub;
+        onSmoke(cb: (opts: { host: string; port: number; panel?: string; view?: string; auto?: string }) => void): Unsub;
       };
       update: {
         /** The latest GitHub release vs this version. `auto` (the startup check) returns null from source or smoke runs. */
