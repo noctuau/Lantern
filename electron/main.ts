@@ -362,19 +362,36 @@ ipcMain.handle('update:install', (_e, file: string, flavour: UpdateFlavour) => i
 
 /* ---------- IPC: installed fonts ---------- */
 
-// Asked of Windows via .NET once per run; the renderer's Local Font Access API needs a user
-// gesture and a permission grant, which makes it flaky, so this is the primary source.
+// Asked of Windows via .NET; the renderer's Local Font Access API needs a user gesture and a
+// permission grant, which makes it flaky, so this is the primary source. PowerShell can take a
+// while to start on some machines (security scanning, a cold .NET), so the last answer is kept
+// in fonts-cache.json and served at once while a fresh listing runs behind it.
+const fontCacheFile = () => path.join(app.getPath('userData'), 'fonts-cache.json');
 let fontList: Promise<string[]> | null = null;
-function installedFonts(): Promise<string[]> {
-  if (fontList) return fontList;
-  fontList = new Promise((resolve) => {
+
+function enumerateFonts(): Promise<string[]> {
+  return new Promise((resolve) => {
     if (process.platform !== 'win32') { resolve([]); return; }
     const cmd = 'Add-Type -AssemblyName System.Drawing; (New-Object System.Drawing.Text.InstalledFontCollection).Families | ForEach-Object { $_.Name }';
-    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', cmd], { windowsHide: true, timeout: 15000 }, (err, stdout) => {
-      if (err) { resolve([]); return; }
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', cmd], { windowsHide: true, timeout: 60000 }, (err, stdout) => {
+      if (err) { console.warn('font listing failed:', err.message); resolve([]); return; }
       resolve(stdout.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b)));
     });
   });
+}
+
+function installedFonts(): Promise<string[]> {
+  if (fontList) return fontList;
+  let cached: string[] = [];
+  try { const j = JSON.parse(fs.readFileSync(fontCacheFile(), 'utf-8')); if (Array.isArray(j)) cached = j.filter((s) => typeof s === 'string'); } catch { /* no cache yet */ }
+  const fresh = enumerateFonts().then((list) => {
+    if (list.length) {
+      try { fs.mkdirSync(path.dirname(fontCacheFile()), { recursive: true }); fs.writeFileSync(fontCacheFile(), JSON.stringify(list)); } catch { /* read-only profile: fine */ }
+      fontList = Promise.resolve(list);
+    }
+    return list;
+  });
+  fontList = cached.length ? Promise.resolve(cached) : fresh;
   return fontList;
 }
 ipcMain.handle('fonts:list', () => installedFonts());

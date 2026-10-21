@@ -107,7 +107,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
           </nav>
           <div className="settings-pane">
             {fonts === FALLBACK_FONTS && tab === 'text' && (
-              <p className="hint">Windows did not share its font list, so this shows a few common fonts. You can still type any installed font's name.</p>
+              <p className="hint">Fetching the installed font list… a few common fonts are listed meanwhile, and you can type any installed font's name.</p>
             )}
 
             {tab === 'text' && (<>

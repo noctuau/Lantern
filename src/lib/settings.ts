@@ -137,12 +137,28 @@ export function applySettings(s: AppSettings) {
   palette.forEach((c, i) => r.setProperty(`--ansi-${i}`, c));
 }
 
-const monoCache = new Map<string, boolean>();
+// Measuring a font means Chromium loading it, and a machine with hundreds of fonts (big CJK ones among
+// them) can take many seconds over the whole list. So each verdict is kept in localStorage and measured
+// once per machine, not once per run.
+const MONO_KEY = 'lantern.monoFonts';
+let monoCache: Map<string, boolean> | null = null;
+let monoSave: ReturnType<typeof setTimeout> | null = null;
 let canvas: CanvasRenderingContext2D | null = null;
+
+function monoStore(): Map<string, boolean> {
+  if (monoCache) return monoCache;
+  monoCache = new Map();
+  try {
+    const raw = JSON.parse(localStorage.getItem(MONO_KEY) ?? '{}') as Record<string, boolean>;
+    for (const [k, v] of Object.entries(raw)) if (typeof v === 'boolean') monoCache.set(k, v);
+  } catch { /* nothing remembered yet */ }
+  return monoCache;
+}
 
 /** True when a font renders narrow and wide letters at the same width (so it is fixed-pitch). */
 export function isMonospace(family: string): boolean {
-  const hit = monoCache.get(family);
+  const cache = monoStore();
+  const hit = cache.get(family);
   if (hit !== undefined) return hit;
   if (!canvas) canvas = document.createElement('canvas').getContext('2d');
   if (!canvas) return false;
@@ -150,12 +166,30 @@ export function isMonospace(family: string): boolean {
   const narrow = canvas.measureText('iiiiiiiiiill').width;
   const wide = canvas.measureText('WWWWWWWWWWMM').width;
   const mono = Math.abs(narrow - wide) < 0.5;
-  monoCache.set(family, mono);
+  cache.set(family, mono);
+  if (monoSave) clearTimeout(monoSave);
+  monoSave = setTimeout(() => {
+    monoSave = null;
+    try { localStorage.setItem(MONO_KEY, JSON.stringify(Object.fromEntries(cache))); } catch { /* storage full or blocked: measure again next run */ }
+  }, 500);
   return mono;
 }
 
-/** Installed font family names, via the Local Font Access API when the browser grants it. */
-export async function listSystemFonts(): Promise<string[]> {
+let fontsPromise: Promise<string[]> | null = null;
+
+/**
+ * Installed font family names: from main (Windows via .NET, cached on disk there), else the Local
+ * Font Access API when the browser grants it, else FALLBACK_FONTS. A real list is remembered for the
+ * rest of the run; a fallback is not, so the next call tries again.
+ */
+export function listSystemFonts(): Promise<string[]> {
+  if (fontsPromise) return fontsPromise;
+  const p = fetchSystemFonts().then((f) => { if (f === FALLBACK_FONTS && fontsPromise === p) fontsPromise = null; return f; });
+  fontsPromise = p;
+  return p;
+}
+
+async function fetchSystemFonts(): Promise<string[]> {
   try {
     const fromOs = await window.lantern.fonts.list();
     if (fromOs.length) return fromOs;

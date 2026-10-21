@@ -19,12 +19,15 @@ export function FontPicker({ value, fonts, onChange }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLInputElement>(null);
 
+  // Built only while the menu is open: the monospace test measures each font, which is the slow part,
+  // and nothing needs it until the list is actually shown.
   const list = useMemo(() => {
+    if (!open) return [];
     let all = fonts.includes(value) || !value ? fonts : [value, ...fonts];
     if (monoOnly) all = all.filter((n) => n === value || isMonospace(n));
     const f = filter.trim().toLowerCase();
     return f ? all.filter((n) => n.toLowerCase().includes(f)) : all;
-  }, [fonts, filter, value, monoOnly]);
+  }, [open, fonts, filter, value, monoOnly]);
 
   useEffect(() => {
     if (!open) return;

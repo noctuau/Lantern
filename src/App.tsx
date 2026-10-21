@@ -66,6 +66,11 @@ export function App() {
   // Which Settings tab to open on; null = Text, or About while an update is waiting.
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null);
 
+  // The font list arrives behind the Settings dialog, never in front of it: the dialog opens at once with
+  // whatever list is known (prefetched a few seconds after launch, else the fallback) and fills in when
+  // Windows answers.
+  const loadFonts = useCallback(() => { listSystemFonts().then((f) => { if (f !== FALLBACK_FONTS) setFonts(f); }).catch(() => {}); }, []);
+
   // Display settings: load once, apply as CSS variables, persist on change.
   useEffect(() => {
     window.lantern.settings.get().then((raw) => {
@@ -73,8 +78,10 @@ export function App() {
       // Quiet startup check (installed builds only; main skips it from source or in smoke runs). A failure is silent here:
       // the About tab's own button reports errors.
       if (s.checkUpdates) setTimeout(() => { window.lantern.update.check(true).then((u) => { if (u) setUpdate(u); }).catch(() => {}); }, 8000);
+      // Warm the font list so Settings has it ready (main caches it on disk too).
+      setTimeout(loadFonts, 3000);
     });
-  }, []);
+  }, [loadFonts]);
   const saveSettings = useCallback(async (s: AppSettings) => {
     setSettings(s); applySettings(s); pushCustomColours(s);
     // Tell live sessions the new width (NAWS), so server-wrapped games follow it too.
@@ -83,10 +90,9 @@ export function App() {
     for (const id of store.order) window.lantern.session.resize(id, s.outputWidth || paneCols, rows);
     await window.lantern.settings.set(s as unknown as Record<string, unknown>);
   }, [sidebarWidth]);
-  const openSettings = async () => {
-    // queryLocalFonts needs a user gesture, so the font list is fetched from the click itself.
-    setFonts(await listSystemFonts());
+  const openSettings = () => {
     setSettingsOpen(true);
+    if (fonts === FALLBACK_FONTS) loadFonts();
   };
 
   // Ctrl+Alt+H: quick highlight for the active world, seeded with any selected output text.
@@ -230,9 +236,9 @@ export function App() {
     else if (panel === 'world') setTimeout(() => setEditing(w), 4500);
     else if (panel === 'about') { setSettingsTab('about'); setSettingsOpen(true); }
     else if (panel === 'settings') {
-      setFonts(await listSystemFonts()); setSettingsOpen(true);
+      loadFonts(); setSettingsOpen(true);
       // Open the first font dropdown so the screenshot shows the list.
-      setTimeout(() => (document.querySelector('.font-btn') as HTMLButtonElement | null)?.click(), 1500);
+      setTimeout(() => (document.querySelector('.font-btn') as HTMLButtonElement | null)?.click(), 2500);
     }
     else if (panel) { setPanelTab(panel === 'script' ? 'script' : panel === 'channels' ? 'channels' : panel === 'options' ? 'options' : undefined); setAutomating(w); }
     setTimeout(() => sendCommandRef.current('look'), 3000);
