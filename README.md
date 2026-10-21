@@ -9,6 +9,7 @@ It's written predominantly for [Haven](https://havenrpg.net) and games built on 
 ## Features
 
 - **Colour** — full ANSI, xterm-256 and truecolour, with a configurable palette (Warm, Classic/MUSHclient, or your own).
+- **Pueblo** — answers a game's Pueblo offer and renders the italics, bold, underline, colours and links it then sends as HTML-style tags (how Haven and other older MUSHes send formatting). Per world, on by default.
 - **Automation** — triggers, aliases and timers, with plain, wildcard or regex matching; recolour a line, hide it, or send a reply.
 - **Channel tabs** — route OOC and other chatter into their own tabs to keep it off the roleplay screen, with per-tab timestamps, spacing and a command prefix; one-click Haven preset included.
 - **Colour composer** — build gradient or hand-picked coloured text from 87 presets and drop it straight into the command box.
@@ -59,7 +60,7 @@ The artifacts land in `release/`.
 - `electron/` — main process: `telnet.ts` (protocol engine), `worlds.ts` (world profiles), `mcl.ts` (MUSHclient import), `main.ts` (window, IPC, logging)
 - `shared/types.ts` — the world profile and its triggers, aliases, timers and channel tabs (used by both processes)
 - `src/` — React UI: `lib/ansi.ts` (colour parser), `lib/store.ts` (session state, runs triggers, timers and scripts, routes lines to channel tabs, writes the log), `lib/automation.ts` (matching engine, alias/speedwalk expansion), `lib/channels.ts` (channel-tab routing and the Haven preset), `lib/lua.ts` (the Lua API and one state per session), `lib/lua-wasm.ts` (loads wasmoon), `components/`
-- `scripts/` — `probe.mjs <host> <port>` checks telnet negotiation; `test-ansi.mjs` unit-tests the colour parser; `test-automation.mjs` unit-tests triggers, aliases, timers and `.MCL` import; `test-channels.mjs` unit-tests channel-tab routing and world normalisation; `test-lua.mjs` unit-tests the Lua layer under Node
+- `scripts/` — `probe.mjs <host> <port>` checks telnet negotiation; `test-ansi.mjs` unit-tests the colour parser; `test-automation.mjs` unit-tests triggers, aliases, timers and `.MCL` import; `test-channels.mjs` unit-tests channel-tab routing and world normalisation; `test-lua.mjs` unit-tests the Lua layer under Node; `test-pueblo.mjs` unit-tests the Pueblo handshake and tag translation; `fake-pueblo.mjs [port]` is a tiny Pueblo-enhanced game for smoke runs (`shared/pueblo.ts` is the translator)
 
 Your data is in `%APPDATA%\lantern\`: `worlds.json` (profiles, including script variables), `scripts\<worldId>.lua` (one Lua script per world) and `logs\` (one plain-text file per world per day).
 
@@ -71,7 +72,11 @@ Connects to a login screen, screenshots the window and quits:
 LANTERN_SMOKE="aardwolf.org|4000|C:\path\to\out.png" npx electron .
 ```
 
-Smoke runs use a throwaway profile and never touch your worlds or logs. The smoke world carries a demo highlight trigger, a one-shot note trigger that also calls a Lua function, a Lua script, an alias and an `OOC` channel tab, so the screenshot also exercises automation, scripting and capture. Set `LANTERN_SMOKE_PANEL=1` to screenshot with the Automation panel open (`=script`, `=channels` or `=options` opens it on that tab; `=about` opens Settings › About), `LANTERN_SMOKE_VIEW=OOC` to screenshot the channel tab instead of Main, and `LANTERN_SMOKE_WAIT=<ms>` to wait longer before the capture.
+Smoke runs use a throwaway profile and never touch your worlds or logs. The smoke world carries a demo highlight trigger, a one-shot note trigger that also calls a Lua function, a Lua script, an alias and an `OOC` channel tab, so the screenshot also exercises automation, scripting and capture. Set `LANTERN_SMOKE_PANEL=1` to screenshot with the Automation panel open (`=script`, `=channels` or `=options` opens it on that tab; `=about` opens Settings › About), `LANTERN_SMOKE_VIEW=OOC` to screenshot the channel tab instead of Main, and `LANTERN_SMOKE_WAIT=<ms>` to wait longer before the capture. To smoke Pueblo rendering without a real game, run `node scripts/fake-pueblo.mjs 4100` in one terminal and `LANTERN_SMOKE="127.0.0.1|4100|C:\path\to\out.png" npx electron .` in another: the screenshot should show "You say, *test*" in italics plus bold, underlined, coloured and linked lines.
+
+## Pueblo
+
+Some MUSHes (Haven among them) never send italics or bold as ANSI codes. Instead they print `This world is Pueblo 1.10 enhanced.` at the login screen and, if the client answers `PUEBLOCLIENT`, switch to sending HTML-style tags: `<i>`, `<b>`, `<u>`, `<font color=…>`, `<a href=…>`, `<br>` and `&lt;`-style entities. Lantern does that handshake when the world's **Pueblo** box is ticked (World settings › Connection; on by default, and harmless for games that never offer it): it replies the way MUSHclient does, notes "Pueblo on" in the output once the game switches modes, and from then on turns the tags into the same styles the ANSI parser produces, so triggers, channel tabs and logs see ordinary text. Link text is underlined with the URL after it in brackets, unknown tags are dropped, and a `<` that is not a tag (`<3`, `a < b`) is left alone. Pueblo's image, pane and alert tags are ignored, and `xch_cmd` links are not clickable yet. The raw log format still records exactly what the game sent, tags included. Details in `docs/pueblo.md`; `node scripts/fake-pueblo.mjs` runs a small Pueblo game for testing.
 
 ## Display settings and quick highlights
 

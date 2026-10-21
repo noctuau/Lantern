@@ -157,6 +157,11 @@ export interface World {
   speedwalkPrefix: string;
   /** *italic*, **bold** and __underline__ in typed chat commands become the game's format codes. Off by default. */
   markup: MarkupSettings;
+  /**
+   * Answer a game's Pueblo offer ("This world is Pueblo 1.10 enhanced") and render the HTML-style
+   * formatting it then sends (shared/pueblo.ts). On by default: games that never offer it are unaffected.
+   */
+  pueblo: boolean;
   /** Set once we've pre-loaded sensible defaults (e.g. Haven channel tabs), so we don't re-add them. */
   seededDefaults?: boolean;
 }
@@ -219,6 +224,7 @@ export function normalizeWorld(w: Partial<World> & Pick<World, 'id'>): World {
     speedwalk: w.speedwalk ?? false,
     speedwalkPrefix: w.speedwalkPrefix || DEFAULT_SPEEDWALK_PREFIX,
     markup: normalizeMarkup(w.markup),
+    pueblo: w.pueblo !== false,
   };
 }
 

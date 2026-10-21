@@ -179,5 +179,6 @@ export function importMcl(xml: string): Partial<World> {
   const stack = attr('command_stack_character'); if (stack) w.commandStackChar = stack;
   w.speedwalk = attr('enable_speed_walk') === 'y';
   const swp = attr('speed_walk_prefix'); if (swp) w.speedwalkPrefix = swp;
+  const pueblo = attr('pueblo'); if (pueblo) w.pueblo = pueblo === 'y';
   return w;
 }

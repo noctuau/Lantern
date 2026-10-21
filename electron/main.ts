@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, shell, Menu, session as electronSession } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { TelnetSession } from './telnet';
 import { loadWorlds, saveWorlds, newWorld, importMcl, type World } from './worlds';
@@ -10,11 +10,13 @@ import { expandLogName } from '../shared/logname';
 import { LOG_HTML_HEAD } from '../src/lib/loghtml';
 import { aboutInfo, checkForUpdates, downloadUpdate, installUpdate } from './updates';
 import type { ReleaseAsset, UpdateFlavour } from '../shared/updates';
+import { PuebloFilter } from '../shared/pueblo';
 
 interface Session {
   id: string;
   world: World;
   telnet: TelnetSession;
+  pueblo: PuebloFilter;
   log: fs.WriteStream | null;
   logHtml: boolean;
   logRaw: boolean;
@@ -248,14 +250,22 @@ ipcMain.handle('session:connect', (_e, worldId: string, size: { width: number; h
     width: size?.width ?? 100,
     height: size?.height ?? 40,
   });
-  const s: Session = { id, world, telnet, log: openLog(world), logHtml: world.log.format === 'html', logRaw: world.logging && world.log.format === 'raw' };
+  // Pueblo (shared/pueblo.ts): answers the game's offer and turns its HTML-style tags into ANSI
+  // before the renderer sees the text. The switch is read once per connection.
+  const pueblo = new PuebloFilter({ enabled: world.pueblo, hash: () => randomBytes(16).toString('hex') });
+  const s: Session = { id, world, telnet, pueblo, log: openLog(world), logHtml: world.log.format === 'html', logRaw: world.logging && world.log.format === 'raw' };
   sessions.set(id, s);
 
   telnet.on('text', (text: string) => {
-    send('session:text', id, text);
     // Raw diagnostic log: the exact bytes the game sent (telnet stripped), escapes shown as \e,
-    // written here before the renderer parses ANSI out. Lets us see colour codes verbatim.
+    // written here before Pueblo translation and before the renderer parses ANSI out. Lets us
+    // see colour codes and Pueblo tags verbatim.
     if (s.logRaw && s.log) s.log.write(text.replace(/\x1b/g, '\\e').replace(/\r/g, ''));
+    for (const ev of pueblo.feed(text)) {
+      if (ev.kind === 'text') send('session:text', id, ev.text);
+      else if (ev.kind === 'send') telnet.sendLine(ev.line);
+      else send('session:info', id, ev.text);
+    }
   });
   telnet.on('prompt', () => send('session:prompt', id));
   telnet.on('echo', (on: boolean) => send('session:echo', id, on));
@@ -267,6 +277,8 @@ ipcMain.handle('session:connect', (_e, worldId: string, size: { width: number; h
       for (const line of world.autoConnect.split(/\r?\n/)) if (line.trim()) telnet.sendLine(line);
     }
     if (status === 'disconnected' || status === 'error') {
+      // Anything Pueblo was holding back for a tag that never finished is shown as text.
+      for (const ev of pueblo.flush()) if (ev.kind === 'text') send('session:text', id, ev.text);
       // Give the renderer a moment to log the last lines it is still committing.
       const log = s.log; s.log = null;
       if (log) setTimeout(() => { log.write('\n'); log.end(); }, 500);

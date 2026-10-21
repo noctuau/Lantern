@@ -71,6 +71,14 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - "Tidy what I type" switch (2026-10-21, on by default): curly quotes, long dashes, ellipsis, odd spaces, invisibles, control codes and full-width ASCII in typed commands become plain ASCII before aliases run (`cleanTyped` in `src/lib/automation.ts`); passwords and script sends untouched
 - Per-world logging settings: what to log, plain text or HTML with colours, header on/off, file name pattern with strftime fields and Browse…; imported from .MCL
 
+## Pueblo (done 2026-10-21)
+
+- Why: Haven's `` `2 … `5 `` italics never reached the screen. MUSHclient's own source (ProcessPreviousLine.cpp, doc.cpp, mxp/mxpOpenAtomic.cpp) shows how it showed them: the game prints "This world is Pueblo 1.10 enhanced.", the client answers `PUEBLOCLIENT 1.10 md5="…"`, the game sends `</xch_mudtext>` and from then on formatting is HTML-style tags
+- `World.pueblo` (default true, `normalizeWorld`, imported from `.MCL` `pueblo="y"`), checkbox in World settings › Connection
+- `shared/pueblo.ts`: `PuebloFilter` does the handshake and translates tags to ANSI in `electron/main.ts` before the renderer sees the text: b/strong, i/em, u, font color (truecolour), a href (underlined, URL after the text), br/p/hr, entities, `<img xch_mode=purehtml>` newline suppression, `<xch_page>` reset; everything else dropped; tags and entities split across packets are buffered; `<3` and `a < b` stay text. The raw log still shows the tags
+- `scripts/test-pueblo.mjs` unit test; `scripts/fake-pueblo.mjs` is a stand-in game for `LANTERN_SMOKE`
+- Not done: clickable `xch_cmd` links, `<img src>`, panes/alerts; MXP proper (the `\e[1z` secure-line tags MUDs use) is still an idea below
+
 ## Stage 5 — Modern-era features
 
 - Themes (light + dark + custom palettes)
@@ -91,7 +99,7 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 
 ## Later / ideas
 
-- MXP and Pueblo link support (MUSHes still send Pueblo)
+- MXP link support (Pueblo is done above; MXP's secure-line tags and clickable `xch_cmd`/`send` links are not)
 - MSP sounds
 - Shared timers and reminders across worlds
 - AresMUSH web-portal integration for games that have one
