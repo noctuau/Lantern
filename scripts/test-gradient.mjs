@@ -35,4 +35,25 @@ assert.equal(spans[1].text, 'plain'); assert.equal(spans[1].hex, null);
 assert.ok(g.GRADIENT_PRESETS.length >= 80);
 for (const p of g.GRADIENT_PRESETS) assert.ok(g.parseCodes(p.codes).length > 0, `preset ${p.name} has codes`);
 
+
+// Presets from settings.json are cleaned: names unique and non-empty, codes tidied, missing list = built-ins.
+assert.equal(g.normalizePresets(undefined).length, g.GRADIENT_PRESETS.length, 'no saved list means the built-ins');
+assert.notEqual(g.normalizePresets(undefined), g.GRADIENT_PRESETS, 'and it is a copy, not the shared array');
+assert.deepEqual(g.normalizePresets([]), [], 'an empty list stays empty');
+const np = g.normalizePresets([
+  { name: 'Mine', codes: ' 10, 20 ; 30 ' },
+  { name: 'Mine', codes: '1 2' },
+  { name: '  ', codes: '5' },
+  { codes: '7' },
+  null, 'junk', { name: 'No codes' }, { name: 'Bad codes', codes: 42 },
+]);
+assert.deepEqual(np, [
+  { name: 'Mine', codes: '10 20 30' },
+  { name: 'Mine (2)', codes: '1 2' },
+  { name: 'Preset', codes: '5' },
+  { name: 'Preset (2)', codes: '7' },
+  { name: 'No codes', codes: '' },
+  { name: 'Bad codes', codes: '' },
+], 'duplicates get a suffix, blanks a default name, junk is dropped, codes are tidied');
+
 console.log(`test-gradient: all assertions passed (${g.GRADIENT_PRESETS.length} presets)`);

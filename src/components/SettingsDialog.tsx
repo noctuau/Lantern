@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, PALETTES, resolvePalette, MAX_CUSTOM_COLOURS, type AppSettings, type PaletteName, type CustomColour } from '../lib/settings';
 import { FontPicker } from './FontPicker';
 import { AboutTab } from './AboutTab';
+import { GRADIENT_PRESETS, parseCodes, xtermHex, type GradientPreset } from '../lib/gradient';
 import type { UpdateInfo } from '../../shared/updates';
 
 const ANSI_LABELS = ['Black', 'Red', 'Green', 'Yellow', 'Blue', 'Magenta', 'Cyan', 'White',
@@ -28,10 +29,11 @@ const LANG_LABELS: Record<string, string> = {
 };
 const langLabel = (c: string) => LANG_LABELS[c] ?? c;
 
-export type SettingsTab = 'text' | 'colours' | 'spelling' | 'about';
+export type SettingsTab = 'text' | 'colours' | 'presets' | 'spelling' | 'about';
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: 'text', label: 'Text & layout' },
   { id: 'colours', label: 'Colours' },
+  { id: 'presets', label: 'Presets' },
   { id: 'spelling', label: 'Spelling' },
   { id: 'about', label: 'About' },
 ];
@@ -72,6 +74,20 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
   const addCustom = () =>
     setS((x) => ({ ...x, customColours: [...x.customColours, { id: uid(), name: `Colour ${x.customColours.length + 1}`, fg: '#e8a94b', bg: '' }] }));
   const removeCustom = (i: number) => setS((x) => ({ ...x, customColours: x.customColours.filter((_, j) => j !== i) }));
+
+  // Colour composer presets: a plain ordered list, edited in place.
+  const setPreset = (i: number, patch: Partial<GradientPreset>) =>
+    setS((x) => ({ ...x, presets: x.presets.map((p, j) => (j === i ? { ...p, ...patch } : p)) }));
+  const movePreset = (i: number, dir: -1 | 1) => setS((x) => {
+    const j = i + dir;
+    if (j < 0 || j >= x.presets.length) return x;
+    const presets = x.presets.slice();
+    [presets[i], presets[j]] = [presets[j], presets[i]];
+    return { ...x, presets };
+  });
+  const removePreset = (i: number) => setS((x) => ({ ...x, presets: x.presets.filter((_, j) => j !== i) }));
+  const addPreset = () => setS((x) => ({ ...x, presets: [...x.presets, { name: `Preset ${x.presets.length + 1}`, codes: '' }] }));
+  const resetPresets = () => setS((x) => ({ ...x, presets: GRADIENT_PRESETS.map((p) => ({ ...p })) }));
 
   // Live preview; put the saved settings back if the dialog is cancelled.
   useEffect(() => { applySettings(normalizeSettings(s)); }, [s]);
@@ -216,6 +232,34 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
               {s.customColours.length < MAX_CUSTOM_COLOURS && (
                 <button type="button" className="btn small" onClick={addCustom}>+ Add colour</button>
               )}
+            </>)}
+
+            {tab === 'presets' && (<>
+              <h3>Colour composer presets</h3>
+              <p className="hint">The gradients the 🎨 Colour composer offers, in the order its dropdown shows them. Rename, reorder, delete, or add your own: codes are xterm colours 0-255, space-separated, and the strip shows them. The composer's "Save as preset…" button adds whatever you have built there. Changes apply when you Save.</p>
+              <div className="preset-list">
+                {s.presets.map((p, i) => {
+                  const codes = parseCodes(p.codes);
+                  return (
+                    <div key={i} className="preset-edit">
+                      <input className="preset-name" value={p.name} title="Preset name" onChange={(e) => setPreset(i, { name: e.target.value })} />
+                      <input className="mono preset-codes" value={p.codes} title="xterm colour codes" spellCheck={false} onChange={(e) => setPreset(i, { codes: e.target.value })} />
+                      <div className="preset-strip" title={`${codes.length} colour${codes.length === 1 ? '' : 's'}`}>
+                        {codes.map((c, j) => <span key={j} style={{ background: xtermHex(Number(c)) }} />)}
+                      </div>
+                      <button type="button" className="icon-btn" title="Move up" disabled={i === 0} onClick={() => movePreset(i, -1)}>↑</button>
+                      <button type="button" className="icon-btn" title="Move down" disabled={i === s.presets.length - 1} onClick={() => movePreset(i, 1)}>↓</button>
+                      <button type="button" className="icon-btn danger" title="Delete this preset" onClick={() => removePreset(i)}>×</button>
+                    </div>
+                  );
+                })}
+                {s.presets.length === 0 && <div className="hint">No presets. Add one, or put the built-in list back.</div>}
+              </div>
+              <div className="row">
+                <button type="button" className="btn small" onClick={addPreset}>+ New preset</button>
+                <button type="button" className="btn small ghost" title="Put back the built-in list, replacing any changes here" onClick={resetPresets}>Reset to built-in presets</button>
+                <span className="hint">{s.presets.length} preset{s.presets.length === 1 ? '' : 's'}</span>
+              </div>
             </>)}
 
             {tab === 'spelling' && (<>

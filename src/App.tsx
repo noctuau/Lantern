@@ -234,7 +234,7 @@ export function App() {
     await connect(w);
     if (panel === 'highlight') setHighlight({ worldId: w.id, text: 'Aardwolf' });
     else if (panel === 'world') setTimeout(() => setEditing(w), 4500);
-    else if (panel === 'about') { setSettingsTab('about'); setSettingsOpen(true); }
+    else if (panel === 'about' || panel === 'presets') { setSettingsTab(panel); setSettingsOpen(true); }
     else if (panel === 'settings') {
       loadFonts(); setSettingsOpen(true);
       // Open the first font dropdown so the screenshot shows the list.
@@ -406,7 +406,16 @@ export function App() {
       )}
 
       {composerOpen && (
-        <ColourComposer initialText={composerSeed} onInsert={(t) => insertRef.current(t)} onClose={() => setComposerOpen(false)} />
+        <ColourComposer
+          initialText={composerSeed}
+          presets={settings.presets}
+          onSavePreset={(p) => {
+            const presets = settings.presets.some((x) => x.name === p.name) ? settings.presets.map((x) => (x.name === p.name ? p : x)) : [...settings.presets, p];
+            saveSettings({ ...settings, presets });
+          }}
+          onInsert={(t) => insertRef.current(t)}
+          onClose={() => setComposerOpen(false)}
+        />
       )}
 
       {settingsOpen && (

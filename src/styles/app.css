@@ -384,6 +384,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .customcol { border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-family: var(--font-mud); }
 .customcol:hover { filter: brightness(1.15); }
 .customcol-list { display: flex; flex-direction: column; gap: 6px; }
+/* Settings › Presets: the colour composer's gradient list */
+.preset-list { display: flex; flex-direction: column; gap: 4px; max-height: 58vh; overflow-y: auto; padding-right: 4px; scrollbar-color: var(--line) transparent; }
+.preset-edit { display: flex; align-items: center; gap: 6px; }
+.preset-edit input.preset-name { flex: 0 0 160px; width: 160px; }
+.preset-edit input.preset-codes { flex: 1 1 auto; width: auto; min-width: 0; font-size: 12px; }
+.preset-strip { display: flex; width: 96px; height: 20px; flex-shrink: 0; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); background: var(--bg); }
+.preset-strip span { flex: 1; }
+.preset-save { margin-top: 6px; }
 .customcol-edit { display: flex; align-items: center; gap: 8px; }
 .customcol-preview { font-family: var(--font-mud); font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; min-width: 42px; text-align: center; }
 .customcol-name { flex: 1; min-width: 0; }

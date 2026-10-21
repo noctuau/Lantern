@@ -98,6 +98,7 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 ## Colour composer (done 2026-10-20)
 
 - Gradient/colour composer ported from Noctua's MUD Gradient Maker: 87 presets, hand-pick xterm colours, fade-both-ways / reverse / randomise, live preview in Lantern's own colours, emits backtick codes, inserts into the command box or copies. `src/lib/gradient.ts`, `ColourComposer.tsx`, test `scripts/test-gradient.mjs`.
+- 2026-10-21: presets live in settings.json (`AppSettings.presets`, seeded from the built-in 87, `normalizePresets` in gradient.ts) and are edited under Settings › Presets (rename, reorder, delete, add, reset); the composer has "Save as preset…"
 - 2026-10-21: "Insert into command box" replaces text selected in the command box (the usual case when the composer was opened from that selection) instead of appending; the Highlight dialog offers the custom colours as chips.
 - Follow-up: render the game's backtick colour codes in the output/echo so your own screen shows the colours, not the codes.
 

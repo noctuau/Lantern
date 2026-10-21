@@ -4,26 +4,32 @@
  * straight into the command box, or copy it. Based on Noctua's "MUD Gradient Maker".
  */
 import { useMemo, useState } from 'react';
-import { GRADIENT_PRESETS, makeGradient, parseBacktick, parseCodes, xtermHex } from '../lib/gradient';
+import { makeGradient, parseBacktick, parseCodes, xtermHex, type GradientPreset } from '../lib/gradient';
 
 interface Props {
   onInsert(text: string): void;
   onClose(): void;
   /** Text to pre-fill (e.g. the current selection in the command box or output). */
   initialText?: string;
+  /** The presets to offer, in order (Settings › Presets). */
+  presets: GradientPreset[];
+  /** "Save as preset": add the current colours under a name (replacing a preset of the same name). */
+  onSavePreset?(p: GradientPreset): void;
 }
 
 const SWATCHES = Array.from({ length: 240 }, (_, i) => i + 16); // xterm 16-255, the colour cube + greys
 
-export function ColourComposer({ onInsert, onClose, initialText }: Props) {
+export function ColourComposer({ onInsert, onClose, initialText, presets, onSavePreset }: Props) {
   const [text, setText] = useState(initialText ?? '');
-  const [codes, setCodes] = useState(GRADIENT_PRESETS[0].codes);
+  const [codes, setCodes] = useState(presets[0]?.codes ?? '');
   // The preset the codes currently match, so the dropdown shows what's selected; '' = Custom.
-  const [presetName, setPresetName] = useState(GRADIENT_PRESETS[0].name);
+  const [presetName, setPresetName] = useState(presets[0]?.name ?? '');
   const [bothways, setBothways] = useState(false);
   const [reverse, setReverse] = useState(false);
   const [random, setRandom] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveName, setSaveName] = useState('');
 
   const output = useMemo(
     () => makeGradient(text, codes, { bothways, reverse, random }),
@@ -35,23 +41,32 @@ export function ColourComposer({ onInsert, onClose, initialText }: Props) {
   // Any code change re-syncs the dropdown: if the codes match a preset, show it, else "Custom".
   const applyCodes = (c: string) => {
     setCodes(c);
-    const hit = GRADIENT_PRESETS.find((p) => p.codes === c.trim());
+    const hit = presets.find((p) => p.codes === c.trim());
     setPresetName(hit ? hit.name : '');
   };
   const applyPreset = (name: string) => {
-    const p = GRADIENT_PRESETS.find((x) => x.name === name);
+    const p = presets.find((x) => x.name === name);
     if (!p) { setPresetName(''); return; }
     setPresetName(p.name);
     setCodes(p.codes);
   };
   // Step up/down the preset list; from "Custom" the down arrow starts at the top, up at the bottom.
   const stepPreset = (dir: 1 | -1) => {
-    const n = GRADIENT_PRESETS.length;
-    const i = GRADIENT_PRESETS.findIndex((p) => p.name === presetName);
+    const n = presets.length;
+    if (!n) return;
+    const i = presets.findIndex((p) => p.name === presetName);
     const next = i < 0 ? (dir > 0 ? 0 : n - 1) : (i + dir + n) % n;
-    applyPreset(GRADIENT_PRESETS[next].name);
+    applyPreset(presets[next].name);
   };
   const addCode = (nn: number) => applyCodes(`${codes.trim()} ${String(nn).padStart(3, '0')}`.trim());
+  const savePreset = () => {
+    const name = saveName.trim();
+    if (!name || !onSavePreset || !codeCount) return;
+    onSavePreset({ name, codes: parseCodes(codes).join(' ') });
+    setPresetName(name);
+    setSaving(false);
+    setSaveName('');
+  };
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(output); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ }
@@ -72,7 +87,7 @@ export function ColourComposer({ onInsert, onClose, initialText }: Props) {
             <div className="preset-row">
               <select className="grow" value={presetName} onChange={(e) => applyPreset(e.target.value)}>
                 <option value="">Custom</option>
-                {GRADIENT_PRESETS.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+                {presets.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
               </select>
               <button type="button" className="btn small ghost step" title="Previous preset" onClick={() => stepPreset(-1)}>▲</button>
               <button type="button" className="btn small ghost step" title="Next preset" onClick={() => stepPreset(1)}>▼</button>
@@ -87,7 +102,20 @@ export function ColourComposer({ onInsert, onClose, initialText }: Props) {
           <div className="row">
             <input className="mono grow" value={codes} onChange={(e) => applyCodes(e.target.value)} spellCheck={false} />
             <button type="button" className="btn small ghost" onClick={() => applyCodes('')}>Clear</button>
+            {onSavePreset && !saving && (
+              <button type="button" className="btn small ghost" disabled={!codeCount} title="Keep these colours as a preset (Settings › Presets lists and edits them)" onClick={() => { setSaveName(presetName || ''); setSaving(true); }}>Save as preset…</button>
+            )}
           </div>
+          {saving && (
+            <div className="row preset-save">
+              <input className="grow" autoFocus value={saveName} placeholder="Preset name" onChange={(e) => setSaveName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); savePreset(); } if (e.key === 'Escape') { e.stopPropagation(); setSaving(false); } }} />
+              <button type="button" className="btn small primary" disabled={!saveName.trim()} onClick={savePreset}>
+                {presets.some((p) => p.name === saveName.trim()) ? 'Replace preset' : 'Save preset'}
+              </button>
+              <button type="button" className="btn small ghost" onClick={() => setSaving(false)}>Cancel</button>
+            </div>
+          )}
         </label>
         <details className="composer-swatches">
           <summary className="hint">Pick colours by hand ({codeCount} in use) — click to add</summary>

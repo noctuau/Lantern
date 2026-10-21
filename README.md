@@ -12,7 +12,7 @@ It's written predominantly for [Haven](https://havenrpg.net) and games built on 
 - **MXP and Pueblo** — accepts a game's MXP offer (and answers a Pueblo announcement) and renders the italics, bold, underline, colours and links it then sends as tags, which is how Haven and other older MUSHes send formatting. Per world, on by default.
 - **Automation** — triggers, aliases and timers, with plain, wildcard or regex matching; recolour a line, hide it, or send a reply.
 - **Channel tabs** — route OOC and other chatter into their own tabs to keep it off the roleplay screen, with per-tab timestamps, spacing and a command prefix; one-click Haven preset included.
-- **Colour composer** — build gradient or hand-picked coloured text from 87 presets and drop it straight into the command box; select a phrase in the box first and the coloured version replaces it in place.
+- **Colour composer** — build gradient or hand-picked coloured text from 87 presets and drop it straight into the command box; select a phrase in the box first and the coloured version replaces it in place. The presets are yours to edit under Settings › Presets (rename, reorder, delete, add, reset to the built-ins), and "Save as preset…" in the composer keeps whatever you have just built.
 - **Lua scripting** — a Lua 5.4 script per world with a MUSHclient-style API, sandboxed in the app.
 - **MUSHclient import** — read your existing `.MCL` worlds and `.mct`/`.mca`/`.mcm` trigger, alias and timer exports.
 - **Comfortable UI** — a collapsible sidebar, separate fonts and sizes for output and input, adjustable width, spell-check, one clean log per day, and quick one-key highlighting.

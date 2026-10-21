@@ -76,6 +76,27 @@ export function parseBacktick(str: string): ColourSpan[] {
 }
 
 /** Noctua's gradient presets, carried over from the original tool. */
+/**
+ * Clean a preset list from settings.json: each entry needs a name (made unique with " (2)" when
+ * it repeats) and a codes string (tidied the way the composer reads it). A missing list means
+ * the built-ins; an empty list stays empty, since deleting them all is a choice.
+ */
+export function normalizePresets(raw: unknown): GradientPreset[] {
+  if (!Array.isArray(raw)) return GRADIENT_PRESETS.map((p) => ({ ...p }));
+  const out: GradientPreset[] = [];
+  const names = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const { name, codes } = item as { name?: unknown; codes?: unknown };
+    const base = typeof name === 'string' && name.trim() ? name.trim() : 'Preset';
+    let n = base;
+    for (let k = 2; names.has(n); k++) n = `${base} (${k})`;
+    names.add(n);
+    out.push({ name: n, codes: typeof codes === 'string' ? parseCodes(codes).join(' ') : '' });
+  }
+  return out;
+}
+
 export const GRADIENT_PRESETS: GradientPreset[] = [
   { name: "Ophelia White", codes: "231 255 254 253 252 251" },
   { name: "Metallic Silver", codes: "247 248 249 250 251 252 253 254 255 231 231" },
