@@ -16,7 +16,7 @@ let ids = 0;
 const uid = () => `id-${++ids}`;
 const trig = (p) => ({ id: 't', name: '', pattern: '', regex: false, enabled: true, group: '', ignoreCase: false, send: '', sendTo: 'world', highlight: null, highlightLine: false, gag: false, oneShot: false, ...p });
 const pat = (pattern, mode = 'capture', ignoreCase = false) => ({ id: uid(), pattern, ignoreCase, mode });
-const tab = (name, patterns, extra = {}) => ({ id: uid(), name, enabled: true, keepInMain: false, notify: 'badge', commandPrefix: '', patterns, ...extra });
+const tab = (name, patterns, extra = {}) => ({ id: uid(), name, enabled: true, keepInMain: false, notify: 'badge', commandPrefix: '', colour: '', patterns, ...extra });
 
 /* ---------- the Haven preset ---------- */
 const haven = C.havenChannelTab(uid);
@@ -177,6 +177,10 @@ assert.deepEqual(T.normalizeChannelTab({ id: 'c' }).patterns, []); ok();
 assert.equal(T.normalizeChannelTab({ id: 'c', commandPrefix: 'ooc ' }).commandPrefix, 'ooc ', 'a saved prefix survives, trailing space included'); ok();
 assert.equal(T.normalizeChannelTab({ id: 'c', commandPrefix: 42 }).commandPrefix, '', 'a non-string prefix falls back to empty'); ok();
 assert.equal(T.normalizeChannelTab({ id: 'c', commandPrefix: null }).commandPrefix, ''); ok();
+assert.equal(T.normalizeChannelTab({ id: 'c' }).colour, '', 'a tab saved before tab colours gets the accent'); ok();
+assert.equal(T.normalizeChannelTab({ id: 'c', colour: '12' }).colour, '12'); ok();
+assert.equal(T.normalizeChannelTab({ id: 'c', colour: '#6f9fd8' }).colour, '#6f9fd8'); ok();
+assert.equal(T.normalizeChannelTab({ id: 'c', colour: 7 }).colour, '', 'a non-string colour falls back'); ok();
 // Routing works on a normalised tab straight from disk.
 assert.equal(C.routeLine(w.channelTabs, 'x marks').action, 'capture');
 assert.equal(C.routeLine(w.channelTabs, 'Y not').action, 'silence'); ok();

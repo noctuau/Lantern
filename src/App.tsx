@@ -213,10 +213,10 @@ export function App() {
       // The "ooc " prefix shows in the input bar when LANTERN_SMOKE_VIEW=OOC.
       channelTabs: [{
         id: 'smoke-help', name: 'Help', enabled: true, keepInMain: false, trimBlanks: false, timestamps: true, notify: 'badge', commandPrefix: '',
-        captureCommands: '^(help|look)\\b', captureQuietMs: 1500, messageGap: 0, patterns: [],
+        captureCommands: '^(help|look)\\b', captureQuietMs: 1500, messageGap: 0, colour: '14', patterns: [],
       }, {
         id: 'smoke-ooc', name: 'OOC', enabled: true, keepInMain: true, trimBlanks: true, timestamps: true, notify: 'badge', commandPrefix: 'ooc ',
-        captureCommands: '', captureQuietMs: 1500, messageGap: 6,
+        captureCommands: '', captureQuietMs: 1500, messageGap: 6, colour: '#dca9e6',
         patterns: [
           { id: 'smoke-p1', pattern: '^\\[OOC\\] ', ignoreCase: false, mode: 'capture' },
           { id: 'smoke-p2', pattern: '^\\[AFK\\]\\s*$', ignoreCase: false, mode: 'silence' },

@@ -4,9 +4,13 @@
  * always talks to the game). A tab that received lines while another view was
  * showing gets a dot and a count; hovering a tab peeks at its last three lines.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { store, MAIN_VIEW, type SessionState, type Line } from '../lib/store';
 import { LineView } from './OutputPane';
+import { colourCss } from './ColourPicker';
+
+/** A tab's own colour (ANSI index or CSS colour) as the --tab-colour variable the strip and pill styles read. */
+const tint = (colour: string): CSSProperties => ({ '--tab-colour': colourCss(colour) } as CSSProperties);
 
 const PEEK_DELAY_MS = 350;
 const PEEK_LINES = 3;
@@ -38,9 +42,9 @@ export function ChannelStrip({ session, onEdit }: Props) {
   // Nothing to show only when there are no channel tabs at all.
   if (!enabledTabs.length) return null;
 
-  const items: { id: string; name: string; unread: number; lines: Line[]; prefix: string }[] = [
-    { id: MAIN_VIEW, name: 'Main', unread: session.mainUnread, lines: session.lines, prefix: '' },
-    ...tabs.map((t) => ({ id: t.id, name: t.name || 'Channel', unread: session.channels[t.id]?.unread ?? 0, lines: session.channels[t.id]?.lines ?? [], prefix: t.commandPrefix })),
+  const items: { id: string; name: string; unread: number; lines: Line[]; prefix: string; colour: string }[] = [
+    { id: MAIN_VIEW, name: 'Main', unread: session.mainUnread, lines: session.lines, prefix: '', colour: '' },
+    ...tabs.map((t) => ({ id: t.id, name: t.name || 'Channel', unread: session.channels[t.id]?.unread ?? 0, lines: session.channels[t.id]?.lines ?? [], prefix: t.commandPrefix, colour: t.colour })),
   ];
 
   return (
@@ -54,7 +58,8 @@ export function ChannelStrip({ session, onEdit }: Props) {
             role="tab"
             tabIndex={0}
             aria-selected={active}
-            className={`subtab ${active ? 'active' : ''} ${showUnread ? 'unread' : ''}`}
+            className={`subtab ${active ? 'active' : ''} ${showUnread ? 'unread' : ''} ${it.colour ? 'tinted' : ''}`}
+            style={it.colour ? tint(it.colour) : undefined}
             title={it.prefix ? `Commands typed here are sent as "${it.prefix}…"` : undefined}
             onClick={() => { leave(); store.setView(session.id, it.id); }}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); store.setView(session.id, it.id); } }}
@@ -90,12 +95,12 @@ export function ChannelStrip({ session, onEdit }: Props) {
  */
 export function UnreadPills({ session }: { session: SessionState }) {
   if (session.channelsOff) return null;
-  const items: { id: string; name: string; unread: number }[] = [];
-  if (session.view !== MAIN_VIEW && session.mainUnread > 0) items.push({ id: MAIN_VIEW, name: 'Main', unread: session.mainUnread });
+  const items: { id: string; name: string; unread: number; colour: string }[] = [];
+  if (session.view !== MAIN_VIEW && session.mainUnread > 0) items.push({ id: MAIN_VIEW, name: 'Main', unread: session.mainUnread, colour: '' });
   for (const t of session.world.channelTabs) {
     if (!t.enabled || session.view === t.id) continue;
     const unread = session.channels[t.id]?.unread ?? 0;
-    if (unread > 0) items.push({ id: t.id, name: t.name || 'Channel', unread });
+    if (unread > 0) items.push({ id: t.id, name: t.name || 'Channel', unread, colour: t.colour });
   }
   if (!items.length) return null;
   return (
@@ -103,7 +108,8 @@ export function UnreadPills({ session }: { session: SessionState }) {
       {items.map((it) => (
         <button
           key={it.id}
-          className="unread-pill"
+          className={`unread-pill ${it.colour ? 'tinted' : ''}`}
+          style={it.colour ? tint(it.colour) : undefined}
           title={`${it.unread} new ${it.unread === 1 ? 'line' : 'lines'} in ${it.name}. Click to show that pane.`}
           onClick={() => store.setView(session.id, it.id)}
         >

@@ -651,6 +651,9 @@ function ChannelTabEditor({ t, patch }: { t: ChannelTab; patch(p: Partial<Channe
         <Check label="Trim blank lines around captured lines" title="Games often print an empty line before and after a channel message. When a message moves to this tab, its blank padding is removed from Main too." checked={t.trimBlanks} onChange={(v) => patch({ trimBlanks: v })} />
         <Check label="Show timestamps" title="Show HH:MM before each captured line in this tab." checked={t.timestamps} onChange={(v) => patch({ timestamps: v })} />
       </div>
+      <Field label="Tab colour" hint="Tints this tab in the strip and its unread pill, so you can tell tabs apart at a glance. Leave it on the accent to keep Lantern's own colour.">
+        <ColourPicker value={t.colour || null} onChange={(v) => patch({ colour: v ?? '' })} noneLabel="Lantern's accent" sample={t.name || 'This tab'} />
+      </Field>
       <Field label="Command prefix" hint={`Put in front of whatever you type while this tab is showing, so "hello" is sent as "${t.commandPrefix || 'ooc '}hello". Keep the trailing space if the game needs one. Start a command with ${PREFIX_BYPASS} to send it without the prefix once (${PREFIX_BYPASS}look sends "look"). Leave empty to type to the game as usual. Applied before aliases, stacking and speedwalk; ↑ recalls what you typed, not the prefixed command.`}>
         <input className="mono" style={{ width: 160 }} value={t.commandPrefix} onChange={(e) => patch({ commandPrefix: e.target.value })} placeholder="ooc " spellCheck={false} />
       </Field>

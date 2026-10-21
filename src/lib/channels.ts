@@ -90,7 +90,7 @@ export const HELP_COMMANDS = '^(help|rules|policy|news|motd)\\b';
 export function helpChannelTab(uid: () => string): ChannelTab {
   return {
     id: uid(), name: HELP_TAB_NAME, enabled: true, keepInMain: false, trimBlanks: false, timestamps: true, notify: 'badge',
-    commandPrefix: '', captureCommands: HELP_COMMANDS, captureQuietMs: 1500, messageGap: 0, patterns: [],
+    commandPrefix: '', captureCommands: HELP_COMMANDS, captureQuietMs: 1500, messageGap: 0, colour: '', patterns: [],
   };
 }
 
@@ -173,6 +173,7 @@ export function havenChannelTab(uid: () => string): ChannelTab {
     // No prefix: the old setup redirected whole commands to another world rather than
     // prepending a channel command, so there is no "ooc " to copy. Set one in the editor.
     commandPrefix: '',
+    colour: '',
     patterns: HAVEN_CHANNEL_PATTERNS.map((p) => ({ id: uid(), ...p })),
   };
 }

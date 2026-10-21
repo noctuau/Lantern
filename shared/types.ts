@@ -96,6 +96,8 @@ export interface ChannelTab {
   commandPrefix: string;
   /** Extra vertical space (px) between lines in this tab's pane, to make chat easier to read. 0 = none. */
   messageGap: number;
+  /** Tint for the sub-tab and its unread pill: an ANSI palette index ('0'..'15'), a CSS colour, or '' for Lantern's accent. */
+  colour: string;
 }
 
 export type ChannelNotify = 'badge' | 'badge+sound' | 'silent';
@@ -264,6 +266,7 @@ export function normalizeChannelTab(c: Partial<ChannelTab> & Pick<ChannelTab, 'i
     captureCommands: typeof c.captureCommands === 'string' ? c.captureCommands : '',
     captureQuietMs: typeof c.captureQuietMs === 'number' && c.captureQuietMs >= 200 ? c.captureQuietMs : 1500,
     messageGap: typeof c.messageGap === 'number' && c.messageGap >= 0 ? Math.min(c.messageGap, 40) : 0,
+    colour: typeof c.colour === 'string' ? c.colour : '',
     patterns: (c.patterns ?? []).map(normalizeChannelPattern),
   };
 }
