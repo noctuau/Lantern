@@ -425,6 +425,7 @@ export function App() {
         <HighlightDialog
           worldName={worlds.find((x) => x.id === highlight.worldId)?.name ?? 'this world'}
           initialText={highlight.text}
+          customColours={settings.customColours}
           onSave={addHighlight}
           onClose={() => setHighlight(null)}
         />

@@ -5,11 +5,14 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { Trigger } from '../../shared/types';
+import type { CustomColour } from '../lib/settings';
 import { ColourPicker } from './ColourPicker';
 
 interface Props {
   worldName: string;
   initialText?: string;
+  /** Saved colours from Settings › Colours, offered as one-click chips; a highlight linked to one follows later edits to it. */
+  customColours?: CustomColour[];
   onSave(t: Trigger): void;
   onClose(): void;
 }
@@ -38,9 +41,11 @@ export function buildHighlightTrigger(text: string, colour: string, wholeWord: b
   };
 }
 
-export function HighlightDialog({ worldName, initialText = '', onSave, onClose }: Props) {
+export function HighlightDialog({ worldName, initialText = '', customColours = [], onSave, onClose }: Props) {
   const [text, setText] = useState(initialText);
   const [colour, setColour] = useState<string | null>('11');
+  // A chip sets the colour to "custom:<id>", the same reference a trigger stores, so the highlight follows the saved colour.
+  const customRef = colour && colour.startsWith('custom:') ? customColours.find((c) => `custom:${c.id}` === colour) ?? null : null;
   const [wholeWord, setWholeWord] = useState(true);
   const [matchCase, setMatchCase] = useState(false);
   const [wholeLine, setWholeLine] = useState(false);
@@ -64,9 +69,35 @@ export function HighlightDialog({ worldName, initialText = '', onSave, onClose }
         <label>Highlight
           <input ref={input} value={text} onChange={(e) => setText(e.target.value)} placeholder="a name, a word, a phrase" />
         </label>
-        <label>Colour
-          <ColourPicker value={colour} onChange={setColour} allowNone={false} sample={text.trim() || 'Sample text'} />
-        </label>
+        {customRef ? (
+          <label>Colour
+            <div className="customcol-linked">
+              Linked to custom colour <b style={{ color: customRef.fg, background: customRef.bg || 'transparent', padding: '0 4px', borderRadius: 4 }}>{customRef.name}</b>:
+              <span style={{ color: customRef.fg, background: customRef.bg || 'transparent', padding: '0 4px', borderRadius: 4, marginLeft: 6 }}>{text.trim() || 'Sample text'}</span>
+              <button type="button" className="btn small ghost" onClick={() => setColour(customRef.fg)}>Pick a fixed colour instead</button>
+            </div>
+          </label>
+        ) : (
+          <label>Colour
+            <ColourPicker value={colour} onChange={setColour} allowNone={false} sample={text.trim() || 'Sample text'} />
+          </label>
+        )}
+        {customColours.length > 0 && (
+          <label>Custom colours
+            <div className="customcol-row">
+              {customColours.map((c) => {
+                const active = colour === `custom:${c.id}`;
+                return (
+                  <button type="button" key={c.id} className={`customcol ${active ? 'active' : ''}`} title={`${c.name}: a highlight linked to this colour follows it when you edit it in Settings › Colours`}
+                    style={{ color: c.fg, background: c.bg || 'transparent', borderColor: active ? 'var(--accent)' : (c.bg || c.fg) }}
+                    onClick={() => setColour(`custom:${c.id}`)}>
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          </label>
+        )}
         <div className="row wrap">
           <label className="check inline"><input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} /> Whole word only</label>
           <label className="check inline"><input type="checkbox" checked={matchCase} onChange={(e) => setMatchCase(e.target.checked)} /> Match case</label>

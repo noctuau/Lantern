@@ -28,17 +28,26 @@ export function InputBar({ session, minLines, onResize, onSend, onReconnect, reg
   useEffect(() => { ref.current?.focus(); }, []);
   useEffect(() => { setLines(minLines); }, [minLines]);
 
-  // Let the parent insert text (e.g. from the colour composer). An empty box takes the text as-is;
-  // if there's already something in it, the insert lands on its own new line at the end so it never
-  // gets jammed onto an existing command.
+  // Let the parent insert text (e.g. from the colour composer). Text selected in the box is replaced
+  // by it (the selection survives the dialog, since selectionStart/End persist through blur), which is
+  // what colouring a phrase inside a pose wants. Otherwise an empty box takes the text as-is, and a box
+  // with something in it gets the insert on its own new line at the end so it never gets jammed onto
+  // an existing command.
   const insert = useCallback((t: string) => {
     const el = ref.current;
+    const start = el?.selectionStart ?? 0, end = el?.selectionEnd ?? 0;
+    const replacing = !!el && end > start;
+    let caret = -1;   // -1 = end of the box
     setValue((v) => {
+      if (replacing) { caret = start + t.length; return v.slice(0, start) + t + v.slice(end); }
       if (v.trim() === '') return t;
       return v.replace(/\n+$/, '') + '\n' + t;
     });
     requestAnimationFrame(() => {
-      if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+      if (!el) return;
+      el.focus();
+      const at = caret >= 0 ? caret : el.value.length;
+      el.setSelectionRange(at, at);
     });
   }, []);
   useEffect(() => { registerInsert?.(insert); }, [registerInsert, insert]);
