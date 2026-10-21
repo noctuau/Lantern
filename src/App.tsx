@@ -254,6 +254,7 @@ export function App() {
     }
   }), []);
   const sendCommandRef = useRef<(t: string) => void>(() => {});
+  const markupTipShown = useRef(new Set<string>());
 
   const active = s.active();
 
@@ -270,6 +271,12 @@ export function App() {
     const { text: prefixed } = applyCommandPrefix(activePrefix(active.world.channelTabs, active.view), typed);
     // *italic* / **bold** / __underline__ → the world's format codes, in listed chat commands only (Options tab).
     const text = applyMarkup(active.world.markup, prefixed);
+    // With the option off, say once per world when a chat command carried markup that would have been converted.
+    if (!active.world.markup.enabled && !markupTipShown.current.has(active.world.id)
+      && applyMarkup({ ...active.world.markup, enabled: true }, prefixed) !== prefixed) {
+      markupTipShown.current.add(active.world.id);
+      store.note(active.id, 'Sent as typed. To send *word* as italics (and **bold**, __underline__), turn on "Chat markup" under ⚡ Automation › Options for this world.');
+    }
     store.input(active.id, text, true, typed, settings.echoInput);
     store.execute(active.id, text, false);
   };

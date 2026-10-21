@@ -151,6 +151,16 @@ assert.equal(prefixFor(plainTab.id, 'hello'), 'hello'); ok();
 assert.equal(C.applyCommandPrefix('@emit ', 'waves.').text, '@emit waves.'); ok();
 assert.equal(C.applyCommandPrefix('ooc', 'hi').text, 'oochi', 'no space is added for you'); ok();
 
+/* ---------- chat markup defaults (shared/types.ts) ---------- */
+const dm = T.DEFAULT_MARKUP;
+assert.equal(dm.enabled, false, 'markup is off until turned on for a world'); ok();
+for (const v of ['say', 'emote', 'private', 'announce', 'subtle']) assert.ok(dm.commands.split(' ').includes(v), `Haven verb "${v}" (from the old Haven_Italics plugin) is in the default list`); ok();
+assert.deepEqual([dm.italicOn, dm.italicOff, dm.boldOn, dm.boldOff, dm.underlineOn, dm.underlineOff], ['`2', '`5', '`1', '`4', '`3', '`6'], 'Haven format codes'); ok();
+const nm = T.normalizeWorld({ id: 'w' }).markup;
+assert.deepEqual(nm, dm, 'a world saved before markup gets the defaults'); ok();
+assert.equal(T.normalizeMarkup({ enabled: true, italicOn: '<i>' }).italicOn, '<i>'); ok();
+assert.equal(T.normalizeMarkup({ enabled: 'yes' }).enabled, false, 'only a real true turns it on'); ok();
+
 /* ---------- normalisation: old worlds.json files load ---------- */
 const old = T.normalizeWorld({ id: 'w', name: 'Old', host: 'h', port: 1, triggers: [], aliases: [], timers: [] });
 assert.deepEqual(old.channelTabs, [], 'a world saved before channel tabs gets an empty list'); ok();

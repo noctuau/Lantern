@@ -177,7 +177,8 @@ export interface MarkupSettings {
 
 export const DEFAULT_MARKUP: MarkupSettings = {
   enabled: false,
-  commands: 'say emote pose ooc chat tell page whisper think : "',
+  // Haven's chat verbs (the old Haven_Italics plugin covered say, emote, private, announce and subtle) plus common MUSH ones.
+  commands: 'say emote private announce subtle pose ooc chat tell page whisper think : "',
   boldOn: '`1', boldOff: '`4',
   italicOn: '`2', italicOff: '`5',
   underlineOn: '`3', underlineOff: '`6',
