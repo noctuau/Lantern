@@ -208,7 +208,7 @@ ipcMain.handle('worlds:create', (_e, partial?: Partial<World>) => {
 ipcMain.handle('worlds:importMcl', async () => {
   const res = await dialog.showOpenDialog(win!, {
     title: 'Import MUSHclient world files',
-    filters: [{ name: 'MUSHclient worlds', extensions: ['mcl', 'MCL'] }],
+    filters: [{ name: 'MUSHclient worlds', extensions: ['mcl', 'MCL'] }, { name: 'All files', extensions: ['*'] }],
     properties: ['openFile', 'multiSelections'],
   });
   if (res.canceled) return [];
