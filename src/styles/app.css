@@ -79,6 +79,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.danger { color: var(--danger); }
 .icon-btn { background: transparent; border: 0; border-radius: 6px; width: 28px; height: 28px; cursor: pointer; color: var(--fg-muted); }
 .icon-btn:hover { background: var(--bg-3); color: var(--fg); }
+.icon-btn.danger:hover { background: var(--bg-3); color: var(--danger); }
 
 /* ---------- main ---------- */
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -193,6 +194,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ---------- modal ---------- */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
 .modal { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; width: 520px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+/* Tall form modals (world editor, colour composer) scroll on short screens; the sticky footer keeps
+   the action buttons in view. Modals with absolute pop-ups (settings, highlight, automation) cap
+   their own height instead, so they are left out here to avoid clipping those pop-ups. */
+.modal.wide, .modal.composer { max-height: calc(100vh - 24px); overflow-y: auto; }
 .modal h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
 .modal label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-muted); }
 .modal label.check { flex-direction: row; align-items: center; gap: 8px; align-self: end; padding-bottom: 8px; color: var(--fg); }
@@ -201,7 +206,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .modal textarea { font-family: var(--font-mud); font-size: 13px; resize: vertical; }
 .modal .row { display: flex; gap: 10px; }
 .modal .grow { flex: 1; }
-.modal-actions { display: flex; gap: 8px; margin-top: 4px; }
+/* Pinned to the bottom of the (now scrollable) modal, so Save/Cancel stay in view on short screens. */
+.modal-actions { display: flex; gap: 8px; align-items: center; position: sticky; bottom: 0; margin: 4px -22px -20px; padding: 12px 22px 20px; background: var(--bg-2); border-top: 1px solid var(--line); border-radius: 0 0 14px 14px; }
 
 /* ---------- automation panel ---------- */
 .modal.auto { width: 920px; height: min(680px, calc(100vh - 40px)); padding: 0; gap: 0; overflow: hidden; }

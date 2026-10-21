@@ -307,6 +307,7 @@ export function App() {
         onConnect={connect}
         onEdit={setEditing}
         onAutomation={(w) => openAutomation(w)}
+        onDelete={deleteWorld}
         onNew={async () => setEditing(await window.lantern.worlds.create())}
         onImport={async () => { await window.lantern.worlds.importMcl(); refreshWorlds(); }}
         onSettings={openSettings}

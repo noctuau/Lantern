@@ -9,6 +9,7 @@ interface Props {
   onConnect(w: World): void;
   onEdit(w: World): void;
   onAutomation(w: World): void;
+  onDelete(w: World): void;
   onNew(): void;
   onImport(): void;
   onSettings(): void;
@@ -23,7 +24,7 @@ function initials(name: string) {
   return (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-export function Sidebar({ worlds, mode, onToggle, onConnect, onEdit, onAutomation, onNew, onImport, onSettings, updateAvailable = null }: Props) {
+export function Sidebar({ worlds, mode, onToggle, onConnect, onEdit, onAutomation, onDelete, onNew, onImport, onSettings, updateAvailable = null }: Props) {
   if (mode === 'hidden') return null;
   const sorted = [...worlds].sort((a, b) => a.name.localeCompare(b.name));
   const next = mode === 'full' ? 'icon rail' : 'hidden';
@@ -69,6 +70,7 @@ export function Sidebar({ worlds, mode, onToggle, onConnect, onEdit, onAutomatio
               <button className="btn small" onClick={() => onConnect(w)}>Connect</button>
               <button className="icon-btn" title="Triggers, aliases, timers" onClick={() => onAutomation(w)}>⚡</button>
               <button className="icon-btn" title="Edit" onClick={() => onEdit(w)}>✎</button>
+              <button className="icon-btn danger" title="Delete this world" onClick={() => onDelete(w)}>🗑</button>
             </div>
           </div>
         ))}

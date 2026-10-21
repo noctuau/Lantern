@@ -42,8 +42,8 @@ let win: BrowserWindow | null = null;
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1280,
-    height: 860,
+    width: Number(process.env.LANTERN_SMOKE_W) || 1280,
+    height: Number(process.env.LANTERN_SMOKE_H) || 860,
     minWidth: 720,
     minHeight: 480,
     title: 'Lantern',
