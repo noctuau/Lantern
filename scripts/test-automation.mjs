@@ -237,4 +237,33 @@ assert.equal(C('say \u{1F600} \u2665'), 'say \u{1F600} \u2665', 'emoji and symbo
 assert.equal(C('look;inv #3n \\ooc'), 'look;inv #3n \\ooc', 'stacking, speedwalk and prefix-bypass characters are untouched'); ok();
 assert.equal(C('say \u201C\u2014\u2026\u201D'), 'say "--..."', 'several swaps in one string'); ok();
 
+/* ---------- applyMarkup: *italic*, **bold**, __underline__ in chat commands ---------- */
+const mk = (p = {}) => ({ enabled: true, commands: 'say emote pose ooc : "', boldOn: '`1', boldOff: '`4', italicOn: '`2', italicOff: '`5', underlineOn: '`3', underlineOff: '`6', ...p });
+const MU = A.applyMarkup;
+assert.equal(MU(mk({ enabled: false }), 'say *hi*'), 'say *hi*', 'off: untouched'); ok();
+assert.equal(MU(mk(), 'say *hi*'), 'say `2hi`5', 'italic'); ok();
+assert.equal(MU(mk(), 'say **hi**'), 'say `1hi`4', 'bold'); ok();
+assert.equal(MU(mk(), 'say __hi__'), 'say `3hi`6', 'underline'); ok();
+assert.equal(MU(mk(), 'say *hi* **there** __now__'), 'say `2hi`5 `1there`4 `3now`6', 'all three in one command'); ok();
+assert.equal(MU(mk(), 'emote smiles *very slowly* at **you**.'), 'emote smiles `2very slowly`5 at `1you`4.', 'spans with spaces inside'); ok();
+assert.equal(MU(mk(), 'SAY *hi*'), 'SAY `2hi`5', 'verb match ignores case'); ok();
+assert.equal(MU(mk(), ':waves *happily*'), ':waves `2happily`5', 'a symbol in the list matches the start'); ok();
+assert.equal(MU(mk(), '"*really*?'), '"`2really`5?'); ok();
+assert.equal(MU(mk(), 'look *at* things'), 'look *at* things', 'an unlisted verb is untouched'); ok();
+assert.equal(MU(mk(), 'sayings *x*'), 'sayings *x*', 'the verb must be the whole first word'); ok();
+assert.equal(MU(mk(), 'say 2*3*4 is 24'), 'say 2*3*4 is 24', 'asterisks glued to words are arithmetic, not emphasis'); ok();
+assert.equal(MU(mk(), 'say * and ** stay'), 'say * and ** stay', 'lone stars stay'); ok();
+assert.equal(MU(mk(), 'say * not this *'), 'say * not this *', 'emphasis must hug its text'); ok();
+assert.equal(MU(mk(), 'say my_snake_case__name__is fine'), 'say my_snake_case__name__is fine', 'underscores inside a word stay'); ok();
+assert.equal(MU(mk(), 'say \\*literal\\* and *real*'), 'say *literal* and `2real`5', 'backslash sends a literal star'); ok();
+assert.equal(MU(mk(), 'say \\_\\_x\\_\\_'), 'say __x__', 'backslash sends literal underscores'); ok();
+assert.equal(MU(mk(), 'say plain text'), 'say plain text', 'nothing to do'); ok();
+assert.equal(MU(mk({ italicOn: '<i>', italicOff: '</i>' }), 'say *hi*'), 'say <i>hi</i>', 'codes are whatever the world says'); ok();
+assert.equal(MU(mk({ commands: '' }), 'say *hi*'), 'say *hi*', 'an empty list matches nothing'); ok();
+assert.equal(MU(mk(), 'ooc *hi* from the ooc tab'), 'ooc `2hi`5 from the ooc tab', 'works after a channel-tab prefix was put on'); ok();
+assert.equal(A.markupApplies('say emote', 'Say hello'), true); ok();
+assert.equal(A.markupApplies('say emote', 'say'), true, 'the bare verb counts'); ok();
+assert.equal(A.markupApplies('say emote', 'sayhello'), false); ok();
+assert.equal(A.markupApplies('s.y', 's.y hi'), true, 'odd characters in a verb are taken literally'); ok();
+
 console.log(`automation: all ${n} assertion groups passed`);

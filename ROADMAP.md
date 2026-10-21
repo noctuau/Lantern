@@ -66,6 +66,7 @@ Built in stages so each session is a bounded chunk of work. Stages 1 to 3 are do
 - Output width (wrap column, also sent to the game via NAWS)
 - Output pane background colour (Theme / Black / custom); per-channel-tab message spacing
 - Echo-my-commands switch; the echo lands in the pane it was typed from (channel tab or Main)
+- Chat markup (2026-10-21, per world, off by default): `*italic*`, `**bold**`, `__underline__` in commands starting with a listed verb or symbol become the game's format codes (`applyMarkup` in `src/lib/automation.ts`, Haven backtick defaults, codes editable under Options); replaces the old MUSHclient plugin that did this for her
 - Unread pills (2026-10-21): the channel-tab and Main unread counts also float at the bottom right of the output pane, stacked above "Jump to latest"; click to switch
 - "Tidy what I type" switch (2026-10-21, on by default): curly quotes, long dashes, ellipsis, odd spaces, invisibles, control codes and full-width ASCII in typed commands become plain ASCII before aliases run (`cleanTyped` in `src/lib/automation.ts`); passwords and script sends untouched
 - Per-world logging settings: what to log, plain text or HTML with colours, header on/off, file name pattern with strftime fields and Browse…; imported from .MCL

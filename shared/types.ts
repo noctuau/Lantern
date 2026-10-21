@@ -155,8 +155,43 @@ export interface World {
   /** Speedwalk: "#3n2e" sends n n n e e. Off by default. */
   speedwalk: boolean;
   speedwalkPrefix: string;
+  /** *italic*, **bold** and __underline__ in typed chat commands become the game's format codes. Off by default. */
+  markup: MarkupSettings;
   /** Set once we've pre-loaded sensible defaults (e.g. Haven channel tabs), so we don't re-add them. */
   seededDefaults?: boolean;
+}
+
+/**
+ * Markdown-style emphasis in typed commands (src/lib/automation.ts applyMarkup): only commands
+ * that start with one of `commands` are touched, so `*` in "give 2*3 coins" or a wildcard in an
+ * alias test stays as typed. The codes default to Haven's backtick format codes.
+ */
+export interface MarkupSettings {
+  enabled: boolean;
+  /** Space-separated. A word matches the command's first word; a symbol (":" or "\"") matches the start. */
+  commands: string;
+  boldOn: string; boldOff: string;
+  italicOn: string; italicOff: string;
+  underlineOn: string; underlineOff: string;
+}
+
+export const DEFAULT_MARKUP: MarkupSettings = {
+  enabled: false,
+  commands: 'say emote pose ooc chat tell page whisper think : "',
+  boldOn: '`1', boldOff: '`4',
+  italicOn: '`2', italicOff: '`5',
+  underlineOn: '`3', underlineOff: '`6',
+};
+
+export function normalizeMarkup(m: Partial<MarkupSettings> | undefined | null): MarkupSettings {
+  const str = (v: unknown, d: string) => (typeof v === 'string' ? v : d);
+  return {
+    enabled: m?.enabled === true,
+    commands: str(m?.commands, DEFAULT_MARKUP.commands),
+    boldOn: str(m?.boldOn, DEFAULT_MARKUP.boldOn), boldOff: str(m?.boldOff, DEFAULT_MARKUP.boldOff),
+    italicOn: str(m?.italicOn, DEFAULT_MARKUP.italicOn), italicOff: str(m?.italicOff, DEFAULT_MARKUP.italicOff),
+    underlineOn: str(m?.underlineOn, DEFAULT_MARKUP.underlineOn), underlineOff: str(m?.underlineOff, DEFAULT_MARKUP.underlineOff),
+  };
 }
 
 export const DEFAULT_STACK_CHAR = ';';
@@ -182,6 +217,7 @@ export function normalizeWorld(w: Partial<World> & Pick<World, 'id'>): World {
     commandStackChar: w.commandStackChar || DEFAULT_STACK_CHAR,
     speedwalk: w.speedwalk ?? false,
     speedwalkPrefix: w.speedwalkPrefix || DEFAULT_SPEEDWALK_PREFIX,
+    markup: normalizeMarkup(w.markup),
   };
 }
 

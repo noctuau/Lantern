@@ -4,7 +4,7 @@
  * TypeScript with no DOM or Electron dependencies so it can be unit-tested
  * under Node (scripts/test-automation.mjs).
  */
-import type { Trigger, Alias, Timer, World, SendTo } from '../../shared/types';
+import type { Trigger, Alias, Timer, World, SendTo, MarkupSettings } from '../../shared/types';
 import type { Span } from './ansi';
 
 export interface Outgoing { text: string; sendTo: SendTo }
@@ -98,6 +98,40 @@ export function cleanTyped(text: string): string {
     .replace(CONTROLS, '')
     .replace(FULLWIDTH, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
     .replace(SWAP_RE, (ch) => TYPED_SWAPS[ch]);
+}
+
+/* ---------- markup: *italic*, **bold**, __underline__ in chat commands ---------- */
+
+const escapeForRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** True when the command starts with one of the listed verbs (first word, any case) or symbols. */
+export function markupApplies(commands: string, text: string): boolean {
+  for (const c of commands.split(/\s+/).filter(Boolean)) {
+    if (/^\w+$/.test(c)) { if (new RegExp(`^${escapeForRe(c)}(?:\\s|$)`, 'i').test(text)) return true; }
+    else if (text.startsWith(c)) return true;
+  }
+  return false;
+}
+
+// Bold first so "**x**" is not read as two italics; the emphasis must hug its text (no space just
+// inside), a lone "*" or "**" stays, and a "*" glued to a word on the outside ("2*3*4") stays too.
+const BOLD_RE = /(?<!\\)\*\*(\S(?:[^*]*?\S)?)\*\*/g;
+const ITALIC_RE = /(?<![\\\w*])\*(\S(?:[^*]*?\S)?)\*(?![\w*])/g;
+const UNDERLINE_RE = /(?<![\\\w])__(\S(?:[^_]*?\S)?)__(?!\w)/g;
+
+/**
+ * Turn Markdown-style emphasis in a typed chat command into the world's format codes:
+ * "say *hi* **there** __now__" → "say `2hi`5 `1there`4 `3now`6" with the Haven defaults.
+ * Only when enabled and the command starts with a listed verb or symbol; "\*" and "\_" send a
+ * literal character. Everything else comes back exactly as typed.
+ */
+export function applyMarkup(m: MarkupSettings, text: string): string {
+  if (!m.enabled || !/[*_]/.test(text) || !markupApplies(m.commands, text)) return text;
+  return text
+    .replace(BOLD_RE, (_, s: string) => m.boldOn + s + m.boldOff)
+    .replace(ITALIC_RE, (_, s: string) => m.italicOn + s + m.italicOff)
+    .replace(UNDERLINE_RE, (_, s: string) => m.underlineOn + s + m.underlineOff)
+    .replace(/\\([*_])/g, '$1');
 }
 
 /* ---------- triggers ---------- */

@@ -5,9 +5,9 @@
  * world's script file directly and asks the app to reload it into any live session.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { World, Trigger, Alias, Timer, SendTo, ChannelTab, ChannelPattern, ChannelNotify, ChannelMode } from '../../shared/types';
+import type { World, Trigger, Alias, Timer, SendTo, ChannelTab, ChannelPattern, ChannelNotify, ChannelMode, MarkupSettings } from '../../shared/types';
 import { normalizeTrigger, normalizeAlias, normalizeTimer, normalizeChannelTab } from '../../shared/types';
-import { runTriggers, applyHighlights, patternError, describeTimer, expandCommand } from '../lib/automation';
+import { runTriggers, applyHighlights, patternError, describeTimer, expandCommand, applyMarkup } from '../lib/automation';
 import { classifyLine, channelPatternError, havenChannelTab, hasHavenPreset, helpChannelTab, hasHelpPreset, HAVEN_TAB_NAME, PREFIX_BYPASS } from '../lib/channels';
 import { spanStyle, EMPTY_STYLE } from '../lib/ansi';
 
@@ -791,6 +791,7 @@ function ScriptTab({ worldId, onDirty, onReload }: { worldId: string; onDirty(d:
 
 function OptionsTab({ w, setW }: { w: World; setW: React.Dispatch<React.SetStateAction<World>> }) {
   const set = <K extends keyof World>(k: K, v: World[K]) => setW((x) => ({ ...x, [k]: v }));
+  const setMarkup = (p: Partial<MarkupSettings>) => setW((x) => ({ ...x, markup: { ...x.markup, ...p } }));
   return (
     <div className="auto-options">
       <section>
@@ -810,7 +811,25 @@ function OptionsTab({ w, setW }: { w: World; setW: React.Dispatch<React.SetState
         </div>
       </section>
       <section>
-        <p className="muted small">Both are off unless you turn them on here, and apply only to this world. Typed commands run through aliases after being split.</p>
+        <Check label="Chat markup: *italic*, **bold** and __underline__" checked={w.markup.enabled} onChange={(v) => setMarkup({ enabled: v })} />
+        <p className="muted small">In commands that start with one of the verbs or symbols below, <span className="mono">*word*</span>, <span className="mono">**word**</span> and <span className="mono">__word__</span> are sent with the game's format codes around them. The emphasis must hug its text, stars glued to a word (2*3) stay, and <span className="mono">\*</span> or <span className="mono">\_</span> sends the character itself. Nothing else you type is touched.</p>
+        <Field label="Commands" grow hint="Separated by spaces. A word matches the whole first word of the command (any case); a symbol such as : or &quot; matches the start.">
+          <input className="mono" value={w.markup.commands} onChange={(e) => setMarkup({ commands: e.target.value })} spellCheck={false} />
+        </Field>
+        <div className="row wrap">
+          {([['Bold', 'boldOn', 'boldOff'], ['Italic', 'italicOn', 'italicOff'], ['Underline', 'underlineOn', 'underlineOff']] as const).map(([label, on, off]) => (
+            <Field key={label} label={label}>
+              <span className="row" style={{ gap: 4 }}>
+                <input className="mono" value={w.markup[on]} onChange={(e) => setMarkup({ [on]: e.target.value })} style={{ width: 56 }} title={`${label} on`} />
+                <input className="mono" value={w.markup[off]} onChange={(e) => setMarkup({ [off]: e.target.value })} style={{ width: 56 }} title={`${label} off`} />
+              </span>
+            </Field>
+          ))}
+          <div className="example mono muted">say *hi* **there** → {applyMarkup({ ...w.markup, enabled: true }, 'say *hi* **there**')}</div>
+        </div>
+      </section>
+      <section>
+        <p className="muted small">All three are off unless you turn them on here, and apply only to this world. Typed commands get the channel tab's prefix and markup first, then are split and run through aliases.</p>
       </section>
     </div>
   );

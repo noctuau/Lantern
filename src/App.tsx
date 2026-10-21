@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { store, useStore, MAIN_VIEW, type World } from './lib/store';
 import { activePrefix, applyCommandPrefix, havenChannelTab, helpChannelTab } from './lib/channels';
-import { cleanTyped } from './lib/automation';
+import { cleanTyped, applyMarkup } from './lib/automation';
 import { Sidebar, type SidebarMode } from './components/Sidebar';
 import { OutputPane } from './components/OutputPane';
 import { ChannelStrip, UnreadPills } from './components/ChannelStrip';
@@ -234,7 +234,7 @@ export function App() {
       // Open the first font dropdown so the screenshot shows the list.
       setTimeout(() => (document.querySelector('.font-btn') as HTMLButtonElement | null)?.click(), 1500);
     }
-    else if (panel) { setPanelTab(panel === 'script' ? 'script' : panel === 'channels' ? 'channels' : undefined); setAutomating(w); }
+    else if (panel) { setPanelTab(panel === 'script' ? 'script' : panel === 'channels' ? 'channels' : panel === 'options' ? 'options' : undefined); setAutomating(w); }
     setTimeout(() => sendCommandRef.current('look'), 3000);
     if (view) {
       // LANTERN_SMOKE_VIEW=<tab name> screenshots that channel tab instead of Main.
@@ -261,7 +261,9 @@ export function App() {
     // prefix goes on, then aliases, stacking and speedwalk see the whole thing.
     // The echo and log show what was sent; history keeps what was typed (tidied).
     const typed = settings.cleanInput ? cleanTyped(raw) : raw;
-    const { text } = applyCommandPrefix(activePrefix(active.world.channelTabs, active.view), typed);
+    const { text: prefixed } = applyCommandPrefix(activePrefix(active.world.channelTabs, active.view), typed);
+    // *italic* / **bold** / __underline__ → the world's format codes, in listed chat commands only (Options tab).
+    const text = applyMarkup(active.world.markup, prefixed);
     store.input(active.id, text, true, typed, settings.echoInput);
     store.execute(active.id, text, false);
   };
