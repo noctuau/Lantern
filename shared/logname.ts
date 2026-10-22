@@ -5,7 +5,7 @@
  * A pattern may be a bare file name (kept in the app's logs folder), a relative
  * path, or an absolute path.
  */
-export const DEFAULT_LOG_FILE = '{world} %Y-%m-%d';
+export const DEFAULT_LOG_FILE = '{world}-%a-%d-%b-%Y';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

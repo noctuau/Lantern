@@ -14,7 +14,8 @@ assert.equal(strftime('%A %B %e %y %H:%M:%S %p %j %%', d), 'Tuesday October 20 2
 assert.equal(strftime('%q', d), '%q', 'unknown fields are left alone');
 
 assert.equal(safeName('Haven: Juliet/Rose?'), 'Haven_ Juliet_Rose_');
-assert.equal(expandLogName('', 'Haven', 'text', d), 'Haven 2026-10-20.txt', 'empty pattern uses the default');
+assert.equal(expandLogName('', 'Haven', 'text', d), 'Haven-Tue-20-Oct-2026.txt', 'empty pattern uses the MUSHclient-style default');
+assert.equal(expandLogName('', 'Liesel', 'raw', d), 'Liesel-Tue-20-Oct-2026.raw.txt', 'raw keeps its extension on the default');
 assert.equal(expandLogName('{world}-%a', 'Haven', 'html', d), 'Haven-Tue.html', 'extension follows the format');
 assert.equal(expandLogName('C:\\Logs\\Liesel\\Liesel-%a-%d-%b-%Y.txt', 'Haven', 'html', d), 'C:\\Logs\\Liesel\\Liesel-Tue-20-Oct-2026.txt', 'an explicit extension is kept');
 assert.equal(expandLogName('rp/{world}/%Y/%m-%d', 'KD', 'text', d), 'rp/KD/2026/10-20.txt');

@@ -554,7 +554,9 @@ class Store {
       if (tab) this.pushChannelLine(s, tab, line, false);
       else this.pushLine(s, line);
     }
-    if (s.world.logging && s.world.log.commands && s.world.log.format !== 'raw') this.hooks.log(id, `> ${text}`, 'command', s.world.log.format === 'html' ? lineHtml('command', '', [{ text, style: plain() }]) : undefined);
+    // Log the typed command in every format, the raw log included, so your own side of a
+    // conversation is never lost (the raw log otherwise holds only the game's output bytes).
+    if (s.world.logging && s.world.log.commands) this.hooks.log(id, `> ${text}`, 'command', s.world.log.format === 'html' ? lineHtml('command', '', [{ text, style: plain() }]) : undefined);
     if (remember && typed.trim() && s.history[s.history.length - 1] !== typed) {
       s.history.push(typed);
       if (s.history.length > 500) s.history.shift();
