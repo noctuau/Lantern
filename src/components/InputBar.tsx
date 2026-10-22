@@ -66,17 +66,10 @@ export function InputBar({ session, minLines, onResize, onSend, onReconnect, reg
     return Number.isFinite(lh) ? lh : 22;
   };
 
-  // Rest at `lines` tall; grow with content up to MAX_LINES.
-  useEffect(() => {
-    const el = ref.current; if (!el) return;
-    const lh = lineHeight();
-    const min = lines * lh + BOX_PADDING;
-    const max = Math.max(lines, MAX_LINES) * lh + BOX_PADDING;
-    el.style.height = 'auto';
-    const wanted = Math.min(Math.max(el.scrollHeight, min), max);
-    el.style.height = wanted + 'px';
-    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
-  }, [value, lines]);
+  // The box rests at `lines` tall and grows with the text up to MAX_LINES. This is done with CSS
+  // (field-sizing: content plus the min/max-height below in `lh` units), so no per-keystroke
+  // measuring: an earlier JS version read scrollHeight on every keypress, forcing a full-page
+  // reflow that stuttered badly against a long scrollback.
 
   // Drag the top edge to change the resting height; persisted on release.
   const startDrag = (e: React.MouseEvent) => {
@@ -169,6 +162,7 @@ export function InputBar({ session, minLines, onResize, onSend, onReconnect, reg
             rows={1}
             spellCheck={session.echo}
             placeholder={placeholder}
+            style={{ minHeight: `calc(${lines} * 1lh + ${BOX_PADDING}px)`, maxHeight: `calc(${MAX_LINES} * 1lh + ${BOX_PADDING}px)` }}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={onKeyDown}
           />

@@ -168,6 +168,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   width: 100%; resize: none; background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
   padding: 8px 12px; font-family: var(--font-input, var(--font-mud)); font-size: var(--input-size, var(--mud-size)); font-weight: var(--input-weight, 400); line-height: 1.45; outline: none;
   min-height: 38px; transition: border-color 0.12s;
+  /* Grow with the text natively (no per-keystroke JS measuring, which forced a full-page reflow and
+     made typing stutter against a long scrollback). min/max-height come from the inline style. */
+  field-sizing: content; overflow-y: auto;
 }
 .input:focus { border-color: var(--accent-2); }
 .masked .input { -webkit-text-security: disc; }
