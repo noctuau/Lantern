@@ -16,6 +16,7 @@ export interface AppSettings {
   inputSize: number;         // px
   inputWeight: number;       // font weight 100-900
   inputLines: number;        // minimum visible lines in the command box
+  sendMode: SendMode;        // how a command is sent: Enter, Ctrl+Enter, or a Send button only
   echoInput: boolean;        // show what you typed in the output pane
   cleanInput: boolean;       // swap curly quotes, long dashes, odd spaces… in typed commands for plain ASCII (cleanTyped)
   checkUpdates: boolean;     // ask GitHub for a newer release a few seconds after start (Settings › About)
@@ -28,6 +29,7 @@ export interface AppSettings {
 }
 
 export type PaletteName = 'warm' | 'classic' | 'vga' | 'custom';
+export type SendMode = 'enter' | 'ctrl-enter' | 'button';
 
 /** A named colour (text + optional background) for use when picking trigger colours. */
 export interface CustomColour { id: string; name: string; fg: string; bg: string }
@@ -63,6 +65,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   inputSize: 15,
   inputWeight: 400,
   inputLines: 1,
+  sendMode: 'enter',
   echoInput: true,
   cleanInput: true,
   checkUpdates: true,
@@ -108,6 +111,7 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
     inputSize: clamp(s?.inputSize, 9, 40, DEFAULT_SETTINGS.inputSize),
     inputWeight: Math.round(clamp(s?.inputWeight, 100, 900, DEFAULT_SETTINGS.inputWeight)),
     inputLines: Math.round(clamp(s?.inputLines, 1, 20, DEFAULT_SETTINGS.inputLines)),
+    sendMode: s?.sendMode === 'ctrl-enter' || s?.sendMode === 'button' ? s.sendMode : 'enter',
     echoInput: typeof s?.echoInput === 'boolean' ? s.echoInput : DEFAULT_SETTINGS.echoInput,
     cleanInput: typeof s?.cleanInput === 'boolean' ? s.cleanInput : DEFAULT_SETTINGS.cleanInput,
     checkUpdates: typeof s?.checkUpdates === 'boolean' ? s.checkUpdates : DEFAULT_SETTINGS.checkUpdates,

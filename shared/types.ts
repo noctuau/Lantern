@@ -25,6 +25,7 @@ export interface Trigger {
   highlightBg: string | null;  // optional background colour, same forms
   highlightLine: boolean;  // colour the whole line instead of just the matched text
   gag: boolean;            // omit the line from the output
+  sound?: string | null;   // play a built-in alert sound when it fires (id from shared/sounds.ts), or null/none
   oneShot: boolean;        // disable itself after firing once
   script?: string;
   scriptBody?: string;
@@ -235,7 +236,7 @@ export function normalizeWorld(w: Partial<World> & Pick<World, 'id'>): World {
 export function normalizeTrigger(t: Partial<Trigger> & Pick<Trigger, 'id'>): Trigger {
   return {
     name: '', pattern: '', regex: false, enabled: true, group: '', ignoreCase: false,
-    send: '', sendTo: 'world', highlight: null, highlightBg: null, highlightLine: false, gag: false, oneShot: false,
+    send: '', sendTo: 'world', highlight: null, highlightBg: null, highlightLine: false, gag: false, sound: null, oneShot: false,
     ...t,
   };
 }

@@ -1,6 +1,6 @@
 /** App settings: fonts and sizes for the output pane and the command box. Changes preview live; Cancel reverts. */
 import { useEffect, useState } from 'react';
-import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, PALETTES, resolvePalette, MAX_CUSTOM_COLOURS, type AppSettings, type PaletteName, type CustomColour } from '../lib/settings';
+import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, PALETTES, resolvePalette, MAX_CUSTOM_COLOURS, type AppSettings, type PaletteName, type CustomColour, type SendMode } from '../lib/settings';
 import { FontPicker } from './FontPicker';
 import { AboutTab } from './AboutTab';
 import { GRADIENT_PRESETS, parseCodes, xtermHex, type GradientPreset } from '../lib/gradient';
@@ -156,6 +156,14 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
                 <label>Lines shown{num('inputLines', 1, 1, 20)}</label>
               </div>
               <p className="hint">The box always grows as you type. "Lines shown" is its resting height; you can also drag its top edge.</p>
+              <label>Send a command with
+                <select value={s.sendMode} onChange={(e) => set('sendMode', e.target.value as SendMode)}>
+                  <option value="enter">Enter key (Shift+Enter for a new line)</option>
+                  <option value="ctrl-enter">Ctrl+Enter (a plain Enter makes a new line)</option>
+                  <option value="button">A Send button (a plain Enter makes a new line)</option>
+                </select>
+              </label>
+              <p className="hint">Pick Ctrl+Enter or a Send button if you tend to hit Enter before you've finished.</p>
               <label className="check inline"><input type="checkbox" checked={s.echoInput} onChange={(e) => set('echoInput', e.target.checked)} /> Echo my commands in the output (in the pane they were typed from)</label>
               <label className="check inline" title={'Curly quotes become straight ones, – and — become - and --, … becomes ..., non-breaking and other odd spaces become a space, and invisible characters are dropped. Accented letters, symbols and emoji are left alone. Passwords are never touched.'}>
                 <input type="checkbox" checked={s.cleanInput} onChange={(e) => set('cleanInput', e.target.checked)} /> Tidy what I type for the game (“curly” quotes → "straight", long dashes, ellipsis, odd spaces)

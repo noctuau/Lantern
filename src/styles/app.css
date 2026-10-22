@@ -175,6 +175,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .input:focus { border-color: var(--accent-2); }
 .masked .input { -webkit-text-security: disc; }
 .input-row { display: flex; align-items: flex-start; gap: 8px; }
+.input-send { align-self: flex-end; height: 38px; flex-shrink: 0; }
 /* A channel tab's command prefix, shown beside the box so it stays visible while typing. */
 .input-prefix {
   flex-shrink: 0; align-self: stretch; display: flex; align-items: center; min-height: 38px;

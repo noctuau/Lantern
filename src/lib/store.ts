@@ -20,6 +20,7 @@ import type { World, SendTo, Timer, ChannelTab } from '../../shared/types';
 import { applyHighlights, splitSend, expandCommand, TimerScheduler, type Outgoing, type Match } from './automation';
 import { classifyLine, logPrefix, commandCaptureTab, type Route } from './channels';
 import { lineHtml } from './loghtml';
+import { playSound } from './sound';
 import { LuaSession, type LuaHost, type NoteSpan, type Scripted, type ScriptKind } from './lua';
 import { getLuaFactory } from './lua-wasm';
 
@@ -76,6 +77,7 @@ const MAX_LINES = 10_000;
 const MAX_CHANNEL_LINES = 5_000;
 const MAX_SCRIPT_DEPTH = 8;
 const PING_GAP_MS = 2000;
+const TRIGGER_SOUND_GAP_MS = 250; // don't let a burst of matching lines stack alert sounds
 
 class Store {
   sessions = new Map<string, SessionState>();
@@ -93,6 +95,7 @@ class Store {
   private snapshot = 0;
   private flushTimer: number | null = null;
   private lastPing = 0;
+  private lastTriggerSound = 0;
   private audio: AudioContext | null = null;
 
   subscribe = (cb: () => void) => { this.listeners.add(cb); return () => { this.listeners.delete(cb); }; };
@@ -278,6 +281,13 @@ class Store {
             }
           }
           merged = applyHighlights(merged, r.highlights);
+        }
+        // A fired trigger with a sound plays its alert (first one wins; throttled so a flood of
+        // matching lines doesn't stack beeps). Works even for a gagged line, which is the point.
+        const sounded = r.fired.find((t) => t.sound);
+        if (sounded?.sound && Date.now() - this.lastTriggerSound > TRIGGER_SOUND_GAP_MS) {
+          this.lastTriggerSound = Date.now();
+          playSound(sounded.sound);
         }
         // Sends, notes and scripts run after this line is in place, so echoes land below it.
         if (r.outgoing.length) queueMicrotask(() => this.dispatch(s.id, r.outgoing));

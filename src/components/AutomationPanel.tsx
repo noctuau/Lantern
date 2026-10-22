@@ -31,6 +31,8 @@ interface Props {
 
 import { ColourPicker, colourCss } from './ColourPicker';
 import type { CustomColour } from '../lib/settings';
+import { TRIGGER_SOUNDS } from '../../shared/sounds';
+import { playSound } from '../lib/sound';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 
@@ -327,6 +329,15 @@ function TriggerEditor({ t, patch, customColours }: { t: Trigger; patch(p: Parti
         <Check label="Hide the line (gag)" checked={t.gag} onChange={(v) => patch({ gag: v })} />
         <Check label="Fire once, then disable" checked={t.oneShot} onChange={(v) => patch({ oneShot: v })} />
       </div>
+      <Field label="Sound" hint="Play an alert when this trigger fires — handy for your name or a key phrase. It still plays if the line is gagged.">
+        <div className="row">
+          <select value={t.sound ?? ''} onChange={(e) => patch({ sound: e.target.value || null })} style={{ width: 170 }}>
+            <option value="">No sound</option>
+            {TRIGGER_SOUNDS.map((sd) => <option key={sd.id} value={sd.id}>{sd.name}</option>)}
+          </select>
+          <button type="button" className="btn small ghost" disabled={!t.sound} onClick={() => playSound(t.sound)}>▶ Play</button>
+        </div>
+      </Field>
       {customColours.length > 0 && (
         <Field label="Custom colours" hint="Your saved colours (Settings › Colours). A trigger linked to one follows it whenever you edit that colour.">
           <div className="customcol-row">

@@ -371,6 +371,7 @@ export function App() {
               key={`in-${active.id}`}
               session={active}
               minLines={settings.inputLines}
+              sendMode={settings.sendMode}
               onResize={(lines) => saveSettings({ ...settings, inputLines: lines })}
               onSend={sendCommand}
               onReconnect={() => connect(active.world)}

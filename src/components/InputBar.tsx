@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SessionState } from '../lib/store';
+import type { SendMode } from '../lib/settings';
 import { activePrefix, PREFIX_BYPASS } from '../lib/channels';
 
 interface Props {
   session: SessionState;
   /** Resting height of the box in lines (from settings). */
   minLines: number;
+  /** How a command is sent: Enter, Ctrl+Enter, or a Send button only (Settings). */
+  sendMode: SendMode;
   onResize(lines: number): void;
   onSend(text: string): void;
   onReconnect(): void;
@@ -18,7 +21,7 @@ interface Props {
 const MAX_LINES = 20;
 const BOX_PADDING = 18; // vertical padding + border of .input
 
-export function InputBar({ session, minLines, onResize, onSend, onReconnect, registerInsert, registerGetSelection }: Props) {
+export function InputBar({ session, minLines, sendMode, onResize, onSend, onReconnect, registerInsert, registerGetSelection }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
   const [lines, setLines] = useState(minLines);
@@ -102,7 +105,15 @@ export function InputBar({ session, minLines, onResize, onSend, onReconnect, reg
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const el = e.currentTarget;
     const h = session.history;
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); return; }
+    if (e.key === 'Enter') {
+      // In "enter" mode plain Enter sends (Shift+Enter is a new line). In "ctrl-enter" and "button"
+      // modes only Ctrl/Cmd+Enter sends from the keyboard, so a stray Enter never fires a command;
+      // "button" mode also has a Send button. Anything that doesn't send falls through to a new line.
+      const mod = e.ctrlKey || e.metaKey;
+      const sends = sendMode === 'enter' ? (!e.shiftKey && !mod) : mod;
+      if (sends) { e.preventDefault(); send(); return; }
+      return;
+    }
     if (e.key === 'Escape') { setValue(''); histIdx.current = null; return; }
 
     const caretOnFirstLine = el.value.lastIndexOf('\n', el.selectionStart - 1) === -1;
@@ -131,9 +142,12 @@ export function InputBar({ session, minLines, onResize, onSend, onReconnect, reg
   // which sends that one command without it. Masked input never gets a prefix.
   const prefix = session.echo ? activePrefix(session.world.channelTabs, session.view) : '';
   const bypassing = !!prefix && value.startsWith(PREFIX_BYPASS);
+  const sendHint = sendMode === 'ctrl-enter' ? 'Ctrl+Enter to send, Enter for a new line'
+    : sendMode === 'button' ? 'Send button, or Ctrl+Enter; Enter makes a new line'
+    : 'Shift+Enter for a new line, ↑ for history';
   const placeholder = !session.echo ? 'Password (hidden)'
     : prefix ? `${prefix.trimEnd()} … (sent with the prefix; start with ${PREFIX_BYPASS} to skip it once)`
-    : 'Type a command… (Shift+Enter for a new line, ↑ for history)';
+    : `Type a command… (${sendHint})`;
 
   return (
     <div className={`input-bar ${session.echo ? '' : 'masked'}`}>
@@ -166,6 +180,9 @@ export function InputBar({ session, minLines, onResize, onSend, onReconnect, reg
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={onKeyDown}
           />
+          {sendMode === 'button' && (
+            <button type="button" className="btn primary input-send" title="Send this command (or press Ctrl+Enter)" onClick={() => { send(); ref.current?.focus(); }}>Send</button>
+          )}
         </div>
       )}
     </div>

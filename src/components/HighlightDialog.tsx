@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { Trigger } from '../../shared/types';
 import type { CustomColour } from '../lib/settings';
 import { ColourPicker } from './ColourPicker';
+import { TRIGGER_SOUNDS } from '../../shared/sounds';
+import { playSound } from '../lib/sound';
 
 interface Props {
   worldName: string;
@@ -19,7 +21,7 @@ interface Props {
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export function buildHighlightTrigger(text: string, colour: string, wholeWord: boolean, matchCase: boolean, wholeLine: boolean): Trigger {
+export function buildHighlightTrigger(text: string, colour: string, wholeWord: boolean, matchCase: boolean, wholeLine: boolean, sound: string | null = null): Trigger {
   const core = escapeRegex(text.trim());
   const lead = wholeWord && /^\w/.test(text.trim()) ? '\\b' : '';
   const tail = wholeWord && /\w$/.test(text.trim()) ? '\\b' : '';
@@ -37,6 +39,7 @@ export function buildHighlightTrigger(text: string, colour: string, wholeWord: b
     highlightBg: null,
     highlightLine: wholeLine,
     gag: false,
+    sound,
     oneShot: false,
   };
 }
@@ -49,6 +52,7 @@ export function HighlightDialog({ worldName, initialText = '', customColours = [
   const [wholeWord, setWholeWord] = useState(true);
   const [matchCase, setMatchCase] = useState(false);
   const [wholeLine, setWholeLine] = useState(false);
+  const [sound, setSound] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => { input.current?.focus(); input.current?.select(); }, []);
@@ -62,7 +66,7 @@ export function HighlightDialog({ worldName, initialText = '', customColours = [
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <form className="modal narrow" onSubmit={(e) => { e.preventDefault(); if (valid) onSave(buildHighlightTrigger(text, colour!, wholeWord, matchCase, wholeLine)); }}>
+      <form className="modal narrow" onSubmit={(e) => { e.preventDefault(); if (valid) onSave(buildHighlightTrigger(text, colour!, wholeWord, matchCase, wholeLine, sound)); }}>
         <button type="button" className="modal-x" title="Close" onClick={onClose}>×</button>
         <h2>Highlight word or phrase</h2>
         <p className="muted small">Adds a colour trigger to {worldName}. Edit or remove it later under ⚡ Automation › Triggers, group "Highlights".</p>
@@ -103,6 +107,15 @@ export function HighlightDialog({ worldName, initialText = '', customColours = [
           <label className="check inline"><input type="checkbox" checked={matchCase} onChange={(e) => setMatchCase(e.target.checked)} /> Match case</label>
           <label className="check inline"><input type="checkbox" checked={wholeLine} onChange={(e) => setWholeLine(e.target.checked)} /> Colour the whole line</label>
         </div>
+        <label>Sound when it appears
+          <div className="row">
+            <select className="grow" value={sound ?? ''} onChange={(e) => setSound(e.target.value || null)}>
+              <option value="">No sound</option>
+              {TRIGGER_SOUNDS.map((sd) => <option key={sd.id} value={sd.id}>{sd.name}</option>)}
+            </select>
+            <button type="button" className="btn small ghost" disabled={!sound} onClick={() => playSound(sound)}>▶ Play</button>
+          </div>
+        </label>
         <div className="modal-actions">
           <span className="spacer" />
           <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
