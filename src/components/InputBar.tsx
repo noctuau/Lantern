@@ -27,6 +27,9 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onResiz
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
   const [lines, setLines] = useState(minLines);
+  // On-demand spell check: when live spell check is off, this turns the native checker on for the
+  // box until the next send, so a quick check costs nothing the rest of the time.
+  const [checkNow, setCheckNow] = useState(false);
   const histIdx = useRef<number | null>(null);   // null = not browsing history
   const draft = useRef('');
 
@@ -100,6 +103,7 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onResiz
     const text = value;
     onSend(text);
     setValue('');
+    setCheckNow(false);
     histIdx.current = null;
     draft.current = '';
   };
@@ -176,12 +180,15 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onResiz
             className="input"
             value={value}
             rows={1}
-            spellCheck={session.echo && spellCheckInput}
+            spellCheck={session.echo && (spellCheckInput || checkNow)}
             placeholder={placeholder}
             style={{ minHeight: `calc(${lines} * 1lh + ${BOX_PADDING}px)`, maxHeight: `calc(${MAX_LINES} * 1lh + ${BOX_PADDING}px)` }}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={onKeyDown}
           />
+          {session.echo && !spellCheckInput && (
+            <button type="button" className={`btn small ghost input-check ${checkNow ? 'on' : ''}`} title="Spell-check what's in the box now (it turns off again when you send)" onClick={() => { setCheckNow(true); ref.current?.focus(); }}>🔤</button>
+          )}
           {sendMode === 'button' && (
             <button type="button" className="btn primary input-send" title="Send this command (or press Ctrl+Enter)" onClick={() => { send(); ref.current?.focus(); }}>Send</button>
           )}
