@@ -8,6 +8,7 @@ import { ChannelStrip, UnreadPills } from './components/ChannelStrip';
 import { InputBar } from './components/InputBar';
 import { WorldEditor } from './components/WorldEditor';
 import { ColourComposer } from './components/ColourComposer';
+import { selectionColourCodes } from './lib/selcolours';
 import { AutomationPanel, type PanelTab } from './components/AutomationPanel';
 import { StatusBar } from './components/StatusBar';
 import { SettingsDialog, type SettingsTab } from './components/SettingsDialog';
@@ -38,7 +39,7 @@ export function App() {
   const [highlight, setHighlight] = useState<{ worldId: string; text: string } | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerSeed, setComposerSeed] = useState('');
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; text: string; codes: string | null } | null>(null);
   const insertRef = useRef<(t: string) => void>(() => {});
   const registerInsert = useCallback((fn: (t: string) => void) => { insertRef.current = fn; }, []);
   const inputSelRef = useRef<() => string>(() => '');
@@ -118,8 +119,10 @@ export function App() {
       if (!t || !(t.closest('.output') || t.closest('.input'))) return;
       const text = grabSelection().trim();
       if (!text) return;
+      // Selected game-coloured output can also be copied back as backtick colour codes.
+      const codes = t.closest('.output') ? selectionColourCodes() : null;
       e.preventDefault();
-      setCtxMenu({ x: e.clientX, y: e.clientY, text });
+      setCtxMenu({ x: e.clientX, y: e.clientY, text, codes });
     };
     document.addEventListener('contextmenu', onCtx);
     return () => document.removeEventListener('contextmenu', onCtx);
@@ -406,6 +409,11 @@ export function App() {
           <button type="button" className="ctx-item" onClick={() => { openComposer(ctxMenu.text); setCtxMenu(null); }}>
             🎨 Colour composer
           </button>
+          {ctxMenu.codes && (
+            <button type="button" className="ctx-item" onClick={() => { void navigator.clipboard.writeText(ctxMenu.codes!); setCtxMenu(null); }}>
+              🎨 Copy colour codes
+            </button>
+          )}
         </div>
       )}
 
