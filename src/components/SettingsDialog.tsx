@@ -139,8 +139,12 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
                   <input type="number" step={1} min={0} max={500} value={s.outputWidth}
                     onChange={(e) => set('outputWidth', e.target.value === '' ? s.outputWidth : Math.max(0, Math.min(500, Number(e.target.value))))} style={{ width: 90 }} />
                 </label>
+                <label title="How many lines of scrollback each pane keeps. Fewer lines render faster, which keeps typing responsive on a slow machine or during heavy output. Your log file still records everything.">Scrollback (lines)
+                  <input type="number" step={500} min={200} max={50000} value={s.scrollback}
+                    onChange={(e) => set('scrollback', e.target.value === '' ? s.scrollback : Math.max(200, Math.min(50000, Math.round(Number(e.target.value)))))} style={{ width: 90 }} />
+                </label>
               </div>
-              <p className="hint">Width caps how wide lines get (0 = fill the window) and is the size Lantern reports to the game, so games that wrap text themselves use it too.</p>
+              <p className="hint">Width caps how wide lines get (0 = fill the window) and is the size Lantern reports to the game, so games that wrap text themselves use it too. If typing stutters on a slow machine or a bad connection, lower the scrollback (try 2000); the log file still keeps every line.</p>
               <label className="check inline"><input type="checkbox" checked={s.autoScroll} onChange={(e) => set('autoScroll', e.target.checked)} /> Scroll to new output while I'm at the bottom (stays put if I've scrolled up)</label>
               <div className="settings-preview output-preview">
                 Lantern flickers; the long night settles over the harbour. <span style={{ color: 'var(--ansi-11)' }}>Juliet</span> says, "Mind the step."
@@ -167,6 +171,9 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
               <label className="check inline"><input type="checkbox" checked={s.echoInput} onChange={(e) => set('echoInput', e.target.checked)} /> Echo my commands in the output (in the pane they were typed from)</label>
               <label className="check inline" title={'Curly quotes become straight ones, – and — become - and --, … becomes ..., non-breaking and other odd spaces become a space, and invisible characters are dropped. Accented letters, symbols and emoji are left alone. Passwords are never touched.'}>
                 <input type="checkbox" checked={s.cleanInput} onChange={(e) => set('cleanInput', e.target.checked)} /> Tidy what I type for the game (“curly” quotes → "straight", long dashes, ellipsis, odd spaces)
+              </label>
+              <label className="check inline" title="Red-underline misspellings in the command box. Turning it off is lighter on a slow machine.">
+                <input type="checkbox" checked={s.inputSpellCheck} onChange={(e) => set('inputSpellCheck', e.target.checked)} /> Spell-check the command box
               </label>
               <div className="settings-preview input-preview">A pose, typed here, in the command box font.</div>
             </>)}

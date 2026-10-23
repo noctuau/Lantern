@@ -17,6 +17,8 @@ export interface AppSettings {
   inputWeight: number;       // font weight 100-900
   inputLines: number;        // minimum visible lines in the command box
   sendMode: SendMode;        // how a command is sent: Enter, Ctrl+Enter, or a Send button only
+  inputSpellCheck: boolean;  // spell-check the command box (off is lighter on slow machines)
+  scrollback: number;        // lines kept per pane; fewer = cheaper rendering during output bursts
   echoInput: boolean;        // show what you typed in the output pane
   cleanInput: boolean;       // swap curly quotes, long dashes, odd spaces… in typed commands for plain ASCII (cleanTyped)
   checkUpdates: boolean;     // ask GitHub for a newer release a few seconds after start (Settings › About)
@@ -66,6 +68,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   inputWeight: 400,
   inputLines: 1,
   sendMode: 'enter',
+  inputSpellCheck: true,
+  scrollback: 5000,
   echoInput: true,
   cleanInput: true,
   checkUpdates: true,
@@ -112,6 +116,8 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
     inputWeight: Math.round(clamp(s?.inputWeight, 100, 900, DEFAULT_SETTINGS.inputWeight)),
     inputLines: Math.round(clamp(s?.inputLines, 1, 20, DEFAULT_SETTINGS.inputLines)),
     sendMode: s?.sendMode === 'ctrl-enter' || s?.sendMode === 'button' ? s.sendMode : 'enter',
+    inputSpellCheck: typeof s?.inputSpellCheck === 'boolean' ? s.inputSpellCheck : DEFAULT_SETTINGS.inputSpellCheck,
+    scrollback: typeof s?.scrollback === 'number' && s.scrollback >= 200 ? Math.min(50000, Math.round(s.scrollback)) : DEFAULT_SETTINGS.scrollback,
     echoInput: typeof s?.echoInput === 'boolean' ? s.echoInput : DEFAULT_SETTINGS.echoInput,
     cleanInput: typeof s?.cleanInput === 'boolean' ? s.cleanInput : DEFAULT_SETTINGS.cleanInput,
     checkUpdates: typeof s?.checkUpdates === 'boolean' ? s.checkUpdates : DEFAULT_SETTINGS.checkUpdates,

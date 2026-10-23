@@ -87,6 +87,7 @@ class Store {
   // Named custom colours (by id), so a trigger can reference one ("custom:<id>") and every trigger
   // using it follows when the colour is edited. Set from settings in App.
   customColours: Record<string, { fg: string; bg: string }> = {};
+  scrollback = 5000; // lines kept per pane (from settings); fewer = cheaper rendering during bursts
   private parsers = new Map<string, AnsiParser>();
   private timers = new Map<string, TimerScheduler>();
   private varSaves = new Map<string, ReturnType<typeof setTimeout>>();
@@ -352,7 +353,8 @@ class Store {
   private pushChannelLine(s: SessionState, tab: ChannelTab, line: Line, countSession: boolean) {
     const v = s.channels[tab.id] ?? (s.channels[tab.id] = { lines: [], unread: 0 });
     v.lines.push(line);
-    if (v.lines.length > MAX_CHANNEL_LINES) v.lines.splice(0, v.lines.length - MAX_CHANNEL_LINES);
+    const cap = Math.min(this.scrollback, MAX_CHANNEL_LINES);
+    if (v.lines.length > cap) v.lines.splice(0, v.lines.length - cap);
     const viewing = s.id === this.activeId && s.view === tab.id;
     if (!viewing && tab.notify !== 'silent') {
       v.unread++;
@@ -513,7 +515,8 @@ class Store {
 
   private pushLine(s: SessionState, line: Line) {
     s.lines.push(line);
-    if (s.lines.length > MAX_LINES) s.lines.splice(0, s.lines.length - MAX_LINES);
+    const cap = Math.min(this.scrollback, MAX_LINES);
+    if (s.lines.length > cap) s.lines.splice(0, s.lines.length - cap);
     if (s.id !== this.activeId) s.unread++;
     if (line.kind === 'mud' && s.view !== MAIN_VIEW) s.mainUnread++;
   }

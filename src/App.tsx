@@ -58,6 +58,7 @@ export function App() {
 
   // Give the store the custom colours so triggers that reference one ("custom:<id>") resolve live.
   const pushCustomColours = (s: AppSettings) => {
+    store.scrollback = s.scrollback;
     store.customColours = Object.fromEntries(s.customColours.map((c) => [c.id, { fg: c.fg, bg: c.bg }]));
   };
 
@@ -372,6 +373,7 @@ export function App() {
               session={active}
               minLines={settings.inputLines}
               sendMode={settings.sendMode}
+              spellCheckInput={settings.inputSpellCheck}
               onResize={(lines) => saveSettings({ ...settings, inputLines: lines })}
               onSend={sendCommand}
               onReconnect={() => connect(active.world)}

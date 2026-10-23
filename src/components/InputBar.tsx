@@ -9,6 +9,8 @@ interface Props {
   minLines: number;
   /** How a command is sent: Enter, Ctrl+Enter, or a Send button only (Settings). */
   sendMode: SendMode;
+  /** Spell-check the command box (off is lighter on slow machines). */
+  spellCheckInput: boolean;
   onResize(lines: number): void;
   onSend(text: string): void;
   onReconnect(): void;
@@ -21,7 +23,7 @@ interface Props {
 const MAX_LINES = 20;
 const BOX_PADDING = 18; // vertical padding + border of .input
 
-export function InputBar({ session, minLines, sendMode, onResize, onSend, onReconnect, registerInsert, registerGetSelection }: Props) {
+export function InputBar({ session, minLines, sendMode, spellCheckInput, onResize, onSend, onReconnect, registerInsert, registerGetSelection }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
   const [lines, setLines] = useState(minLines);
@@ -174,7 +176,7 @@ export function InputBar({ session, minLines, sendMode, onResize, onSend, onReco
             className="input"
             value={value}
             rows={1}
-            spellCheck={session.echo}
+            spellCheck={session.echo && spellCheckInput}
             placeholder={placeholder}
             style={{ minHeight: `calc(${lines} * 1lh + ${BOX_PADDING}px)`, maxHeight: `calc(${MAX_LINES} * 1lh + ${BOX_PADDING}px)` }}
             onChange={(e) => setValue(e.target.value)}
