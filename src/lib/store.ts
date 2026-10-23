@@ -20,7 +20,7 @@ import type { World, SendTo, Timer, ChannelTab } from '../../shared/types';
 import { applyHighlights, splitSend, expandCommand, TimerScheduler, type Outgoing, type Match } from './automation';
 import { classifyLine, logPrefix, commandCaptureTab, type Route } from './channels';
 import { lineHtml } from './loghtml';
-import { playSound } from './sound';
+import { playSound, soundVolume } from './sound';
 import { LuaSession, type LuaHost, type NoteSpan, type Scripted, type ScriptKind } from './lua';
 import { getLuaFactory } from './lua-wasm';
 
@@ -366,7 +366,8 @@ class Store {
   /** A short, quiet blip for tabs set to badge+sound; at most one every couple of seconds. */
   private ping() {
     const now = Date.now();
-    if (now - this.lastPing < PING_GAP_MS || typeof AudioContext === 'undefined') return;
+    const vol = soundVolume();
+    if (now - this.lastPing < PING_GAP_MS || typeof AudioContext === 'undefined' || vol <= 0) return;
     this.lastPing = now;
     try {
       this.audio ??= new AudioContext();
@@ -374,7 +375,7 @@ class Store {
       const osc = ctx.createOscillator(); const gain = ctx.createGain();
       osc.type = 'sine'; osc.frequency.value = 880;
       gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.5 * vol, ctx.currentTime + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
       osc.connect(gain).connect(ctx.destination);
       osc.start(); osc.stop(ctx.currentTime + 0.2);

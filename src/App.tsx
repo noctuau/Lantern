@@ -9,6 +9,7 @@ import { InputBar } from './components/InputBar';
 import { WorldEditor } from './components/WorldEditor';
 import { ColourComposer } from './components/ColourComposer';
 import { selectionColourCodes } from './lib/selcolours';
+import { setSoundVolume } from './lib/sound';
 import { AutomationPanel, type PanelTab } from './components/AutomationPanel';
 import { StatusBar } from './components/StatusBar';
 import { SettingsDialog, type SettingsTab } from './components/SettingsDialog';
@@ -60,6 +61,7 @@ export function App() {
   // Give the store the custom colours so triggers that reference one ("custom:<id>") resolve live.
   const pushCustomColours = (s: AppSettings) => {
     store.scrollback = s.scrollback;
+    setSoundVolume(s.soundVolume / 100);
     store.customColours = Object.fromEntries(s.customColours.map((c) => [c.id, { fg: c.fg, bg: c.bg }]));
   };
 

@@ -5,6 +5,7 @@ import { FontPicker } from './FontPicker';
 import { AboutTab } from './AboutTab';
 import { GRADIENT_PRESETS, parseCodes, xtermHex, type GradientPreset } from '../lib/gradient';
 import type { UpdateInfo } from '../../shared/updates';
+import { playSound } from '../lib/sound';
 
 const ANSI_LABELS = ['Black', 'Red', 'Green', 'Yellow', 'Blue', 'Magenta', 'Cyan', 'White',
   'Bright black', 'Bright red', 'Bright green', 'Bright yellow', 'Bright blue', 'Bright magenta', 'Bright cyan', 'Bright white'];
@@ -146,6 +147,13 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
               </div>
               <p className="hint">Width caps how wide lines get (0 = fill the window) and is the size Lantern reports to the game, so games that wrap text themselves use it too. If typing stutters on a slow machine or a bad connection, lower the scrollback (try 2000); the log file still keeps every line.</p>
               <label className="check inline"><input type="checkbox" checked={s.autoScroll} onChange={(e) => set('autoScroll', e.target.checked)} /> Scroll to new output while I'm at the bottom (stays put if I've scrolled up)</label>
+              <label title="Volume of the alert sounds a trigger can play, and the channel-tab blip.">Alert volume
+                <div className="row" style={{ alignItems: 'center' }}>
+                  <input type="range" min={0} max={100} step={5} value={s.soundVolume} onChange={(e) => set('soundVolume', Number(e.target.value))} style={{ flex: 1 }} />
+                  <span className="muted small" style={{ width: 42, textAlign: 'right' }}>{s.soundVolume}%</span>
+                  <button type="button" className="btn small ghost" onClick={() => playSound('chime', s.soundVolume / 100)}>Test</button>
+                </div>
+              </label>
               <div className="settings-preview output-preview">
                 Lantern flickers; the long night settles over the harbour. <span style={{ color: 'var(--ansi-11)' }}>Juliet</span> says, "Mind the step."
               </div>

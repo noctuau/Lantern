@@ -19,6 +19,7 @@ export interface AppSettings {
   sendMode: SendMode;        // how a command is sent: Enter, Ctrl+Enter, or a Send button only
   inputSpellCheck: boolean;  // spell-check the command box (off is lighter on slow machines)
   scrollback: number;        // lines kept per pane; fewer = cheaper rendering during output bursts
+  soundVolume: number;       // 0-100: volume of trigger alert sounds and the channel blip
   echoInput: boolean;        // show what you typed in the output pane
   cleanInput: boolean;       // swap curly quotes, long dashes, odd spaces… in typed commands for plain ASCII (cleanTyped)
   checkUpdates: boolean;     // ask GitHub for a newer release a few seconds after start (Settings › About)
@@ -70,6 +71,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   sendMode: 'enter',
   inputSpellCheck: true,
   scrollback: 5000,
+  soundVolume: 60,
   echoInput: true,
   cleanInput: true,
   checkUpdates: true,
@@ -118,6 +120,7 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
     sendMode: s?.sendMode === 'ctrl-enter' || s?.sendMode === 'button' ? s.sendMode : 'enter',
     inputSpellCheck: typeof s?.inputSpellCheck === 'boolean' ? s.inputSpellCheck : DEFAULT_SETTINGS.inputSpellCheck,
     scrollback: typeof s?.scrollback === 'number' && s.scrollback >= 200 ? Math.min(50000, Math.round(s.scrollback)) : DEFAULT_SETTINGS.scrollback,
+    soundVolume: typeof s?.soundVolume === 'number' ? Math.max(0, Math.min(100, Math.round(s.soundVolume))) : DEFAULT_SETTINGS.soundVolume,
     echoInput: typeof s?.echoInput === 'boolean' ? s.echoInput : DEFAULT_SETTINGS.echoInput,
     cleanInput: typeof s?.cleanInput === 'boolean' ? s.cleanInput : DEFAULT_SETTINGS.cleanInput,
     checkUpdates: typeof s?.checkUpdates === 'boolean' ? s.checkUpdates : DEFAULT_SETTINGS.checkUpdates,
