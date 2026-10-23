@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SessionState } from '../lib/store';
 import type { SendMode } from '../lib/settings';
+import { entrySends } from '../lib/sendkey';
 import { activePrefix, PREFIX_BYPASS } from '../lib/channels';
 
 interface Props {
@@ -112,12 +113,10 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onResiz
     const el = e.currentTarget;
     const h = session.history;
     if (e.key === 'Enter') {
-      // In "enter" mode plain Enter sends (Shift+Enter is a new line). In "ctrl-enter" and "button"
-      // modes only Ctrl/Cmd+Enter sends from the keyboard, so a stray Enter never fires a command;
-      // "button" mode also has a Send button. Anything that doesn't send falls through to a new line.
-      const mod = e.ctrlKey || e.metaKey;
-      const sends = sendMode === 'enter' ? (!e.shiftKey && !mod) : mod;
-      if (sends) { e.preventDefault(); send(); return; }
+      // See src/lib/sendkey.ts. In "ctrl-enter" mode a short one-liner still sends on Enter, but a
+      // long or multi-line pose needs Ctrl+Enter, so quick commands aren't a chore. Whatever doesn't
+      // send falls through to a new line.
+      if (entrySends(sendMode, { mod: e.ctrlKey || e.metaKey, shift: e.shiftKey, value })) { e.preventDefault(); send(); return; }
       return;
     }
     if (e.key === 'Escape') { setValue(''); histIdx.current = null; return; }
@@ -148,7 +147,7 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onResiz
   // which sends that one command without it. Masked input never gets a prefix.
   const prefix = session.echo ? activePrefix(session.world.channelTabs, session.view) : '';
   const bypassing = !!prefix && value.startsWith(PREFIX_BYPASS);
-  const sendHint = sendMode === 'ctrl-enter' ? 'Ctrl+Enter to send, Enter for a new line'
+  const sendHint = sendMode === 'ctrl-enter' ? 'Enter sends a short line; Ctrl+Enter for a long pose'
     : sendMode === 'button' ? 'Send button, or Ctrl+Enter; Enter makes a new line'
     : 'Shift+Enter for a new line, ↑ for history';
   const placeholder = !session.echo ? 'Password (hidden)'

@@ -163,7 +163,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
               <label>Send a command with
                 <select value={s.sendMode} onChange={(e) => set('sendMode', e.target.value as SendMode)}>
                   <option value="enter">Enter key (Shift+Enter for a new line)</option>
-                  <option value="ctrl-enter">Ctrl+Enter (a plain Enter makes a new line)</option>
+                  <option value="ctrl-enter">Ctrl+Enter for long poses (a short one-line still sends on Enter)</option>
                   <option value="button">A Send button (a plain Enter makes a new line)</option>
                 </select>
               </label>
