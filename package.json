@@ -1,7 +1,7 @@
 {
   "name": "lantern",
   "productName": "Lantern",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "license": "MIT",
   "author": "Noctua",
   "description": "A modern MUD/MUSH client — a fresh take on MUSHclient",
