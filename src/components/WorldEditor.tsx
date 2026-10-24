@@ -18,6 +18,11 @@ export function WorldEditor({ world, onSave, onDelete, onClose }: Props) {
   const valid = w.name.trim() && w.host.trim() && w.port > 0 && w.port < 65536;
 
   useEffect(() => { window.lantern.app.logsDir().then(setLogsDir); }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const preview = expandLogName(w.log.file, w.name, w.log.format);
   const previewFull = (/^([a-zA-Z]:[\\/]|\\\\)/.test(preview) ? preview : `${logsDir}\\${preview}`).replace(/\//g, '\\');

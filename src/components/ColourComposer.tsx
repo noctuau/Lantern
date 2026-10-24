@@ -3,7 +3,7 @@
  * the game's backtick codes, with a live preview rendered by Lantern's own colours. Insert it
  * straight into the command box, or copy it. Based on Noctua's "MUD Gradient Maker".
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { makeGradient, parseBacktick, parseCodes, xtermHex, type GradientPreset } from '../lib/gradient';
 
 interface Props {
@@ -30,6 +30,14 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveName, setSaveName] = useState('');
+
+  // Escape closes the dialog. The save-name box handles its own Escape (to cancel just that) and
+  // stops it bubbling here, so Escape there closes the name box first, not the whole dialog.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const output = useMemo(
     () => makeGradient(text, codes, { bothways, reverse, random }),
