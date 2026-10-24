@@ -57,6 +57,10 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      // Keep the renderer running at full speed when the window isn't focused, so trigger sounds,
+      // timers and channel capture keep working while you're in another app (Chromium otherwise
+      // throttles background windows and can suspend their audio).
+      backgroundThrottling: false,
     },
   });
 

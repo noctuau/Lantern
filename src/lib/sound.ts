@@ -13,6 +13,7 @@ function play(def: SoundDef, vol: number) {
   const peak = 0.55 * vol; // full volume is loud but short; the old fixed level was ~0.09 (too quiet)
   try {
     ctx ??= new AudioContext();
+    if (ctx.state === 'suspended') void ctx.resume(); // wake it if it was suspended in the background
     let t = ctx.currentTime;
     for (const step of def.steps) {
       if (step.freq > 0) {

@@ -372,6 +372,7 @@ class Store {
     try {
       this.audio ??= new AudioContext();
       const ctx = this.audio;
+      if (ctx.state === 'suspended') void ctx.resume();
       const osc = ctx.createOscillator(); const gain = ctx.createGain();
       osc.type = 'sine'; osc.frequency.value = 880;
       gain.gain.setValueAtTime(0.0001, ctx.currentTime);

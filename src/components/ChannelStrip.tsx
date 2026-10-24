@@ -13,7 +13,7 @@ import { colourCss } from './ColourPicker';
 const tint = (colour: string): CSSProperties => ({ '--tab-colour': colourCss(colour) } as CSSProperties);
 
 const PEEK_DELAY_MS = 350;
-const PEEK_LINES = 3;
+const PEEK_LINES = 6;
 
 interface Props {
   session: SessionState;
