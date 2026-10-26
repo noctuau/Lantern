@@ -60,7 +60,7 @@ export function App() {
 
   // Give the store the custom colours so triggers that reference one ("custom:<id>") resolve live.
   const pushCustomColours = (s: AppSettings) => {
-    store.scrollback = s.scrollback;
+    store.setScrollback(s.scrollback);
     setSoundVolume(s.soundVolume / 100);
     store.customColours = Object.fromEntries(s.customColours.map((c) => [c.id, { fg: c.fg, bg: c.bg }]));
   };

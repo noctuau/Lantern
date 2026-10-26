@@ -523,6 +523,22 @@ class Store {
     if (line.kind === 'mud' && s.view !== MAIN_VIEW) s.mainUnread++;
   }
 
+  /** Set the scrollback cap and trim every open buffer to it right away, so lowering it in Settings
+   *  takes effect immediately instead of only as new lines arrive. */
+  setScrollback(n: number) {
+    this.scrollback = n;
+    const mainCap = Math.min(n, MAX_LINES);
+    const chanCap = Math.min(n, MAX_CHANNEL_LINES);
+    let changed = false;
+    for (const s of this.sessions.values()) {
+      if (s.lines.length > mainCap) { s.lines.splice(0, s.lines.length - mainCap); changed = true; }
+      for (const v of Object.values(s.channels)) {
+        if (v.lines.length > chanCap) { v.lines.splice(0, v.lines.length - chanCap); changed = true; }
+      }
+    }
+    if (changed) this.notify();
+  }
+
   note(id: string, text: string, kind: LineKind = 'note') {
     const s = this.sessions.get(id); if (!s) return;
     if (s.partial.length) this.commitPartial(s, 'mud');
