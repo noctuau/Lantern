@@ -166,7 +166,10 @@ export function App() {
     const next = cur.some((x) => x.id === applied.id) ? cur.map((x) => (x.id === applied.id ? applied : x)) : [...cur, applied];
     worldsRef.current = next;
     setWorlds(next);
-    setWorlds(await window.lantern.worlds.save(next));
+    const saved = await window.lantern.worlds.save(next);
+    worldsRef.current = saved;
+    setWorlds(saved);
+    return saved.find((x) => x.id === applied.id) ?? applied;
   }, []);
 
   // Wire main-process events into the store once, and give the store its way back out.
@@ -466,7 +469,7 @@ export function App() {
           world={automating}
           initialTab={panelTab}
           customColours={settings.customColours}
-          onSave={async (w) => { await saveWorld(w); setAutomating(null); }}
+          onSave={async (w) => { const saved = await saveWorld(w); setAutomating(saved); return saved; }}
           onReloadScript={() => store.reloadLua(automating.id)}
           onClose={() => { setAutomating(null); setPanelTab(undefined); }}
         />

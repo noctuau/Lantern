@@ -23,7 +23,7 @@ interface Props {
   world: World;
   customColours?: CustomColour[];
   initialTab?: Tab;
-  onSave(w: World): void;
+  onSave(w: World): Promise<World>;
   /** The script file changed on disk: start a fresh Lua state in every session on this world. */
   onReloadScript(): void;
   onClose(): void;
@@ -244,7 +244,7 @@ export function AutomationPanel({ world, initialTab, customColours = [], onSave,
           <span className="muted small">{importMsg || (worldDirty ? 'Unsaved changes' : scriptDirty ? 'Script not saved (use Save script above)' : 'Saved')}</span>
           <span className="spacer" />
           <button type="button" className="btn ghost" onClick={onClose}>{dirty ? 'Discard' : 'Close'}</button>
-          <button type="button" className="btn primary" disabled={!worldDirty} onClick={() => onSave(w)}>Save</button>
+          <button type="button" className="btn primary" disabled={!worldDirty} onClick={async () => { const saved = await onSave(w); setW(JSON.parse(JSON.stringify(saved)) as World); }}>Save</button>
         </div>
       </div>
     </div>
