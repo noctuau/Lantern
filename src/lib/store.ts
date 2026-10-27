@@ -126,6 +126,33 @@ class Store {
     void this.startLua(s);
   }
 
+  /** Reconnect in place: put a fresh backend session into the old one's tab slot instead of opening
+   *  a new tab, carrying over the scrollback, channel panes, command history and current view. */
+  replace(oldId: string, newId: string, world: World) {
+    const idx = this.order.indexOf(oldId);
+    if (idx === -1) { this.add(newId, world); return; }
+    this.stopTimers(oldId);
+    const old = this.sessions.get(oldId);
+    if (old) { old.luaGen++; old.lua?.dispose(); old.lua = null; }
+    const pending = this.varSaves.get(oldId);
+    if (pending) { clearTimeout(pending); this.varSaves.delete(oldId); if (old) this.hooks.worldChanged(old.world); }
+    this.sessions.delete(oldId);
+    this.parsers.delete(oldId);
+    const s: SessionState = {
+      id: newId, world, status: 'connecting', partial: [], echo: true, unread: 0, gmcp: {},
+      lines: old?.lines ?? [], channels: old?.channels ?? {}, history: old?.history ?? [],
+      view: old?.view ?? MAIN_VIEW, channelsOff: old?.channelsOff ?? false,
+      mainUnread: 0, swallowBlankUntil: 0, cmdCapture: null,
+      automation: old?.automation ?? true, fired: 0, lua: null, luaStatus: 'starting', luaGen: 0, scriptDepth: 0,
+    };
+    this.sessions.set(newId, s);
+    this.parsers.set(newId, new AnsiParser());
+    this.order[idx] = newId;
+    this.activeId = newId;
+    this.notify();
+    void this.startLua(s);
+  }
+
   remove(id: string) {
     this.stopTimers(id);
     const s = this.sessions.get(id);

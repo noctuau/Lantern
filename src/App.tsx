@@ -200,6 +200,12 @@ export function App() {
     store.add(id, world);
   };
 
+  // Reconnect reuses the same tab (keeping its scrollback and history) rather than opening a new one.
+  const reconnect = async (sess: { id: string; world: World }) => {
+    const id = await window.lantern.session.connect(sess.world.id, termSize());
+    store.replace(sess.id, id, sess.world);
+  };
+
   // Dev smoke test hook (see electron/main.ts). The throwaway world carries a demo trigger, alias,
   // Lua script and channel tab so the screenshot shows automation, scripting and capture end to end.
   useEffect(() => window.lantern.app.onSmoke(async ({ host, port, panel, view, auto }) => {
@@ -381,7 +387,7 @@ export function App() {
               spellCheckInput={settings.inputSpellCheck}
               onResize={(lines) => saveSettings({ ...settings, inputLines: lines })}
               onSend={sendCommand}
-              onReconnect={() => connect(active.world)}
+              onReconnect={() => reconnect(active)}
               registerInsert={registerInsert}
               registerGetSelection={registerGetSelection}
             />
