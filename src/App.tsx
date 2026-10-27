@@ -385,6 +385,7 @@ export function App() {
               minLines={settings.inputLines}
               sendMode={settings.sendMode}
               spellCheckInput={settings.inputSpellCheck}
+              onJumpToLatest={() => { const el = document.querySelector('.output-wrap:not(.hidden) .output') as HTMLElement | null; if (el) el.scrollTop = el.scrollHeight; }}
               onResize={(lines) => saveSettings({ ...settings, inputLines: lines })}
               onSend={sendCommand}
               onReconnect={() => reconnect(active)}

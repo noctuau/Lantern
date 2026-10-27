@@ -12,6 +12,8 @@ interface Props {
   sendMode: SendMode;
   /** Spell-check the command box (off is lighter on slow machines). */
   spellCheckInput: boolean;
+  /** Down arrow (when not browsing history) jumps the output to the newest line. */
+  onJumpToLatest(): void;
   onResize(lines: number): void;
   onSend(text: string): void;
   onReconnect(): void;
@@ -24,7 +26,7 @@ interface Props {
 const MAX_LINES = 20;
 const BOX_PADDING = 18; // vertical padding + border of .input
 
-export function InputBar({ session, minLines, sendMode, spellCheckInput, onResize, onSend, onReconnect, registerInsert, registerGetSelection }: Props) {
+export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpToLatest, onResize, onSend, onReconnect, registerInsert, registerGetSelection }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
   const [lines, setLines] = useState(minLines);
@@ -132,10 +134,16 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onResiz
       requestAnimationFrame(() => el.setSelectionRange(el.value.length, el.value.length));
       return;
     }
-    if (e.key === 'ArrowDown' && caretOnLastLine && histIdx.current !== null) {
+    if (e.key === 'ArrowDown' && caretOnLastLine) {
+      if (histIdx.current !== null) {
+        e.preventDefault();
+        if (histIdx.current < h.length - 1) { histIdx.current++; setValue(h[histIdx.current]); }
+        else { histIdx.current = null; setValue(draft.current); }
+        return;
+      }
+      // Not browsing history: Down jumps the output to the newest line and re-follows it.
       e.preventDefault();
-      if (histIdx.current < h.length - 1) { histIdx.current++; setValue(h[histIdx.current]); }
-      else { histIdx.current = null; setValue(draft.current); }
+      onJumpToLatest();
       return;
     }
   };
