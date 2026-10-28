@@ -56,4 +56,24 @@ assert.deepEqual(np, [
   { name: 'Bad codes', codes: '' },
 ], 'duplicates get a suffix, blanks a default name, junk is dropped, codes are tidied');
 
-console.log(`test-gradient: all assertions passed (${g.GRADIENT_PRESETS.length} presets)`);
+// --- HTML (truecolour) mode ---
+assert.deepEqual(g.parseCodes('#ff0000, 00ff00 ; #abc xyz', 'html'), ['#ff0000', '#00ff00', '#aabbcc'], 'html codes: hex parsed, 3-hex expanded, junk dropped');
+assert.deepEqual(g.parseCodes('ff0000 12 xyz', 'html'), ['#ff0000'], 'html: 6-hex kept, too-short and non-hex tokens dropped');
+assert.deepEqual(g.hexToRgb('#64ff33'), [100, 255, 51]);
+assert.equal(g.hexToRgb('nope'), null);
+assert.deepEqual(g.blendHex('#000000', '#ffffff', 3), ['#000000', '#808080', '#ffffff'], 'blend interpolates in rgb');
+assert.deepEqual(g.blendHex('#ff0000', '#0000ff', 2), ['#ff0000', '#0000ff']);
+
+const html = g.makeGradient('abcdef', '#ff0000 #00ff00', { bothways: false, reverse: false, random: false }, 'html');
+assert.ok(html.includes('`#ff0000') && html.includes('`#00ff00') && html.endsWith('`w'), 'html gradient emits #rrggbb codes');
+
+// Preview parser handles `#rrggbb truecolour.
+const hspans = g.parseBacktick('`#64ff33red`wplain');
+assert.equal(hspans[0].text, 'red'); assert.equal(hspans[0].hex, '#64ff33');
+assert.equal(hspans[1].text, 'plain'); assert.equal(hspans[1].hex, null);
+
+// HTML presets all parse to at least two colours.
+assert.ok(g.HTML_PRESETS.length >= 6);
+for (const p of g.HTML_PRESETS) assert.ok(g.parseCodes(p.codes, 'html').length >= 2, `html preset ${p.name} has colours`);
+
+console.log(`test-gradient: all assertions passed (${g.GRADIENT_PRESETS.length} xterm + ${g.HTML_PRESETS.length} html presets)`);

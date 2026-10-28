@@ -8,6 +8,8 @@ import { xterm256 } from './ansi';
 
 export interface GradientPreset { name: string; codes: string }
 export interface GradientOptions { bothways: boolean; reverse: boolean; random: boolean }
+/** Which colour system the codes use: xterm-256 indices (`NNN) or HTML truecolour (`#rrggbb). */
+export type ColourMode = 'xterm' | 'html';
 
 /** Classic VGA for the 16 base indices; xterm-256 cube for 16-255 (same as the game's CLUT). */
 const VGA16 = ['000000', '800000', '008000', '808000', '000080', '800080', '008080', 'c0c0c0',
@@ -22,8 +24,36 @@ export function xtermHex(n: number): string {
 
 function shuffle<T>(a: T[]): T[] { return a.sort(() => Math.random() - 0.5); }
 
-/** Clean a free-text list of codes into an array of 1-3 digit code strings. */
-export function parseCodes(codesStr: string): string[] {
+/** [r,g,b] 0-255 for a #rgb or #rrggbb string, or null. */
+export function hexToRgb(h: string): [number, number, number] | null {
+  let s = h.trim().replace(/^#/, '');
+  if (/^[0-9a-fA-F]{3}$/.test(s)) s = s.split('').map((c) => c + c).join('');
+  if (!/^[0-9a-fA-F]{6}$/.test(s)) return null;
+  const n = parseInt(s, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+const toHex = (r: number, g: number, b: number) =>
+  '#' + [r, g, b].map((n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')).join('');
+
+/** An evenly-spaced colour ramp of `steps` #rrggbb values from `a` to `b` (RGB interpolation). */
+export function blendHex(a: string, b: string, steps: number): string[] {
+  const pa = hexToRgb(a), pb = hexToRgb(b);
+  if (!pa || !pb) return [];
+  if (steps < 2) return [toHex(...pa)];
+  const out: string[] = [];
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1);
+    out.push(toHex(pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t, pa[2] + (pb[2] - pa[2]) * t));
+  }
+  return out;
+}
+
+/** Clean a free-text list of codes into code strings: xterm = 1-3 digit numbers, html = #rrggbb. */
+export function parseCodes(codesStr: string, mode: ColourMode = 'xterm'): string[] {
+  if (mode === 'html') {
+    return codesStr.split(/[\s,;]+/).map((t) => hexToRgb(t)).filter((p): p is [number, number, number] => !!p).map((p) => toHex(...p));
+  }
   return codesStr.replace(/[^\d\s]/g, '').trim().replace(/\s+/g, ' ').split(' ').filter(Boolean);
 }
 
@@ -31,9 +61,9 @@ export function parseCodes(codesStr: string): string[] {
  * Apply a gradient. Inserts `NNN tokens evenly across the text and appends `w (reset), exactly as
  * the original tool: token i goes at position i*(freq+1), where freq = textLength / codeCount.
  */
-export function makeGradient(text: string, codesStr: string, opts: GradientOptions): string {
+export function makeGradient(text: string, codesStr: string, opts: GradientOptions, mode: ColourMode = 'xterm'): string {
   if (!text) return '';
-  let codes = parseCodes(codesStr);
+  let codes = parseCodes(codesStr, mode);
   if (!codes.length) return text;
   if (opts.random) codes = shuffle(codes.slice());
   if (opts.reverse) codes = codes.slice().reverse();
@@ -63,6 +93,8 @@ export function parseBacktick(str: string): ColourSpan[] {
   const flush = () => { if (buf) { out.push({ text: buf, hex }); buf = ''; } };
   for (let i = 0; i < str.length; i++) {
     if (str[i] === '`') {
+      const hexm = str.slice(i + 1).match(/^#[0-9a-fA-F]{6}/);
+      if (hexm) { flush(); hex = hexm[0].toLowerCase(); i += hexm[0].length; continue; } // `#rrggbb truecolour
       const digits = str.slice(i + 1).match(/^\d{1,3}/);
       if (digits) { flush(); hex = xtermHex(Number(digits[0])) || null; i += digits[0].length; continue; }
       const letter = str[i + 1];
@@ -185,4 +217,18 @@ export const GRADIENT_PRESETS: GradientPreset[] = [
   { name: "Soft Coral", codes: "224 223 224 225 189 153 159 195 194 230" },
   { name: "Rainbow", codes: "161 162 163 169 175 181 187 193 192 154 118 121 120 121 122 123 117 111 105 099 063 057" },
   { name: "Jeweled Beads", codes: "210 216 223 230 224 223 222 223 224 181 182 189 182 189 195 189 195 189 153 189 153 117 153 117 116 117 116 115 116 115 109 115 109 109" },
+];
+
+/** Built-in HTML (truecolour) gradient presets, each a space-separated #rrggbb list. */
+export const HTML_PRESETS: GradientPreset[] = [
+  { name: 'Aurora', codes: '#0b486b #3b8686 #79bd9a #a8dba8 #cff09e' },
+  { name: 'Ember', codes: '#2b0a00 #641e00 #b33000 #ff6b00 #ffb300 #ffe066' },
+  { name: 'Ocean', codes: '#012a4a #013a63 #01497c #2a6f97 #61a5c2 #a9d6e5' },
+  { name: 'Sunset', codes: '#355070 #6d597a #b56576 #e56b6f #eaac8b #ffd6a5' },
+  { name: 'Rainbow', codes: '#e63946 #f3722c #f9c74f #90be6d #43aa8b #577590 #9d4edd' },
+  { name: 'Blood', codes: '#2b0000 #4a0000 #800000 #b30000 #e60000 #ff1a1a' },
+  { name: 'Spring', codes: '#d8f3dc #b7e4c7 #95d5b2 #74c69d #52b788 #40916c' },
+  { name: 'Moonlit', codes: '#0b1026 #1b2a4a #2e4374 #4a6fa5 #7f9cc9 #c5d8f0' },
+  { name: 'Bubblegum', codes: '#ffd6ff #e7c6ff #c8b6ff #b8c0ff #bbd0ff' },
+  { name: 'Vampire', codes: '#10002b #240046 #3c096c #5a189a #7b2cbf #9d4edd' },
 ];

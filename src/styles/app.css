@@ -451,3 +451,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .ctx-menu { position: fixed; z-index: 20; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 170px; }
 .ctx-item { display: block; width: 100%; text-align: left; background: transparent; border: 0; border-radius: 6px; padding: 7px 10px; color: var(--fg); font-size: 13px; cursor: pointer; }
 .ctx-item:hover { background: var(--bg-3); color: var(--accent); }
+
+/* Colour composer: Xterm/HTML mode toggle and the HTML colour tools */
+.composer-mode { display: flex; align-items: center; gap: 8px; }
+.composer-mode .hint { margin-left: 4px; }
+.composer-html-tools { align-items: center; flex-wrap: wrap; gap: 16px; }
+.composer-html-tools .html-tool { display: inline-flex; align-items: center; gap: 6px; }
+.composer-html-tools input[type="color"] { width: 34px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); cursor: pointer; }

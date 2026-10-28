@@ -1,25 +1,29 @@
 /**
- * Colour composer: build a gradient (or hand-pick) xterm colours across a line of text and emit
- * the game's backtick codes, with a live preview rendered by Lantern's own colours. Insert it
- * straight into the command box, or copy it. Based on Noctua's "MUD Gradient Maker".
+ * Colour composer: build a gradient (or hand-pick colours) across a line of text and emit the
+ * game's backtick codes, with a live preview rendered by Lantern's own colours. Two colour systems:
+ * Xterm (`NNN, 0-255) and HTML truecolour (`#rrggbb). Insert it straight into the command box, or
+ * copy it. Based on Noctua's "MUD Gradient Maker".
  */
 import { useEffect, useMemo, useState } from 'react';
-import { makeGradient, parseBacktick, parseCodes, xtermHex, type GradientPreset } from '../lib/gradient';
+import { makeGradient, parseBacktick, parseCodes, xtermHex, blendHex, HTML_PRESETS, type GradientPreset, type ColourMode } from '../lib/gradient';
 
 interface Props {
   onInsert(text: string): void;
   onClose(): void;
   /** Text to pre-fill (e.g. the current selection in the command box or output). */
   initialText?: string;
-  /** The presets to offer, in order (Settings › Presets). */
+  /** The xterm presets to offer, in order (Settings › Presets). HTML presets are built in. */
   presets: GradientPreset[];
   /** "Save as preset": add the current colours under a name (replacing a preset of the same name). */
   onSavePreset?(p: GradientPreset): void;
 }
 
 const SWATCHES = Array.from({ length: 240 }, (_, i) => i + 16); // xterm 16-255, the colour cube + greys
+const BLEND_STEPS = 8;
 
 export function ColourComposer({ onInsert, onClose, initialText, presets, onSavePreset }: Props) {
+  const [mode, setMode] = useState<ColourMode>('xterm');
+  const activePresets = mode === 'html' ? HTML_PRESETS : presets;
   const [text, setText] = useState(initialText ?? '');
   const [codes, setCodes] = useState(presets[0]?.codes ?? '');
   // The preset the codes currently match, so the dropdown shows what's selected; '' = Custom.
@@ -30,6 +34,9 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveName, setSaveName] = useState('');
+  const [pick, setPick] = useState('#ffcc66');   // HTML mode: colour to add
+  const [blendA, setBlendA] = useState('#64ff33'); // HTML mode: blend from
+  const [blendB, setBlendB] = useState('#ff336d'); // HTML mode: blend to
 
   // Escape closes the dialog. The save-name box handles its own Escape (to cancel just that) and
   // stops it bubbling here, so Escape there closes the name box first, not the whole dialog.
@@ -40,33 +47,43 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
   }, [onClose]);
 
   const output = useMemo(
-    () => makeGradient(text, codes, { bothways, reverse, random }),
-    [text, codes, bothways, reverse, random],
+    () => makeGradient(text, codes, { bothways, reverse, random }, mode),
+    [text, codes, bothways, reverse, random, mode],
   );
   const preview = useMemo(() => parseBacktick(output), [output]);
-  const codeCount = parseCodes(codes).length;
+  const codeCount = parseCodes(codes, mode).length;
 
   // Any code change re-syncs the dropdown: if the codes match a preset, show it, else "Custom".
   const applyCodes = (c: string) => {
     setCodes(c);
-    const hit = presets.find((p) => p.codes === c.trim());
+    const hit = activePresets.find((p) => p.codes === c.trim());
     setPresetName(hit ? hit.name : '');
   };
   const applyPreset = (name: string) => {
-    const p = presets.find((x) => x.name === name);
+    const p = activePresets.find((x) => x.name === name);
     if (!p) { setPresetName(''); return; }
     setPresetName(p.name);
     setCodes(p.codes);
   };
   // Step up/down the preset list; from "Custom" the down arrow starts at the top, up at the bottom.
   const stepPreset = (dir: 1 | -1) => {
-    const n = presets.length;
+    const n = activePresets.length;
     if (!n) return;
-    const i = presets.findIndex((p) => p.name === presetName);
+    const i = activePresets.findIndex((p) => p.name === presetName);
     const next = i < 0 ? (dir > 0 ? 0 : n - 1) : (i + dir + n) % n;
-    applyPreset(presets[next].name);
+    applyPreset(activePresets[next].name);
+  };
+  const switchMode = (m: ColourMode) => {
+    if (m === mode) return;
+    setMode(m);
+    const first = (m === 'html' ? HTML_PRESETS : presets)[0];
+    setCodes(first?.codes ?? '');
+    setPresetName(first?.name ?? '');
+    setSaving(false);
   };
   const addCode = (nn: number) => applyCodes(`${codes.trim()} ${String(nn).padStart(3, '0')}`.trim());
+  const addHex = (h: string) => applyCodes(`${codes.trim()} ${h}`.trim());
+  const doBlend = () => applyCodes(blendHex(blendA, blendB, BLEND_STEPS).join(' '));
   const savePreset = () => {
     const name = saveName.trim();
     if (!name || !onSavePreset || !codeCount) return;
@@ -86,6 +103,12 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
         <button type="button" className="modal-x" title="Close" onClick={onClose}>×</button>
         <h2>Colour composer</h2>
 
+        <div className="composer-mode" title="Which colour system to use">
+          <button type="button" className={`btn small ${mode === 'xterm' ? 'primary' : 'ghost'}`} onClick={() => switchMode('xterm')}>Xterm</button>
+          <button type="button" className={`btn small ${mode === 'html' ? 'primary' : 'ghost'}`} onClick={() => switchMode('html')}>HTML</button>
+          <span className="hint">{mode === 'html' ? 'Truecolour #rrggbb codes' : 'Xterm 0-255 codes'}</span>
+        </div>
+
         <label>Text to colour
           <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="Type the pose or line you want to colour…" />
         </label>
@@ -95,7 +118,7 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
             <div className="preset-row">
               <select className="grow" value={presetName} onChange={(e) => applyPreset(e.target.value)}>
                 <option value="">Custom</option>
-                {presets.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+                {activePresets.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
               </select>
               <button type="button" className="btn small ghost step" title="Previous preset" onClick={() => stepPreset(-1)}>▲</button>
               <button type="button" className="btn small ghost step" title="Next preset" onClick={() => stepPreset(1)}>▼</button>
@@ -106,20 +129,38 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
           <label className="check inline"><input type="checkbox" checked={random} onChange={(e) => setRandom(e.target.checked)} /> Randomise</label>
         </div>
 
-        <label>Colour codes (xterm 0-255, space-separated)
+        <label>{mode === 'html' ? 'Colour codes (#rrggbb, space-separated)' : 'Colour codes (xterm 0-255, space-separated)'}
           <div className="row">
             <input className="mono grow" value={codes} onChange={(e) => applyCodes(e.target.value)} spellCheck={false} />
             <button type="button" className="btn small ghost" onClick={() => applyCodes('')}>Clear</button>
           </div>
         </label>
-        <details className="composer-swatches">
-          <summary className="hint">Pick colours by hand ({codeCount} in use) — click to add</summary>
-          <div className="composer-grid">
-            {SWATCHES.map((n) => (
-              <button type="button" key={n} className="composer-sw" title={`xterm ${n}`} style={{ background: xtermHex(n) }} onClick={() => addCode(n)} />
-            ))}
+
+        {mode === 'html' ? (
+          <div className="row composer-html-tools">
+            <span className="html-tool">
+              <span className="hint">Add</span>
+              <input type="color" value={pick} onChange={(e) => setPick(e.target.value)} title="Pick a colour to add" />
+              <button type="button" className="btn small ghost" onClick={() => addHex(pick)}>+ colour</button>
+            </span>
+            <span className="html-tool">
+              <span className="hint">Blend</span>
+              <input type="color" value={blendA} onChange={(e) => setBlendA(e.target.value)} title="From colour" />
+              <span className="hint">→</span>
+              <input type="color" value={blendB} onChange={(e) => setBlendB(e.target.value)} title="To colour" />
+              <button type="button" className="btn small ghost" title={`Fill a smooth ${BLEND_STEPS}-step gradient between the two`} onClick={doBlend}>Make gradient</button>
+            </span>
           </div>
-        </details>
+        ) : (
+          <details className="composer-swatches">
+            <summary className="hint">Pick colours by hand ({codeCount} in use) — click to add</summary>
+            <div className="composer-grid">
+              {SWATCHES.map((n) => (
+                <button type="button" key={n} className="composer-sw" title={`xterm ${n}`} style={{ background: xtermHex(n) }} onClick={() => addCode(n)} />
+              ))}
+            </div>
+          </details>
+        )}
 
         <div className="composer-preview-wrap">
           <div className="hint">Preview (how it looks in the room)</div>
@@ -147,7 +188,7 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
         <div className="modal-actions">
           <span className="muted small">{copied ? 'Copied.' : `${text.length} chars · ${codeCount} colours`}</span>
           <span className="spacer" />
-          {onSavePreset && !saving && (
+          {mode === 'xterm' && onSavePreset && !saving && (
             <button type="button" className="btn ghost" disabled={!codeCount} title="Keep these colours as a preset (Settings › Presets lists and edits them)" onClick={() => { setSaveName(presetName || ''); setSaving(true); }}>Save as preset…</button>
           )}
           <button type="button" className="btn ghost" onClick={copy} disabled={!output}>Copy</button>
