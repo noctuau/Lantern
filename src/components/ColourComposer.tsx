@@ -5,25 +5,28 @@
  * copy it. Based on Noctua's "MUD Gradient Maker".
  */
 import { useEffect, useMemo, useState } from 'react';
-import { makeGradient, parseBacktick, parseCodes, xtermHex, blendHex, HTML_PRESETS, type GradientPreset, type ColourMode } from '../lib/gradient';
+import { makeGradient, parseBacktick, parseCodes, xtermHex, blendHex, blendMany, type GradientPreset, type ColourMode } from '../lib/gradient';
 
 interface Props {
   onInsert(text: string): void;
   onClose(): void;
   /** Text to pre-fill (e.g. the current selection in the command box or output). */
   initialText?: string;
-  /** The xterm presets to offer, in order (Settings › Presets). HTML presets are built in. */
+  /** The xterm presets to offer, in order (Settings › Presets). */
   presets: GradientPreset[];
-  /** "Save as preset": add the current colours under a name (replacing a preset of the same name). */
-  onSavePreset?(p: GradientPreset): void;
+  /** The HTML (truecolour) presets to offer, in order (Settings › Presets). */
+  htmlPresets: GradientPreset[];
+  /** "Save as preset": add the current colours under a name (replacing one of the same name) in that mode's list. */
+  onSavePreset?(p: GradientPreset, mode: ColourMode): void;
 }
 
 const SWATCHES = Array.from({ length: 240 }, (_, i) => i + 16); // xterm 16-255, the colour cube + greys
-const BLEND_STEPS = 8;
+const BLEND_STEPS = 8;    // colours in a quick two-colour A→B blend
+const SMOOTH_PER = 6;     // colours blended between each adjacent pair when smoothing all stops
 
-export function ColourComposer({ onInsert, onClose, initialText, presets, onSavePreset }: Props) {
+export function ColourComposer({ onInsert, onClose, initialText, presets, htmlPresets, onSavePreset }: Props) {
   const [mode, setMode] = useState<ColourMode>('xterm');
-  const activePresets = mode === 'html' ? HTML_PRESETS : presets;
+  const activePresets = mode === 'html' ? htmlPresets : presets;
   const [text, setText] = useState(initialText ?? '');
   const [codes, setCodes] = useState(presets[0]?.codes ?? '');
   // The preset the codes currently match, so the dropdown shows what's selected; '' = Custom.
@@ -76,7 +79,7 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
   const switchMode = (m: ColourMode) => {
     if (m === mode) return;
     setMode(m);
-    const first = (m === 'html' ? HTML_PRESETS : presets)[0];
+    const first = (m === 'html' ? htmlPresets : presets)[0];
     setCodes(first?.codes ?? '');
     setPresetName(first?.name ?? '');
     setSaving(false);
@@ -84,10 +87,12 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
   const addCode = (nn: number) => applyCodes(`${codes.trim()} ${String(nn).padStart(3, '0')}`.trim());
   const addHex = (h: string) => applyCodes(`${codes.trim()} ${h}`.trim());
   const doBlend = () => applyCodes(blendHex(blendA, blendB, BLEND_STEPS).join(' '));
+  // Smooth: fade through every stop currently in the box (not just two), so 3+ colours blend evenly.
+  const doSmooth = () => applyCodes(blendMany(parseCodes(codes, 'html'), SMOOTH_PER).join(' '));
   const savePreset = () => {
     const name = saveName.trim();
     if (!name || !onSavePreset || !codeCount) return;
-    onSavePreset({ name, codes: parseCodes(codes).join(' ') });
+    onSavePreset({ name, codes: parseCodes(codes, mode).join(' ') }, mode);
     setPresetName(name);
     setSaving(false);
     setSaveName('');
@@ -150,6 +155,12 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
               <input type="color" value={blendB} onChange={(e) => setBlendB(e.target.value)} title="To colour" />
               <button type="button" className="btn small ghost" title={`Fill a smooth ${BLEND_STEPS}-step gradient between the two`} onClick={doBlend}>Make gradient</button>
             </span>
+            <span className="html-tool">
+              <span className="hint">Smooth</span>
+              <button type="button" className="btn small ghost" disabled={codeCount < 2}
+                title="Fade smoothly through every colour in the box — add your stops with + colour (or load a preset), then smooth through all of them"
+                onClick={doSmooth}>Smooth stops</button>
+            </span>
           </div>
         ) : (
           <details className="composer-swatches">
@@ -179,7 +190,7 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
             <input className="grow" autoFocus value={saveName} placeholder="Preset name" onChange={(e) => setSaveName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); savePreset(); } if (e.key === 'Escape') { e.stopPropagation(); setSaving(false); } }} />
             <button type="button" className="btn small primary" disabled={!saveName.trim()} onClick={savePreset}>
-              {presets.some((p) => p.name === saveName.trim()) ? 'Replace preset' : 'Save preset'}
+              {activePresets.some((p) => p.name === saveName.trim()) ? 'Replace preset' : 'Save preset'}
             </button>
             <button type="button" className="btn small ghost" onClick={() => setSaving(false)}>Cancel</button>
           </div>
@@ -188,8 +199,8 @@ export function ColourComposer({ onInsert, onClose, initialText, presets, onSave
         <div className="modal-actions">
           <span className="muted small">{copied ? 'Copied.' : `${text.length} chars · ${codeCount} colours`}</span>
           <span className="spacer" />
-          {mode === 'xterm' && onSavePreset && !saving && (
-            <button type="button" className="btn ghost" disabled={!codeCount} title="Keep these colours as a preset (Settings › Presets lists and edits them)" onClick={() => { setSaveName(presetName || ''); setSaving(true); }}>Save as preset…</button>
+          {onSavePreset && !saving && (
+            <button type="button" className="btn ghost" disabled={!codeCount} title={`Keep these colours as ${mode === 'html' ? 'an HTML' : 'an xterm'} preset (Settings › Presets lists and edits them)`} onClick={() => { setSaveName(presetName || ''); setSaving(true); }}>Save as preset…</button>
           )}
           <button type="button" className="btn ghost" onClick={copy} disabled={!output}>Copy</button>
           <button type="button" className="btn primary" disabled={!output} onClick={() => { onInsert(output); onClose(); }}>Insert into command box</button>

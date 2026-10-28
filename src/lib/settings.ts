@@ -3,7 +3,7 @@
  * the main process in settings.json; applied here as CSS variables on :root so
  * every pane picks them up without re-rendering.
  */
-import { GRADIENT_PRESETS, normalizePresets, type GradientPreset } from './gradient';
+import { GRADIENT_PRESETS, HTML_PRESETS, normalizePresets, type GradientPreset } from './gradient';
 
 export interface AppSettings {
   outputFont: string;
@@ -28,7 +28,8 @@ export interface AppSettings {
   customPalette: string[];   // 16 hex colours used when palette === 'custom'
   spellLanguages: string[];  // spell-check dictionaries, e.g. ['en-AU']; [] turns spell check off
   customColours: CustomColour[]; // named colours for the trigger colour picker (up to MAX_CUSTOM_COLOURS)
-  presets: GradientPreset[];     // the colour composer's gradients, in dropdown order; editable under Settings › Presets
+  presets: GradientPreset[];     // the colour composer's xterm gradients, in dropdown order; editable under Settings › Presets
+  htmlPresets: GradientPreset[]; // the composer's HTML (truecolour) gradients; separate list, codes are #rrggbb
 }
 
 export type PaletteName = 'warm' | 'classic' | 'vga' | 'custom';
@@ -81,6 +82,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   spellLanguages: ['en-AU'],
   customColours: DEFAULT_CUSTOM_COLOURS.slice(),
   presets: GRADIENT_PRESETS.map((p) => ({ ...p })),
+  htmlPresets: HTML_PRESETS.map((p) => ({ ...p })),
 };
 
 /** Resolve the active 16 colours for a settings object. */
@@ -134,6 +136,7 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
       ? s!.customColours.filter((c) => c && typeof c.fg === 'string').slice(0, MAX_CUSTOM_COLOURS).map((c, i) => ({ id: c.id || `c${i}`, name: c.name || `Colour ${i + 1}`, fg: c.fg, bg: typeof c.bg === 'string' ? c.bg : '' }))
       : DEFAULT_SETTINGS.customColours.slice(),
     presets: normalizePresets(s?.presets),
+    htmlPresets: normalizePresets(s?.htmlPresets, 'html'),
   };
 }
 

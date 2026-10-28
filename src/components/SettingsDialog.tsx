@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, PALETTES, resolvePalette, MAX_CUSTOM_COLOURS, type AppSettings, type PaletteName, type CustomColour, type SendMode } from '../lib/settings';
 import { FontPicker } from './FontPicker';
 import { AboutTab } from './AboutTab';
-import { GRADIENT_PRESETS, parseCodes, xtermHex, type GradientPreset } from '../lib/gradient';
+import { GRADIENT_PRESETS, HTML_PRESETS, parseCodes, xtermHex, type GradientPreset } from '../lib/gradient';
 import type { UpdateInfo } from '../../shared/updates';
 import { playSound } from '../lib/sound';
 
@@ -76,19 +76,21 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
     setS((x) => ({ ...x, customColours: [...x.customColours, { id: uid(), name: `Colour ${x.customColours.length + 1}`, fg: '#e8a94b', bg: '' }] }));
   const removeCustom = (i: number) => setS((x) => ({ ...x, customColours: x.customColours.filter((_, j) => j !== i) }));
 
-  // Colour composer presets: a plain ordered list, edited in place.
-  const setPreset = (i: number, patch: Partial<GradientPreset>) =>
-    setS((x) => ({ ...x, presets: x.presets.map((p, j) => (j === i ? { ...p, ...patch } : p)) }));
-  const movePreset = (i: number, dir: -1 | 1) => setS((x) => {
+  // Colour composer presets: plain ordered lists (xterm + HTML), edited in place. The same
+  // handlers drive both lists, picked by key, since they behave identically.
+  type PresetKey = 'presets' | 'htmlPresets';
+  const setPreset = (key: PresetKey, i: number, patch: Partial<GradientPreset>) =>
+    setS((x) => ({ ...x, [key]: x[key].map((p, j) => (j === i ? { ...p, ...patch } : p)) }));
+  const movePreset = (key: PresetKey, i: number, dir: -1 | 1) => setS((x) => {
     const j = i + dir;
-    if (j < 0 || j >= x.presets.length) return x;
-    const presets = x.presets.slice();
-    [presets[i], presets[j]] = [presets[j], presets[i]];
-    return { ...x, presets };
+    if (j < 0 || j >= x[key].length) return x;
+    const list = x[key].slice();
+    [list[i], list[j]] = [list[j], list[i]];
+    return { ...x, [key]: list };
   });
-  const removePreset = (i: number) => setS((x) => ({ ...x, presets: x.presets.filter((_, j) => j !== i) }));
-  const addPreset = () => setS((x) => ({ ...x, presets: [...x.presets, { name: `Preset ${x.presets.length + 1}`, codes: '' }] }));
-  const resetPresets = () => setS((x) => ({ ...x, presets: GRADIENT_PRESETS.map((p) => ({ ...p })) }));
+  const removePreset = (key: PresetKey, i: number) => setS((x) => ({ ...x, [key]: x[key].filter((_, j) => j !== i) }));
+  const addPreset = (key: PresetKey) => setS((x) => ({ ...x, [key]: [...x[key], { name: `Preset ${x[key].length + 1}`, codes: '' }] }));
+  const resetPresets = (key: PresetKey) => setS((x) => ({ ...x, [key]: (key === 'htmlPresets' ? HTML_PRESETS : GRADIENT_PRESETS).map((p) => ({ ...p })) }));
 
   // Live preview; put the saved settings back if the dialog is cancelled.
   useEffect(() => { applySettings(normalizeSettings(s)); }, [s]);
@@ -259,29 +261,58 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
 
             {tab === 'presets' && (<>
               <h3>Colour composer presets</h3>
-              <p className="hint">The gradients the 🎨 Colour composer offers, in the order its dropdown shows them. Rename, reorder, delete, or add your own: codes are xterm colours 0-255, space-separated, and the strip shows them. The composer's "Save as preset…" button adds whatever you have built there. Changes apply when you Save.</p>
+              <p className="hint">The gradients the 🎨 Colour composer offers, in the order its dropdown shows them. Rename, reorder, delete, or add your own. The composer's "Save as preset…" button adds whatever you have built there. Changes apply when you Save.</p>
+
+              <h4 className="preset-head">Xterm (0-255)</h4>
+              <p className="hint">Codes are xterm colours 0-255, space-separated; the strip shows them.</p>
               <div className="preset-list">
                 {s.presets.map((p, i) => {
                   const codes = parseCodes(p.codes);
                   return (
                     <div key={i} className="preset-edit">
-                      <input className="preset-name" value={p.name} title="Preset name" onChange={(e) => setPreset(i, { name: e.target.value })} />
-                      <input className="mono preset-codes" value={p.codes} title="xterm colour codes" spellCheck={false} onChange={(e) => setPreset(i, { codes: e.target.value })} />
+                      <input className="preset-name" value={p.name} title="Preset name" onChange={(e) => setPreset('presets', i, { name: e.target.value })} />
+                      <input className="mono preset-codes" value={p.codes} title="xterm colour codes" spellCheck={false} onChange={(e) => setPreset('presets', i, { codes: e.target.value })} />
                       <div className="preset-strip" title={`${codes.length} colour${codes.length === 1 ? '' : 's'}`}>
                         {codes.map((c, j) => <span key={j} style={{ background: xtermHex(Number(c)) }} />)}
                       </div>
-                      <button type="button" className="icon-btn" title="Move up" disabled={i === 0} onClick={() => movePreset(i, -1)}>↑</button>
-                      <button type="button" className="icon-btn" title="Move down" disabled={i === s.presets.length - 1} onClick={() => movePreset(i, 1)}>↓</button>
-                      <button type="button" className="icon-btn danger" title="Delete this preset" onClick={() => removePreset(i)}>×</button>
+                      <button type="button" className="icon-btn" title="Move up" disabled={i === 0} onClick={() => movePreset('presets', i, -1)}>↑</button>
+                      <button type="button" className="icon-btn" title="Move down" disabled={i === s.presets.length - 1} onClick={() => movePreset('presets', i, 1)}>↓</button>
+                      <button type="button" className="icon-btn danger" title="Delete this preset" onClick={() => removePreset('presets', i)}>×</button>
                     </div>
                   );
                 })}
                 {s.presets.length === 0 && <div className="hint">No presets. Add one, or put the built-in list back.</div>}
               </div>
               <div className="row">
-                <button type="button" className="btn small" onClick={addPreset}>+ New preset</button>
-                <button type="button" className="btn small ghost" title="Put back the built-in list, replacing any changes here" onClick={resetPresets}>Reset to built-in presets</button>
+                <button type="button" className="btn small" onClick={() => addPreset('presets')}>+ New preset</button>
+                <button type="button" className="btn small ghost" title="Put back the built-in list, replacing any changes here" onClick={() => resetPresets('presets')}>Reset to built-in presets</button>
                 <span className="hint">{s.presets.length} preset{s.presets.length === 1 ? '' : 's'}</span>
+              </div>
+
+              <h4 className="preset-head">HTML (truecolour)</h4>
+              <p className="hint">Codes are #rrggbb colours, space-separated; the strip shows them. These show in the composer's HTML tab.</p>
+              <div className="preset-list">
+                {s.htmlPresets.map((p, i) => {
+                  const codes = parseCodes(p.codes, 'html');
+                  return (
+                    <div key={i} className="preset-edit">
+                      <input className="preset-name" value={p.name} title="Preset name" onChange={(e) => setPreset('htmlPresets', i, { name: e.target.value })} />
+                      <input className="mono preset-codes" value={p.codes} title="HTML colour codes (#rrggbb)" spellCheck={false} onChange={(e) => setPreset('htmlPresets', i, { codes: e.target.value })} />
+                      <div className="preset-strip" title={`${codes.length} colour${codes.length === 1 ? '' : 's'}`}>
+                        {codes.map((c, j) => <span key={j} style={{ background: c }} />)}
+                      </div>
+                      <button type="button" className="icon-btn" title="Move up" disabled={i === 0} onClick={() => movePreset('htmlPresets', i, -1)}>↑</button>
+                      <button type="button" className="icon-btn" title="Move down" disabled={i === s.htmlPresets.length - 1} onClick={() => movePreset('htmlPresets', i, 1)}>↓</button>
+                      <button type="button" className="icon-btn danger" title="Delete this preset" onClick={() => removePreset('htmlPresets', i)}>×</button>
+                    </div>
+                  );
+                })}
+                {s.htmlPresets.length === 0 && <div className="hint">No HTML presets. Add one, or put the built-in list back.</div>}
+              </div>
+              <div className="row">
+                <button type="button" className="btn small" onClick={() => addPreset('htmlPresets')}>+ New preset</button>
+                <button type="button" className="btn small ghost" title="Put back the built-in list, replacing any changes here" onClick={() => resetPresets('htmlPresets')}>Reset to built-in presets</button>
+                <span className="hint">{s.htmlPresets.length} preset{s.htmlPresets.length === 1 ? '' : 's'}</span>
               </div>
             </>)}
 

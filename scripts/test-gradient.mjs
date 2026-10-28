@@ -64,6 +64,14 @@ assert.equal(g.hexToRgb('nope'), null);
 assert.deepEqual(g.blendHex('#000000', '#ffffff', 3), ['#000000', '#808080', '#ffffff'], 'blend interpolates in rgb');
 assert.deepEqual(g.blendHex('#ff0000', '#0000ff', 2), ['#ff0000', '#0000ff']);
 
+// blendMany: smooths through EVERY stop (shared join not repeated), tolerant of junk.
+assert.deepEqual(g.blendMany(['#000000', '#ffffff'], 3), ['#000000', '#808080', '#ffffff'], 'two stops = a plain blend');
+assert.deepEqual(g.blendMany(['#000000', '#ff0000', '#000000'], 3),
+  ['#000000', '#800000', '#ff0000', '#800000', '#000000'], 'three stops fade through the middle, no repeated join');
+assert.deepEqual(g.blendMany(['#112233'], 6), ['#112233'], 'one stop stays one');
+assert.deepEqual(g.blendMany(['zzz', 'nope'], 4), [], 'all-invalid is empty');
+assert.deepEqual(g.blendMany(['#ff0000', 'xyz', '#0000ff'], 2), ['#ff0000', '#0000ff'], 'invalid stops are skipped');
+
 const html = g.makeGradient('abcdef', '#ff0000 #00ff00', { bothways: false, reverse: false, random: false }, 'html');
 assert.ok(html.includes('`#ff0000') && html.includes('`#00ff00') && html.endsWith('`w'), 'html gradient emits #rrggbb codes');
 
@@ -75,5 +83,11 @@ assert.equal(hspans[1].text, 'plain'); assert.equal(hspans[1].hex, null);
 // HTML presets all parse to at least two colours.
 assert.ok(g.HTML_PRESETS.length >= 6);
 for (const p of g.HTML_PRESETS) assert.ok(g.parseCodes(p.codes, 'html').length >= 2, `html preset ${p.name} has colours`);
+
+// normalizePresets is mode-aware: html codes are tidied to #rrggbb and a missing list = the HTML built-ins.
+assert.equal(g.normalizePresets(undefined, 'html').length, g.HTML_PRESETS.length, 'missing html list = built-in HTML presets');
+assert.notEqual(g.normalizePresets(undefined, 'html'), g.HTML_PRESETS, 'and a copy, not the shared array');
+assert.deepEqual(g.normalizePresets([{ name: 'X', codes: '#abc 00ff00 junk' }], 'html'),
+  [{ name: 'X', codes: '#aabbcc #00ff00' }], 'html preset codes tidied to #rrggbb, junk dropped');
 
 console.log(`test-gradient: all assertions passed (${g.GRADIENT_PRESETS.length} xterm + ${g.HTML_PRESETS.length} html presets)`);

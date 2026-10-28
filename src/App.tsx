@@ -433,9 +433,12 @@ export function App() {
         <ColourComposer
           initialText={composerSeed}
           presets={settings.presets}
-          onSavePreset={(p) => {
-            const presets = settings.presets.some((x) => x.name === p.name) ? settings.presets.map((x) => (x.name === p.name ? p : x)) : [...settings.presets, p];
-            saveSettings({ ...settings, presets });
+          htmlPresets={settings.htmlPresets}
+          onSavePreset={(p, mode) => {
+            const key = mode === 'html' ? 'htmlPresets' : 'presets';
+            const list = settings[key];
+            const next = list.some((x) => x.name === p.name) ? list.map((x) => (x.name === p.name ? p : x)) : [...list, p];
+            saveSettings({ ...settings, [key]: next });
           }}
           onInsert={(t) => insertRef.current(t)}
           onClose={() => setComposerOpen(false)}

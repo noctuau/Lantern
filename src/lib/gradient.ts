@@ -49,6 +49,22 @@ export function blendHex(a: string, b: string, steps: number): string[] {
   return out;
 }
 
+/**
+ * A smooth ramp that passes through EVERY stop in `stops`, blending `perSegment` colours between
+ * each adjacent pair (the shared colour at a join isn't repeated). So three stops fade through the
+ * middle one rather than snapping. Unparseable stops are skipped; fewer than two leaves it as-is.
+ */
+export function blendMany(stops: string[], perSegment: number): string[] {
+  const valid = stops.map((s) => hexToRgb(s)).filter((p): p is [number, number, number] => !!p).map((p) => toHex(...p));
+  if (valid.length < 2) return valid;
+  const out: string[] = [];
+  for (let i = 0; i < valid.length - 1; i++) {
+    const seg = blendHex(valid[i], valid[i + 1], perSegment);
+    out.push(...(i > 0 ? seg.slice(1) : seg));
+  }
+  return out;
+}
+
 /** Clean a free-text list of codes into code strings: xterm = 1-3 digit numbers, html = #rrggbb. */
 export function parseCodes(codesStr: string, mode: ColourMode = 'xterm'): string[] {
   if (mode === 'html') {
@@ -113,8 +129,8 @@ export function parseBacktick(str: string): ColourSpan[] {
  * it repeats) and a codes string (tidied the way the composer reads it). A missing list means
  * the built-ins; an empty list stays empty, since deleting them all is a choice.
  */
-export function normalizePresets(raw: unknown): GradientPreset[] {
-  if (!Array.isArray(raw)) return GRADIENT_PRESETS.map((p) => ({ ...p }));
+export function normalizePresets(raw: unknown, mode: ColourMode = 'xterm'): GradientPreset[] {
+  if (!Array.isArray(raw)) return (mode === 'html' ? HTML_PRESETS : GRADIENT_PRESETS).map((p) => ({ ...p }));
   const out: GradientPreset[] = [];
   const names = new Set<string>();
   for (const item of raw) {
@@ -124,7 +140,7 @@ export function normalizePresets(raw: unknown): GradientPreset[] {
     let n = base;
     for (let k = 2; names.has(n); k++) n = `${base} (${k})`;
     names.add(n);
-    out.push({ name: n, codes: typeof codes === 'string' ? parseCodes(codes).join(' ') : '' });
+    out.push({ name: n, codes: typeof codes === 'string' ? parseCodes(codes, mode).join(' ') : '' });
   }
   return out;
 }
