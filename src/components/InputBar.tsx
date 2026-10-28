@@ -21,12 +21,14 @@ interface Props {
   registerInsert?(fn: (text: string) => void): void;
   /** Hand the parent a getter for the box's currently selected text (used to pre-fill the composer). */
   registerGetSelection?(fn: () => string): void;
+  /** Hand the parent a function to focus the box (used when a click in the output returns focus). */
+  registerFocus?(fn: () => void): void;
 }
 
 const MAX_LINES = 20;
 const BOX_PADDING = 18; // vertical padding + border of .input
 
-export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpToLatest, onResize, onSend, onReconnect, registerInsert, registerGetSelection }: Props) {
+export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpToLatest, onResize, onSend, onReconnect, registerInsert, registerGetSelection, registerFocus }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
   const [lines, setLines] = useState(minLines);
@@ -38,6 +40,29 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
 
   useEffect(() => { ref.current?.focus(); }, []);
   useEffect(() => { setLines(minLines); }, [minLines]);
+  // Switching channel tabs (same world, so the box isn't remounted) returns focus to the box.
+  useEffect(() => { ref.current?.focus(); }, [session.view]);
+  // Let the parent focus the box on demand (a plain click in the output hands focus back here).
+  useEffect(() => { registerFocus?.(() => ref.current?.focus()); }, [registerFocus]);
+
+  // MUSHclient feel: if focus has drifted off the command box (after clicking the output, say), the
+  // first printable keystroke brings it back and lands in the box — so a click to read the game text
+  // never leaves you unable to type. Modifier combos and function keys are left alone, as is typing
+  // inside another field, a button, or an open dialog.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = ref.current;
+      if (!el || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+      const ae = document.activeElement as HTMLElement | null;
+      if (ae === el) return;
+      const tag = ae?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || ae?.isContentEditable) return;
+      if (document.querySelector('.modal-backdrop')) return; // a dialog is open; leave its focus be
+      el.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Let the parent insert text (e.g. from the colour composer). Text selected in the box is replaced
   // by it (the selection survives the dialog, since selectionStart/End persist through blur), which is

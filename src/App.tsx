@@ -45,6 +45,8 @@ export function App() {
   const registerInsert = useCallback((fn: (t: string) => void) => { insertRef.current = fn; }, []);
   const inputSelRef = useRef<() => string>(() => '');
   const registerGetSelection = useCallback((fn: () => string) => { inputSelRef.current = fn; }, []);
+  const focusInputRef = useRef<() => void>(() => {});
+  const registerFocus = useCallback((fn: () => void) => { focusInputRef.current = fn; }, []);
 
   // The current selection to colour: the command box wins (it survives blur), else the output pane.
   const grabSelection = useCallback(() => {
@@ -369,7 +371,7 @@ export function App() {
         {active ? (
           <>
             <ChannelStrip key={`strip-${active.id}`} session={active} onEdit={() => openAutomation(active.world, 'channels')} />
-            <OutputPane key={`out-${active.id}`} lines={active.lines} partial={active.partial} autoScroll={settings.autoScroll} visible={active.view === MAIN_VIEW} extras={<UnreadPills session={active} />} />
+            <OutputPane key={`out-${active.id}`} lines={active.lines} partial={active.partial} autoScroll={settings.autoScroll} visible={active.view === MAIN_VIEW} extras={<UnreadPills session={active} />} onReturnFocus={() => focusInputRef.current()} />
             {active.world.channelTabs.filter((t) => t.enabled).map((t) => (
               <OutputPane
                 key={`out-${active.id}-${t.id}`}
@@ -380,6 +382,7 @@ export function App() {
                 visible={active.view === t.id}
                 emptyHint={`Nothing captured for ${t.name || 'this tab'} yet. Lines matching its patterns will show here with the time they arrived.`}
                 extras={<UnreadPills session={active} />}
+                onReturnFocus={() => focusInputRef.current()}
               />
             ))}
             <InputBar
@@ -388,12 +391,13 @@ export function App() {
               minLines={settings.inputLines}
               sendMode={settings.sendMode}
               spellCheckInput={settings.inputSpellCheck}
-              onJumpToLatest={() => { const el = document.querySelector('.output-wrap:not(.hidden) .output') as HTMLElement | null; if (el) el.scrollTop = el.scrollHeight; }}
+              onJumpToLatest={() => { const b = document.querySelector('.output-wrap:not(.hidden) .output-bottom') as HTMLElement | null; b?.scrollIntoView({ block: 'end' }); }}
               onResize={(lines) => saveSettings({ ...settings, inputLines: lines })}
               onSend={sendCommand}
               onReconnect={() => reconnect(active)}
               registerInsert={registerInsert}
               registerGetSelection={registerGetSelection}
+              registerFocus={registerFocus}
             />
             <StatusBar session={active} onToggleAutomation={() => store.setAutomation(active.id, !active.automation)} />
           </>

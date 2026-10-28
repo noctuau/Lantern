@@ -54,13 +54,15 @@ interface Props {
   emptyHint?: string;
   /** Floated at the bottom right of the pane, above the jump button when that is showing (the unread pills). */
   extras?: ReactNode;
+  /** Called after a plain click in the pane (no text selected) so focus can return to the command box. */
+  onReturnFocus?(): void;
 }
 
 /**
  * One scrollback: the main output or a channel tab. Scroll-lock ("pinned" to the bottom), the
  * missed-line count and the jump button belong to this pane alone.
  */
-export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap = 0, autoScroll = true, visible = true, emptyHint, extras }: Props) {
+export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap = 0, autoScroll = true, visible = true, emptyHint, extras, onReturnFocus }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
   // "pinned" (at the bottom, following) is a ref so the content effect reads it without a stale
@@ -102,15 +104,21 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
   // Wheel up unpins at once so an incoming line in the same frame cannot snap the pane back down.
   const onWheel = (e: React.WheelEvent) => { if (e.deltaY < 0) pinned.current = false; };
 
-  // Coming back into view: a pinned pane (display:none has no height) snaps to its latest line.
-  useLayoutEffect(() => { if (visible) { if (pinned.current) toBottom(); ref.current?.focus(); } }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (visible) { toBottom(); ref.current?.focus(); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // A plain click in the output (nothing selected) returns focus to the command box, so reading or
+  // clicking the game text never leaves you unable to type. A drag that selects text keeps the
+  // selection (and focus) so it can be copied; the next keystroke brings focus back (see InputBar).
+  const onMouseUp = () => { const sel = window.getSelection(); if (!sel || sel.isCollapsed) onReturnFocus?.(); };
+
+  // Coming back into view: a pinned pane (display:none has no height) snaps to its latest line. The
+  // pane never takes keyboard focus itself (that belongs to the command box); it scrolls by wheel.
+  useLayoutEffect(() => { if (visible && pinned.current) toBottom(); }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (visible) toBottom(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const jump = () => { pinned.current = true; setMissed(0); toBottom(); };
 
   return (
     <div className={`output-wrap ${visible ? '' : 'hidden'}`}>
-      <div className="output" ref={ref} onWheel={onWheel} tabIndex={-1}
+      <div className="output" ref={ref} onWheel={onWheel} onMouseUp={onMouseUp}
         style={lineGap ? ({ '--line-gap': `${lineGap}px` } as CSSProperties) : undefined}>
         {lines.length === 0 && emptyHint && <div className="line output-empty">{emptyHint}</div>}
         {lines.map((l) => <LineView key={l.id} line={l} showTime={timestamps} />)}
