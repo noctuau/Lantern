@@ -6,7 +6,7 @@
  */
 import { xterm256 } from './ansi';
 
-export interface GradientPreset { name: string; codes: string }
+export interface GradientPreset { name: string; codes: string; fav?: boolean }
 export interface GradientOptions { bothways: boolean; reverse: boolean; random: boolean }
 /** Which colour system the codes use: xterm-256 indices (`NNN) or HTML truecolour (`#rrggbb). */
 export type ColourMode = 'xterm' | 'html';
@@ -135,12 +135,13 @@ export function normalizePresets(raw: unknown, mode: ColourMode = 'xterm'): Grad
   const names = new Set<string>();
   for (const item of raw) {
     if (!item || typeof item !== 'object') continue;
-    const { name, codes } = item as { name?: unknown; codes?: unknown };
+    const { name, codes, fav } = item as { name?: unknown; codes?: unknown; fav?: unknown };
     const base = typeof name === 'string' && name.trim() ? name.trim() : 'Preset';
     let n = base;
     for (let k = 2; names.has(n); k++) n = `${base} (${k})`;
     names.add(n);
-    out.push({ name: n, codes: typeof codes === 'string' ? parseCodes(codes, mode).join(' ') : '' });
+    const tidied = typeof codes === 'string' ? parseCodes(codes, mode).join(' ') : '';
+    out.push(fav === true ? { name: n, codes: tidied, fav: true } : { name: n, codes: tidied });
   }
   return out;
 }

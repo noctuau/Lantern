@@ -90,4 +90,10 @@ assert.notEqual(g.normalizePresets(undefined, 'html'), g.HTML_PRESETS, 'and a co
 assert.deepEqual(g.normalizePresets([{ name: 'X', codes: '#abc 00ff00 junk' }], 'html'),
   [{ name: 'X', codes: '#aabbcc #00ff00' }], 'html preset codes tidied to #rrggbb, junk dropped');
 
+// Favourite flag: kept only when strictly true, and absent otherwise, in both modes.
+assert.deepEqual(g.normalizePresets([{ name: 'Fav', codes: '1 2', fav: true }]), [{ name: 'Fav', codes: '1 2', fav: true }], 'fav:true kept');
+assert.deepEqual(g.normalizePresets([{ name: 'Plain', codes: '3', fav: false }]), [{ name: 'Plain', codes: '3' }], 'fav:false dropped');
+assert.deepEqual(g.normalizePresets([{ name: 'Plain2', codes: '4' }]), [{ name: 'Plain2', codes: '4' }], 'no fav key when absent');
+assert.deepEqual(g.normalizePresets([{ name: 'H', codes: '#abc', fav: true }], 'html'), [{ name: 'H', codes: '#aabbcc', fav: true }], 'fav kept in html mode too');
+
 console.log(`test-gradient: all assertions passed (${g.GRADIENT_PRESETS.length} xterm + ${g.HTML_PRESETS.length} html presets)`);

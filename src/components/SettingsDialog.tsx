@@ -275,6 +275,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
                       <div className="preset-strip" title={`${codes.length} colour${codes.length === 1 ? '' : 's'}`}>
                         {codes.map((c, j) => <span key={j} style={{ background: xtermHex(Number(c)) }} />)}
                       </div>
+                      <button type="button" className={`icon-btn fave-toggle ${p.fav ? 'on' : ''}`} title={p.fav ? 'Favourite — shows in the composer Quick pick (click to unstar)' : 'Mark as a favourite'} onClick={() => setPreset('presets', i, { fav: !p.fav })}>{p.fav ? '★' : '☆'}</button>
                       <button type="button" className="icon-btn" title="Move up" disabled={i === 0} onClick={() => movePreset('presets', i, -1)}>↑</button>
                       <button type="button" className="icon-btn" title="Move down" disabled={i === s.presets.length - 1} onClick={() => movePreset('presets', i, 1)}>↓</button>
                       <button type="button" className="icon-btn danger" title="Delete this preset" onClick={() => removePreset('presets', i)}>×</button>
@@ -301,6 +302,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
                       <div className="preset-strip" title={`${codes.length} colour${codes.length === 1 ? '' : 's'}`}>
                         {codes.map((c, j) => <span key={j} style={{ background: c }} />)}
                       </div>
+                      <button type="button" className={`icon-btn fave-toggle ${p.fav ? 'on' : ''}`} title={p.fav ? 'Favourite — shows in the composer Quick pick (click to unstar)' : 'Mark as a favourite'} onClick={() => setPreset('htmlPresets', i, { fav: !p.fav })}>{p.fav ? '★' : '☆'}</button>
                       <button type="button" className="icon-btn" title="Move up" disabled={i === 0} onClick={() => movePreset('htmlPresets', i, -1)}>↑</button>
                       <button type="button" className="icon-btn" title="Move down" disabled={i === s.htmlPresets.length - 1} onClick={() => movePreset('htmlPresets', i, 1)}>↓</button>
                       <button type="button" className="icon-btn danger" title="Delete this preset" onClick={() => removePreset('htmlPresets', i)}>×</button>

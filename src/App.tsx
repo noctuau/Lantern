@@ -441,8 +441,16 @@ export function App() {
           onSavePreset={(p, mode) => {
             const key = mode === 'html' ? 'htmlPresets' : 'presets';
             const list = settings[key];
-            const next = list.some((x) => x.name === p.name) ? list.map((x) => (x.name === p.name ? p : x)) : [...list, p];
+            // Keep the favourite flag if we're replacing a preset that was already starred.
+            const prev = list.find((x) => x.name === p.name);
+            const saved = prev?.fav ? { ...p, fav: true } : p;
+            const next = list.some((x) => x.name === p.name) ? list.map((x) => (x.name === p.name ? saved : x)) : [...list, saved];
             saveSettings({ ...settings, [key]: next });
+          }}
+          onToggleFavourite={(name, mode) => {
+            const key = mode === 'html' ? 'htmlPresets' : 'presets';
+            const list = settings[key].map((x) => (x.name === name ? (x.fav ? { name: x.name, codes: x.codes } : { ...x, fav: true }) : x));
+            saveSettings({ ...settings, [key]: list });
           }}
           onInsert={(t) => insertRef.current(t)}
           onClose={() => setComposerOpen(false)}
