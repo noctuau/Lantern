@@ -460,8 +460,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .composer-html-tools input[type="color"] { width: 34px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); cursor: pointer; }
 
 /* Sub-headers that split the Presets tab into its Xterm and HTML lists. */
-.preset-head { margin: 18px 0 2px; font-size: 13px; font-weight: 600; color: var(--fg); border-top: 1px solid var(--line); padding-top: 14px; }
-.preset-head:first-of-type { border-top: 0; padding-top: 0; margin-top: 6px; }
+/* Xterm / HTML sub-tabs inside the Presets pane: one list shows at a time so each gets the full width. */
+.preset-subtabs { display: flex; gap: 4px; margin: 8px 0 10px; border-bottom: 1px solid var(--line); }
+.preset-subtab {
+  background: none; border: 0; border-bottom: 2px solid transparent; color: var(--fg-muted);
+  font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; margin-bottom: -1px; cursor: pointer;
+}
+.preset-subtab:hover { color: var(--fg); }
+.preset-subtab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
 /* Quick-pick favourites / recents row at the top of the composer: one-click gradients. */
 .composer-faves { display: flex; align-items: center; gap: 10px; }

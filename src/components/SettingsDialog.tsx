@@ -77,8 +77,11 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
   const removeCustom = (i: number) => setS((x) => ({ ...x, customColours: x.customColours.filter((_, j) => j !== i) }));
 
   // Colour composer presets: plain ordered lists (xterm + HTML), edited in place. The same
-  // handlers drive both lists, picked by key, since they behave identically.
+  // handlers drive both lists, picked by key, since they behave identically. A sub-tab picks which
+  // list is shown so each gets the dialog's full width — the HTML codes are too wide to share the
+  // pane with the xterm list stacked above it.
   type PresetKey = 'presets' | 'htmlPresets';
+  const [presetTab, setPresetTab] = useState<PresetKey>('presets');
   const setPreset = (key: PresetKey, i: number, patch: Partial<GradientPreset>) =>
     setS((x) => ({ ...x, [key]: x[key].map((p, j) => (j === i ? { ...p, ...patch } : p)) }));
   const movePreset = (key: PresetKey, i: number, dir: -1 | 1) => setS((x) => {
@@ -91,6 +94,42 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
   const removePreset = (key: PresetKey, i: number) => setS((x) => ({ ...x, [key]: x[key].filter((_, j) => j !== i) }));
   const addPreset = (key: PresetKey) => setS((x) => ({ ...x, [key]: [...x[key], { name: `Preset ${x[key].length + 1}`, codes: '' }] }));
   const resetPresets = (key: PresetKey) => setS((x) => ({ ...x, [key]: (key === 'htmlPresets' ? HTML_PRESETS : GRADIENT_PRESETS).map((p) => ({ ...p })) }));
+
+  // One preset list (xterm or HTML) with its editor rows and footer controls. Both tabs share this;
+  // only the code mode, the strip's swatch colour and a little wording differ.
+  const renderPresetList = (key: PresetKey) => {
+    const list = s[key];
+    const html = key === 'htmlPresets';
+    return (<>
+      <p className="hint">{html
+        ? 'Codes are #rrggbb colours, space-separated; the strip shows them. These show in the composer’s HTML tab.'
+        : 'Codes are xterm colours 0-255, space-separated; the strip shows them. These show in the composer’s Xterm tab.'}</p>
+      <div className="preset-list">
+        {list.map((p, i) => {
+          const codes = parseCodes(p.codes, html ? 'html' : 'xterm');
+          return (
+            <div key={i} className="preset-edit">
+              <input className="preset-name" value={p.name} title="Preset name" onChange={(e) => setPreset(key, i, { name: e.target.value })} />
+              <input className="mono preset-codes" value={p.codes} title={html ? 'HTML colour codes (#rrggbb)' : 'xterm colour codes'} spellCheck={false} onChange={(e) => setPreset(key, i, { codes: e.target.value })} />
+              <div className="preset-strip" title={`${codes.length} colour${codes.length === 1 ? '' : 's'}`}>
+                {codes.map((c, j) => <span key={j} style={{ background: html ? c : xtermHex(Number(c)) }} />)}
+              </div>
+              <button type="button" className={`icon-btn fave-toggle ${p.fav ? 'on' : ''}`} title={p.fav ? 'Favourite — shows in the composer Quick pick (click to unstar)' : 'Mark as a favourite'} onClick={() => setPreset(key, i, { fav: !p.fav })}>{p.fav ? '★' : '☆'}</button>
+              <button type="button" className="icon-btn" title="Move up" disabled={i === 0} onClick={() => movePreset(key, i, -1)}>↑</button>
+              <button type="button" className="icon-btn" title="Move down" disabled={i === list.length - 1} onClick={() => movePreset(key, i, 1)}>↓</button>
+              <button type="button" className="icon-btn danger" title="Delete this preset" onClick={() => removePreset(key, i)}>×</button>
+            </div>
+          );
+        })}
+        {list.length === 0 && <div className="hint">{html ? 'No HTML presets. Add one, or put the built-in list back.' : 'No presets. Add one, or put the built-in list back.'}</div>}
+      </div>
+      <div className="row">
+        <button type="button" className="btn small" onClick={() => addPreset(key)}>+ New preset</button>
+        <button type="button" className="btn small ghost" title="Put back the built-in list, replacing any changes here" onClick={() => resetPresets(key)}>Reset to built-in presets</button>
+        <span className="hint">{list.length} preset{list.length === 1 ? '' : 's'}</span>
+      </div>
+    </>);
+  };
 
   // Live preview; put the saved settings back if the dialog is cancelled.
   useEffect(() => { applySettings(normalizeSettings(s)); }, [s]);
@@ -262,60 +301,11 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
             {tab === 'presets' && (<>
               <h3>Colour composer presets</h3>
               <p className="hint">The gradients the 🎨 Colour composer offers, in the order its dropdown shows them. Rename, reorder, delete, or add your own. The composer's "Save as preset…" button adds whatever you have built there. Changes apply when you Save.</p>
-
-              <h4 className="preset-head">Xterm (0-255)</h4>
-              <p className="hint">Codes are xterm colours 0-255, space-separated; the strip shows them.</p>
-              <div className="preset-list">
-                {s.presets.map((p, i) => {
-                  const codes = parseCodes(p.codes);
-                  return (
-                    <div key={i} className="preset-edit">
-                      <input className="preset-name" value={p.name} title="Preset name" onChange={(e) => setPreset('presets', i, { name: e.target.value })} />
-                      <input className="mono preset-codes" value={p.codes} title="xterm colour codes" spellCheck={false} onChange={(e) => setPreset('presets', i, { codes: e.target.value })} />
-                      <div className="preset-strip" title={`${codes.length} colour${codes.length === 1 ? '' : 's'}`}>
-                        {codes.map((c, j) => <span key={j} style={{ background: xtermHex(Number(c)) }} />)}
-                      </div>
-                      <button type="button" className={`icon-btn fave-toggle ${p.fav ? 'on' : ''}`} title={p.fav ? 'Favourite — shows in the composer Quick pick (click to unstar)' : 'Mark as a favourite'} onClick={() => setPreset('presets', i, { fav: !p.fav })}>{p.fav ? '★' : '☆'}</button>
-                      <button type="button" className="icon-btn" title="Move up" disabled={i === 0} onClick={() => movePreset('presets', i, -1)}>↑</button>
-                      <button type="button" className="icon-btn" title="Move down" disabled={i === s.presets.length - 1} onClick={() => movePreset('presets', i, 1)}>↓</button>
-                      <button type="button" className="icon-btn danger" title="Delete this preset" onClick={() => removePreset('presets', i)}>×</button>
-                    </div>
-                  );
-                })}
-                {s.presets.length === 0 && <div className="hint">No presets. Add one, or put the built-in list back.</div>}
+              <div className="preset-subtabs">
+                <button type="button" className={`preset-subtab ${presetTab === 'presets' ? 'active' : ''}`} onClick={() => setPresetTab('presets')}>Xterm (0-255)</button>
+                <button type="button" className={`preset-subtab ${presetTab === 'htmlPresets' ? 'active' : ''}`} onClick={() => setPresetTab('htmlPresets')}>HTML (truecolour)</button>
               </div>
-              <div className="row">
-                <button type="button" className="btn small" onClick={() => addPreset('presets')}>+ New preset</button>
-                <button type="button" className="btn small ghost" title="Put back the built-in list, replacing any changes here" onClick={() => resetPresets('presets')}>Reset to built-in presets</button>
-                <span className="hint">{s.presets.length} preset{s.presets.length === 1 ? '' : 's'}</span>
-              </div>
-
-              <h4 className="preset-head">HTML (truecolour)</h4>
-              <p className="hint">Codes are #rrggbb colours, space-separated; the strip shows them. These show in the composer's HTML tab.</p>
-              <div className="preset-list">
-                {s.htmlPresets.map((p, i) => {
-                  const codes = parseCodes(p.codes, 'html');
-                  return (
-                    <div key={i} className="preset-edit">
-                      <input className="preset-name" value={p.name} title="Preset name" onChange={(e) => setPreset('htmlPresets', i, { name: e.target.value })} />
-                      <input className="mono preset-codes" value={p.codes} title="HTML colour codes (#rrggbb)" spellCheck={false} onChange={(e) => setPreset('htmlPresets', i, { codes: e.target.value })} />
-                      <div className="preset-strip" title={`${codes.length} colour${codes.length === 1 ? '' : 's'}`}>
-                        {codes.map((c, j) => <span key={j} style={{ background: c }} />)}
-                      </div>
-                      <button type="button" className={`icon-btn fave-toggle ${p.fav ? 'on' : ''}`} title={p.fav ? 'Favourite — shows in the composer Quick pick (click to unstar)' : 'Mark as a favourite'} onClick={() => setPreset('htmlPresets', i, { fav: !p.fav })}>{p.fav ? '★' : '☆'}</button>
-                      <button type="button" className="icon-btn" title="Move up" disabled={i === 0} onClick={() => movePreset('htmlPresets', i, -1)}>↑</button>
-                      <button type="button" className="icon-btn" title="Move down" disabled={i === s.htmlPresets.length - 1} onClick={() => movePreset('htmlPresets', i, 1)}>↓</button>
-                      <button type="button" className="icon-btn danger" title="Delete this preset" onClick={() => removePreset('htmlPresets', i)}>×</button>
-                    </div>
-                  );
-                })}
-                {s.htmlPresets.length === 0 && <div className="hint">No HTML presets. Add one, or put the built-in list back.</div>}
-              </div>
-              <div className="row">
-                <button type="button" className="btn small" onClick={() => addPreset('htmlPresets')}>+ New preset</button>
-                <button type="button" className="btn small ghost" title="Put back the built-in list, replacing any changes here" onClick={() => resetPresets('htmlPresets')}>Reset to built-in presets</button>
-                <span className="hint">{s.htmlPresets.length} preset{s.htmlPresets.length === 1 ? '' : 's'}</span>
-              </div>
+              {renderPresetList(presetTab)}
             </>)}
 
             {tab === 'spelling' && (<>

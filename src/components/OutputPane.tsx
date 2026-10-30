@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { spanStyle } from '../lib/ansi';
 import type { Line } from '../lib/store';
 import type { Span } from '../lib/ansi';
@@ -116,12 +116,32 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
 
   const jump = () => { pinned.current = true; setMissed(0); toBottom(); };
 
+  // A committed line never changes once it is on screen, so its rendered element is cached by id and
+  // handed back unchanged on every render. Fast output re-renders this pane once per animation frame;
+  // reusing the same element lets React bail out per line instead of rebuilding (and garbage-
+  // collecting) the whole scrollback each frame. That churn — not the browser's paint, which
+  // content-visibility already skips — is what made the command box lag during combat spam. The cache
+  // is rebuilt from the current lines each render, so evicted lines fall out of it (no leak), and it
+  // is dropped when the timestamp prefix toggles (the only thing that changes a line's element).
+  const cache = useRef(new Map<number, ReactElement>());
+  const cacheTime = useRef(timestamps);
+  if (cacheTime.current !== timestamps) { cache.current.clear(); cacheTime.current = timestamps; }
+  const prevCache = cache.current;
+  const nextCache = new Map<number, ReactElement>();
+  const rendered = lines.map((l) => {
+    let el = prevCache.get(l.id);
+    if (!el) el = <LineView key={l.id} line={l} showTime={timestamps} />;
+    nextCache.set(l.id, el);
+    return el;
+  });
+  cache.current = nextCache;
+
   return (
     <div className={`output-wrap ${visible ? '' : 'hidden'}`}>
       <div className="output" ref={ref} onWheel={onWheel} onMouseUp={onMouseUp}
         style={lineGap ? ({ '--line-gap': `${lineGap}px` } as CSSProperties) : undefined}>
         {lines.length === 0 && emptyHint && <div className="line output-empty">{emptyHint}</div>}
-        {lines.map((l) => <LineView key={l.id} line={l} showTime={timestamps} />)}
+        {rendered}
         {partial.length > 0 && (
           <div className="line kind-mud partial">{partial.map(renderSpan)}</div>
         )}

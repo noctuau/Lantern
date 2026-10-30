@@ -95,6 +95,7 @@ class Store {
   private lineId = 1;
   private snapshot = 0;
   private flushTimer: number | null = null;
+  private lastFlush = 0;
   private lastPing = 0;
   private lastTriggerSound = 0;
   private audio: AudioContext | null = null;
@@ -106,10 +107,23 @@ class Store {
     this.snapshot++;
     for (const l of this.listeners) l();
   }
-  /** Coalesce bursts of output into one render per animation frame. */
+  /**
+   * Coalesce bursts of output into a render. Normally that is the next animation frame, so a line
+   * shows up right away. But rendering a long scrollback costs real time (laying out the pane, the
+   * DOM nodes, the scroll-to-bottom), and during heavy output — a combat flood — repainting on every
+   * one of those frames saturates the main thread and makes the command box lag. So once output is
+   * arriving faster than BURST_MS, renders are spaced at least that far apart: the scrollback still
+   * fills at full speed, it is just drawn ~12 times a second instead of 60. A flood is an unreadable
+   * blur either way, and the freed main thread keeps typing responsive. Normal play (lines seconds
+   * apart) always renders on the next frame, so nothing feels delayed.
+   */
   private scheduleNotify() {
     if (this.flushTimer !== null) return;
-    this.flushTimer = window.requestAnimationFrame(() => { this.flushTimer = null; this.notify(); });
+    const flush = () => { this.flushTimer = null; this.lastFlush = performance.now(); this.notify(); };
+    const since = performance.now() - this.lastFlush;
+    const BURST_MS = 80;
+    if (since >= BURST_MS) this.flushTimer = window.requestAnimationFrame(flush);
+    else this.flushTimer = window.setTimeout(() => window.requestAnimationFrame(flush), BURST_MS - since);
   }
 
   add(id: string, world: World) {
