@@ -142,6 +142,8 @@ export interface World {
   log: LogSettings;
   /** Text sent automatically after connecting (e.g. "connect name password"). Plain text for now. */
   autoConnect?: string;
+  /** Open this world's connection automatically when Lantern starts, no Connect click needed. */
+  connectOnStart?: boolean;
   createdAt: string;
 
   triggers: Trigger[];
@@ -223,6 +225,7 @@ export function normalizeWorld(w: Partial<World> & Pick<World, 'id'>): World {
     channelTabs: (w.channelTabs ?? []).map(normalizeChannelTab),
     log: normalizeLog(w.log),
     variables: { ...(w.variables ?? {}) },
+    connectOnStart: w.connectOnStart === true,
     commandStacking: w.commandStacking ?? false,
     commandStackChar: w.commandStackChar || DEFAULT_STACK_CHAR,
     speedwalk: w.speedwalk ?? false,

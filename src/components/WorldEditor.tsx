@@ -57,6 +57,9 @@ export function WorldEditor({ world, onSave, onDelete, onClose }: Props) {
         <label>Send on connect
           <textarea rows={2} value={w.autoConnect ?? ''} onChange={(e) => set('autoConnect', e.target.value)} placeholder={'connect Name password\n(one line per command — stored as plain text)'} />
         </label>
+        <label className="check inline" title="When Lantern opens, connect to this world automatically — no need to click Connect. Any 'Send on connect' lines above still run once it connects.">
+          <input type="checkbox" checked={w.connectOnStart ?? false} onChange={(e) => set('connectOnStart', e.target.checked)} /> Connect automatically when Lantern starts
+        </label>
         <label className="check inline" title="When the game offers MXP (telnet option 91), Lantern accepts and renders the <B>, <I>, <U>, <COLOR>, <SEND> and <A> tags it then sends; a game that announces Pueblo instead is answered too. Games that offer neither are not affected. Haven sends its italics this way, so leave it on for Haven.">
           <input type="checkbox" checked={w.mxp} onChange={(e) => set('mxp', e.target.checked)} /> MXP formatting (older MUSHes send italics, bold and colours this way)
         </label>

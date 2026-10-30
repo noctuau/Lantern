@@ -205,6 +205,21 @@ export function App() {
     store.add(id, world);
   };
 
+  // Worlds set to "Connect automatically when Lantern starts" open on their own at launch — once,
+  // and only if a session for that world isn't already open (so it never double-connects).
+  const autoConnected = useRef(false);
+  useEffect(() => {
+    if (autoConnected.current) return;
+    autoConnected.current = true;
+    window.lantern.worlds.list().then((list) => {
+      for (const w of list) {
+        if (!w.connectOnStart) continue;
+        if (store.order.some((id) => store.get(id)?.world.id === w.id)) continue;
+        void connect(w);
+      }
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Reconnect reuses the same tab (keeping its scrollback and history) rather than opening a new one.
   const reconnect = async (sess: { id: string; world: World }) => {
     const id = await window.lantern.session.connect(sess.world.id, termSize());
