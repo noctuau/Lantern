@@ -152,6 +152,14 @@ function openLog(world: World): fs.WriteStream | null {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const fresh = !fs.existsSync(file) || fs.statSync(file).size === 0;
     const stream = fs.createWriteStream(file, { flags: 'a' });
+    // A later write that fails (disk full, the folder vanished, a OneDrive-synced path pulled
+    // offline, the file locked) emits 'error' on the stream. With no listener, Node re-throws it
+    // as an uncaught exception and takes the whole app down — losing a log line must never crash
+    // Lantern, so swallow it to a warning and drop the stream so we stop writing to a dead handle.
+    stream.on('error', (e) => {
+      console.error('log write failed', file, e);
+      for (const s of sessions.values()) { if (s.log === stream) s.log = null; }
+    });
     if (html && fresh) stream.write(LOG_HTML_HEAD + '\n');
     if (world.log.worldNameHeader) {
       // One clean log per day: a full header the first time the day's file is opened, then a slim
