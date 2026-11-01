@@ -406,7 +406,7 @@ export function App() {
               minLines={settings.inputLines}
               sendMode={settings.sendMode}
               spellCheckInput={settings.inputSpellCheck}
-              onJumpToLatest={() => { const b = document.querySelector('.output-wrap:not(.hidden) .output-bottom') as HTMLElement | null; b?.scrollIntoView({ block: 'end' }); }}
+              onJumpToLatest={() => { const o = document.querySelector('.output-wrap:not(.hidden) .output') as HTMLElement | null; if (o) o.scrollTop = o.scrollHeight; }}
               onResize={(lines) => saveSettings({ ...settings, inputLines: lines })}
               onSend={sendCommand}
               onReconnect={() => reconnect(active)}

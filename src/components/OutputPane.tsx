@@ -64,6 +64,7 @@ interface Props {
  */
 export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap = 0, autoScroll = true, visible = true, emptyHint, extras, onReturnFocus }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
   // "pinned" (at the bottom, following) is a ref so the content effect reads it without a stale
   // closure and without re-rendering the big list; the jump button uses a separate state.
@@ -72,7 +73,11 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
   const [missed, setMissed] = useState(0);
   const lastCount = useRef(lines.length);
 
-  const toBottom = () => { if (visible) bottom.current?.scrollIntoView({ block: 'end' }); };
+  // Glue to the true bottom with scrollTop (not scrollIntoView on the sentinel): during fast output
+  // the sentinel's target is computed from content-visibility's *estimated* line heights and can
+  // land a little short, which then reads as "scrolled up". scrollHeight is the real max, and the
+  // ResizeObserver below re-asserts it after the browser corrects those estimates.
+  const toBottom = () => { const el = ref.current; if (el && visible) el.scrollTop = el.scrollHeight; };
 
   // Track "at the bottom" with an IntersectionObserver on a sentinel. This is robust against the
   // content-visibility size estimates that otherwise made follow-at-bottom jumpy.
@@ -88,6 +93,20 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
     io.observe(b);
     return () => io.disconnect();
   }, []);
+
+  // Keep the view pinned to the bottom while following, even as content-visibility revises off-screen
+  // line heights *after* paint — which otherwise leaves the pane a touch short of the end, so the
+  // sentinel observer decides we've scrolled up and auto-scroll quietly stops (the "won't stay at the
+  // bottom" bug). A ResizeObserver on the content re-asserts the bottom whenever its height changes,
+  // so a fast flood can't drift the pane off the end. It only moves the scroll when already pinned, so
+  // a reader who has scrolled up is never yanked down; setting scrollTop doesn't resize, so no loop.
+  useEffect(() => {
+    const el = ref.current, innerEl = inner.current;
+    if (!el || !innerEl) return;
+    const ro = new ResizeObserver(() => { if (pinned.current && autoScroll && visible) el.scrollTop = el.scrollHeight; });
+    ro.observe(innerEl);
+    return () => ro.disconnect();
+  }, [autoScroll, visible]);
 
   // Follow the latest only when auto-scroll is on and we are already at the bottom.
   const lastPartial = useRef(partial);
@@ -140,12 +159,14 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
     <div className={`output-wrap ${visible ? '' : 'hidden'}`}>
       <div className="output" ref={ref} onWheel={onWheel} onMouseUp={onMouseUp}
         style={lineGap ? ({ '--line-gap': `${lineGap}px` } as CSSProperties) : undefined}>
-        {lines.length === 0 && emptyHint && <div className="line output-empty">{emptyHint}</div>}
-        {rendered}
-        {partial.length > 0 && (
-          <div className="line kind-mud partial">{partial.map(renderSpan)}</div>
-        )}
-        <div ref={bottom} className="output-bottom" aria-hidden="true" />
+        <div className="output-inner" ref={inner}>
+          {lines.length === 0 && emptyHint && <div className="line output-empty">{emptyHint}</div>}
+          {rendered}
+          {partial.length > 0 && (
+            <div className="line kind-mud partial">{partial.map(renderSpan)}</div>
+          )}
+          <div ref={bottom} className="output-bottom" aria-hidden="true" />
+        </div>
       </div>
       {(showJump || extras) && (
         <div className="float-stack">
