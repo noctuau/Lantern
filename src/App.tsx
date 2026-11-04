@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { store, useStore, MAIN_VIEW, type World } from './lib/store';
 import { activePrefix, applyCommandPrefix, havenChannelTab, helpChannelTab } from './lib/channels';
 import { cleanTyped, applyMarkup } from './lib/automation';
-import { Sidebar, type SidebarMode } from './components/Sidebar';
 import { OutputPane } from './components/OutputPane';
 import { ChannelStrip, UnreadPills } from './components/ChannelStrip';
 import { InputBar } from './components/InputBar';
@@ -26,14 +25,16 @@ export function App() {
   const [editing, setEditing] = useState<World | null>(null);
   const [automating, setAutomating] = useState<World | null>(null);
   const [panelTab, setPanelTab] = useState<PanelTab | undefined>(undefined);
-  // Sidebar has three widths: full, a narrow icon rail, and hidden. Remembered per viewer.
-  const [sidebar, setSidebar] = useState<SidebarMode>(() => {
-    try { const v = localStorage.getItem('lantern.sidebar'); if (v === 'rail' || v === 'hidden' || v === 'full') return v; } catch { /* ignore */ }
-    return 'full';
-  });
-  useEffect(() => { try { localStorage.setItem('lantern.sidebar', sidebar); } catch { /* ignore */ } }, [sidebar]);
-  const cycleSidebar = () => setSidebar((s) => (s === 'full' ? 'rail' : s === 'rail' ? 'hidden' : 'full'));
-  const sidebarWidth = sidebar === 'full' ? 260 : sidebar === 'rail' ? 56 : 0;
+  // The ☰ menu (world list + New/Import/Logs/Settings) replaces the old left sidebar. It opens as a
+  // dropdown anchored under its button in the tab bar, so the output pane gets the full window width.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ x: 8, y: 44 });
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const toggleMenu = () => {
+    const r = menuBtnRef.current?.getBoundingClientRect();
+    if (r) setMenuPos({ x: r.left, y: r.bottom + 4 });
+    setMenuOpen((o) => !o);
+  };
   const [settings, setSettings] = useState<AppSettings>(() => normalizeSettings(null));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fonts, setFonts] = useState<string[]>(FALLBACK_FONTS);
@@ -91,11 +92,11 @@ export function App() {
   const saveSettings = useCallback(async (s: AppSettings) => {
     setSettings(s); applySettings(s); pushCustomColours(s);
     // Tell live sessions the new width (NAWS), so server-wrapped games follow it too.
-    const paneCols = Math.max(60, Math.floor((window.innerWidth - sidebarWidth - 48) / 8.4));
+    const paneCols = Math.max(60, Math.floor((window.innerWidth - 48) / 8.4));
     const rows = Math.max(20, Math.floor((window.innerHeight - 140) / 22));
     for (const id of store.order) window.lantern.session.resize(id, s.outputWidth || paneCols, rows);
     await window.lantern.settings.set(s as unknown as Record<string, unknown>);
-  }, [sidebarWidth]);
+  }, []);
   const openSettings = () => {
     setSettingsOpen(true);
     if (fonts === FALLBACK_FONTS) loadFonts();
@@ -140,6 +141,15 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('click', close); window.removeEventListener('scroll', close, true); window.removeEventListener('keydown', onKey); };
   }, [ctxMenu]);
+  // Close the ☰ menu on any click outside it or on Escape (the menu stops its own clicks propagating).
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('click', close);
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('click', close); window.removeEventListener('keydown', onKey); };
+  }, [menuOpen]);
   const addHighlight = async (t: Trigger) => {
     if (!highlight) return;
     const w = worldsRef.current.find((x) => x.id === highlight.worldId) ?? store.active()?.world;
@@ -195,7 +205,7 @@ export function App() {
 
   // The width told to the server (NAWS): a fixed Output width if set, else the pane's own columns.
   const termSize = () => {
-    const paneCols = Math.max(60, Math.floor((window.innerWidth - sidebarWidth - 48) / 8.4));
+    const paneCols = Math.max(60, Math.floor((window.innerWidth - 48) / 8.4));
     const rows = Math.max(20, Math.floor((window.innerHeight - 140) / 22));
     return { width: settings.outputWidth || paneCols, height: rows };
   };
@@ -331,25 +341,15 @@ export function App() {
   const openAutomation = (w: World, tab?: PanelTab) => { setPanelTab(tab); setAutomating(worlds.find((x) => x.id === w.id) ?? w); };
 
   return (
-    <div className={`app sidebar-${sidebar}`}>
-      <Sidebar
-        worlds={worlds}
-        mode={sidebar}
-        onToggle={cycleSidebar}
-        onConnect={connect}
-        onEdit={setEditing}
-        onAutomation={(w) => openAutomation(w)}
-        onDelete={deleteWorld}
-        onNew={async () => setEditing(await window.lantern.worlds.create())}
-        onImport={async () => { await window.lantern.worlds.importMcl(); refreshWorlds(); }}
-        onSettings={openSettings}
-        updateAvailable={update?.newer ? update.latest : null}
-      />
+    <div className="app">
       <main className="main">
         <div className="tabs">
-          {sidebar === 'hidden' && (
-            <button className="icon-btn" title="Show the sidebar" onClick={() => setSidebar('full')}>☰</button>
-          )}
+          <button
+            ref={menuBtnRef}
+            className={`icon-btn menu-btn ${update?.newer ? 'has-update' : ''}`}
+            title="Worlds and menu"
+            onClick={(e) => { e.stopPropagation(); toggleMenu(); }}
+          >☰</button>
           {s.order.map((id) => {
             const sess = s.get(id)!;
             return (
@@ -365,7 +365,7 @@ export function App() {
               </div>
             );
           })}
-          {s.order.length === 0 && <div className="tab-hint">Pick a world on the left to connect.</div>}
+          {s.order.length === 0 && <div className="tab-hint">Open the ☰ menu to pick a world.</div>}
           <span className="spacer" />
           {active && (
             <>
@@ -421,10 +421,38 @@ export function App() {
             <div className="welcome-mark">🏮</div>
             <h1>Lantern</h1>
             <p>A fresh light on old worlds.</p>
-            <p className="muted">Add a world, or import your MUSHclient .MCL files from the sidebar.</p>
+            <p className="muted">Open the ☰ menu to pick a world, add one, or import your MUSHclient .MCL files.</p>
+            <button className="btn" onClick={(e) => { e.stopPropagation(); toggleMenu(); }}>☰ Open menu</button>
           </div>
         )}
       </main>
+
+      {menuOpen && (
+        <div className="main-menu" style={{ left: menuPos.x, top: menuPos.y }} onClick={(e) => e.stopPropagation()}>
+          <div className="main-menu-list">
+            {worlds.length === 0 && <div className="muted small pad">No worlds yet. Add one below.</div>}
+            {[...worlds].sort((a, b) => a.name.localeCompare(b.name)).map((w) => (
+              <div key={w.id} className="world">
+                <div className="world-main" title={`${w.name} — ${w.host}:${w.port}\nClick to connect`} onClick={() => { connect(w); setMenuOpen(false); }}>
+                  <div className="world-name">{w.name}</div>
+                  <div className="world-host muted">{w.host}:{w.port}</div>
+                </div>
+                <div className="world-actions">
+                  <button className="icon-btn" title="Triggers, aliases, timers" onClick={() => { openAutomation(w); setMenuOpen(false); }}>⚡</button>
+                  <button className="icon-btn" title="Edit" onClick={() => { setEditing(w); setMenuOpen(false); }}>✎</button>
+                  <button className="icon-btn danger" title="Delete this world" onClick={() => { deleteWorld(w); setMenuOpen(false); }}>🗑</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="main-menu-foot">
+            <button className="btn" onClick={async () => { setMenuOpen(false); setEditing(await window.lantern.worlds.create()); }}>+ New world</button>
+            <button className="btn ghost" onClick={async () => { setMenuOpen(false); await window.lantern.worlds.importMcl(); refreshWorlds(); }}>Import .MCL</button>
+            <button className="btn ghost" onClick={() => { setMenuOpen(false); window.lantern.app.openLogs(); }}>Open logs folder</button>
+            <button className={`btn ghost ${update?.newer ? 'has-update' : ''}`} title={update?.newer ? `Lantern v${update.latest} is available: see Settings › About` : undefined} onClick={() => { setMenuOpen(false); openSettings(); }}>⚙ Settings</button>
+          </div>
+        </div>
+      )}
 
       {editing && (
         <WorldEditor
