@@ -72,6 +72,12 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
   const [showJump, setShowJump] = useState(false);
   const [missed, setMissed] = useState(0);
   const lastCount = useRef(lines.length);
+  // A hidden pane (a channel tab you're not looking at) is display:none, so the sentinel observer
+  // below reports it as off-screen and would flip `pinned` to false — then switching to that tab
+  // wouldn't snap to the bottom. Freeze the at-bottom tracking while hidden by reading this each
+  // callback, so it only ever reacts to real scrolling in a pane you can actually see.
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
 
   // Glue to the true bottom with scrollTop (not scrollIntoView on the sentinel): during fast output
   // the sentinel's target is computed from content-visibility's *estimated* line heights and can
@@ -85,6 +91,7 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
     const el = ref.current, b = bottom.current;
     if (!el || !b) return;
     const io = new IntersectionObserver((entries) => {
+      if (!visibleRef.current) return; // ignore while hidden: display:none reads as "scrolled away"
       const atBottom = entries[entries.length - 1].isIntersecting;
       pinned.current = atBottom;
       setShowJump(!atBottom);
