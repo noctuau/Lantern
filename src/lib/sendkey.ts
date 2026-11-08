@@ -12,9 +12,11 @@ export function entrySends(mode: SendMode, opts: { mod: boolean; shift: boolean;
   if (mode === 'enter') return true;
   // Ctrl/Cmd+Enter always sends in the other modes.
   if (mod) return true;
-  // In "ctrl-enter" mode a plain Enter still sends a short single line, so quick commands aren't a
-  // chore, but makes a new line once the text is long or already spans more than one line.
-  if (mode === 'ctrl-enter') return !value.includes('\n') && value.length <= SHORT_SEND_MAX;
+  // In "ctrl-enter" mode a plain Enter sends while every line is short — a quick command, or a stack
+  // of short ones like pasted directions (n / ne / up …), which shouldn't need Ctrl+Enter just for
+  // being on several lines. It falls through to a new line once any line runs long: a multi-line
+  // pose (which has real prose lines) still needs Ctrl+Enter, so it can't fire half-written.
+  if (mode === 'ctrl-enter') return value.split('\n').every((line) => line.length <= SHORT_SEND_MAX);
   // "button" mode: a plain Enter is always a new line (use the Send button or Ctrl+Enter).
   return false;
 }

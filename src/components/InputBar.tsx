@@ -140,9 +140,9 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
     const el = e.currentTarget;
     const h = session.history;
     if (e.key === 'Enter') {
-      // See src/lib/sendkey.ts. In "ctrl-enter" mode a short one-liner still sends on Enter, but a
-      // long or multi-line pose needs Ctrl+Enter, so quick commands aren't a chore. Whatever doesn't
-      // send falls through to a new line.
+      // See src/lib/sendkey.ts. In "ctrl-enter" mode short lines still send on Enter (a quick
+      // command, or a stack of short ones like directions), but a pose with a long line needs
+      // Ctrl+Enter, so quick commands aren't a chore. Whatever doesn't send falls through to a new line.
       if (entrySends(sendMode, { mod: e.ctrlKey || e.metaKey, shift: e.shiftKey, value })) { e.preventDefault(); send(); return; }
       return;
     }
@@ -180,7 +180,7 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   // which sends that one command without it. Masked input never gets a prefix.
   const prefix = session.echo ? activePrefix(session.world.channelTabs, session.view) : '';
   const bypassing = !!prefix && value.startsWith(PREFIX_BYPASS);
-  const sendHint = sendMode === 'ctrl-enter' ? 'Enter sends a short line; Ctrl+Enter for a long pose'
+  const sendHint = sendMode === 'ctrl-enter' ? 'Enter sends short commands; Ctrl+Enter for a long pose'
     : sendMode === 'button' ? 'Send button, or Ctrl+Enter; Enter makes a new line'
     : 'Shift+Enter for a new line, ↑ for history';
   const placeholder = !session.echo ? 'Password (hidden)'
