@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SessionState } from '../lib/store';
 import type { SendMode } from '../lib/settings';
 import { entrySends } from '../lib/sendkey';
-import { activePrefix, PREFIX_BYPASS } from '../lib/channels';
+import { activePrefix, applyCommandPrefix, PREFIX_BYPASS } from '../lib/channels';
+import { applyMarkup } from '../lib/automation';
+import { renderPreview } from '../lib/preview';
+import { renderSpan } from './OutputPane';
 
 interface Props {
   session: SessionState;
@@ -35,6 +38,9 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   // On-demand spell check: when live spell check is off, this turns the native checker on for the
   // box until the next send, so a quick check costs nothing the rest of the time.
   const [checkNow, setCheckNow] = useState(false);
+  // In-game preview: swap the box for a read-only render of how the line will look once sent
+  // (colours, bold/italic/underline, line breaks, white speech). Toggle with the 👁 button.
+  const [preview, setPreview] = useState(false);
   const histIdx = useRef<number | null>(null);   // null = not browsing history
   const draft = useRef('');
 
@@ -132,8 +138,23 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
     onSend(text);
     setValue('');
     setCheckNow(false);
+    setPreview(false);
     histIdx.current = null;
     draft.current = '';
+  };
+
+  // Leave preview and put the cursor back at the end of the box, ready to keep typing.
+  const exitPreview = () => {
+    setPreview(false);
+    requestAnimationFrame(() => { const el = ref.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } });
+  };
+
+  // Keys while the preview is showing: Enter sends (same rule as the box), Escape goes back to editing.
+  const onPreviewKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') { e.preventDefault(); exitPreview(); return; }
+    if (e.key === 'Enter' && entrySends(sendMode, { mod: e.ctrlKey || e.metaKey, shift: e.shiftKey, value })) {
+      e.preventDefault(); send();
+    }
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -180,6 +201,14 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   // which sends that one command without it. Masked input never gets a prefix.
   const prefix = session.echo ? activePrefix(session.world.channelTabs, session.view) : '';
   const bypassing = !!prefix && value.startsWith(PREFIX_BYPASS);
+  // The in-game preview renders exactly what a send would transmit: the tab prefix and the chat
+  // markup go on first (so a pose whose markup can't fire shows its literal asterisks — honest),
+  // then renderPreview resolves the colour/format codes, line breaks and white speech.
+  const previewLines = useMemo(
+    () => renderPreview(applyMarkup(session.world.markup, applyCommandPrefix(prefix, value).text), session.world.markup),
+    [prefix, value, session.world.markup],
+  );
+  const showPreview = preview && session.echo && !disconnected;
   const sendHint = sendMode === 'ctrl-enter' ? 'Enter sends short commands; Ctrl+Enter for a long pose'
     : sendMode === 'button' ? 'Send button, or Ctrl+Enter; Enter makes a new line'
     : 'Shift+Enter for a new line, ↑ for history';
@@ -207,17 +236,41 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
               {prefix.trimEnd()}
             </span>
           )}
-          <textarea
-            ref={ref}
-            className="input"
-            value={value}
-            rows={1}
-            spellCheck={session.echo && (spellCheckInput || checkNow)}
-            placeholder={placeholder}
-            style={{ minHeight: `calc(${lines} * 1lh + ${BOX_PADDING}px)`, maxHeight: `calc(${MAX_LINES} * 1lh + ${BOX_PADDING}px)` }}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={onKeyDown}
-          />
+          {showPreview ? (
+            <div
+              className="input input-render"
+              tabIndex={0}
+              role="textbox"
+              aria-readonly="true"
+              title="How this will look in-game. Click, or press Esc, to edit."
+              style={{ minHeight: `calc(${lines} * 1lh + ${BOX_PADDING}px)`, maxHeight: `calc(${MAX_LINES} * 1lh + ${BOX_PADDING}px)` }}
+              onClick={exitPreview}
+              onKeyDown={onPreviewKey}
+            >
+              {value.trim() === ''
+                ? <span className="muted">Nothing to preview yet — type a pose, then toggle this on.</span>
+                : previewLines.map((spans, li) => (
+                    <div className="input-render-line" key={li}>{spans.length ? spans.map(renderSpan) : ' '}</div>
+                  ))}
+            </div>
+          ) : (
+            <textarea
+              ref={ref}
+              className="input"
+              value={value}
+              rows={1}
+              spellCheck={session.echo && (spellCheckInput || checkNow)}
+              placeholder={placeholder}
+              style={{ minHeight: `calc(${lines} * 1lh + ${BOX_PADDING}px)`, maxHeight: `calc(${MAX_LINES} * 1lh + ${BOX_PADDING}px)` }}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={onKeyDown}
+            />
+          )}
+          {session.echo && (
+            <button type="button" className={`btn small ghost input-eye ${showPreview ? 'on' : ''}`}
+              title={showPreview ? 'Back to editing' : 'Preview how this will look in-game'}
+              onClick={() => (showPreview ? exitPreview() : setPreview(true))}>{showPreview ? '✎' : '👁'}</button>
+          )}
           {session.echo && !spellCheckInput && (
             <button type="button" className={`btn small ghost input-check ${checkNow ? 'on' : ''}`} title="Spell-check what's in the box now (it turns off again when you send)" onClick={() => { setCheckNow(true); ref.current?.focus(); }}>🔤</button>
           )}

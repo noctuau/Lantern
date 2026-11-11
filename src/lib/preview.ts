@@ -1,0 +1,83 @@
+/**
+ * Render the line you're about to send the way the game will show it — the command box's in-game
+ * preview (InputBar's 👁 toggle). It resolves the same backtick codes the colour composer and the
+ * chat-markup option emit — `#rrggbb and `NNN colours, plus the world's bold / italic / underline
+ * toggles — turns %r into a real line break, and (a MUD convention) paints "double-quoted speech"
+ * white unless a colour code inside it says otherwise. Pure (no DOM/Electron) so
+ * scripts/test-preview.mjs can run it under Node.
+ *
+ * It does NOT fake the room's wrapper ("Liesel says, …"); it shows your own line with its codes
+ * resolved, which is what you want when eyeing a pose before it goes out. The caller runs the same
+ * prefix + applyMarkup steps as a real send first, so a pose whose markup WON'T fire (wrong verb,
+ * option off) shows its literal asterisks here — the preview tells the truth about what will send.
+ */
+import { EMPTY_STYLE, type Span, type Style } from './ansi';
+import type { MarkupSettings } from '../../shared/types';
+
+/** Bright white (xterm 15, via the theme's --ansi-15) for quoted speech. */
+const SPEECH_FG = '15';
+
+/** Parse a composed line into styled spans per display line, resolving Haven's outgoing codes. */
+export function renderPreview(text: string, markup: MarkupSettings): Span[][] {
+  // %r / %R are MUSH line breaks; show them as real breaks (actual newlines already break too).
+  const src = text.replace(/%[rR]/g, '\n');
+
+  const lines: Span[][] = [];
+  let spans: Span[] = [];
+  let buf = '';
+  let colour: string | null = null;              // explicit colour from a code; null = none set
+  let bold = false, italic = false, underline = false;
+  let speech = false;                            // inside "double quotes"
+
+  const style = (): Style => ({
+    ...EMPTY_STYLE,
+    fg: colour ?? (speech ? SPEECH_FG : null),
+    bold, italic, underline,
+  });
+  const flush = () => { if (buf) { spans.push({ text: buf, style: style() }); buf = ''; } };
+  const endLine = () => { flush(); lines.push(spans); spans = []; };
+
+  // The world's configured format toggles, longest code first so a longer code isn't shadowed by a
+  // shorter one that is its prefix. Matched before numeric colours so `1..`6 read as the markup
+  // toggles (what applyMarkup emits for *bold* etc.), not as xterm colours 1..6.
+  const toggles = [
+    { code: markup.boldOn, apply: () => { bold = true; } },
+    { code: markup.boldOff, apply: () => { bold = false; } },
+    { code: markup.italicOn, apply: () => { italic = true; } },
+    { code: markup.italicOff, apply: () => { italic = false; } },
+    { code: markup.underlineOn, apply: () => { underline = true; } },
+    { code: markup.underlineOff, apply: () => { underline = false; } },
+  ].filter((t) => !!t.code).sort((a, b) => b.code.length - a.code.length);
+
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i];
+    if (ch === '\n') { endLine(); i++; continue; }
+    // A quote mark belongs to the speech it opens or closes, so flush around it to colour it too.
+    if (ch === '"' || ch === '“' || ch === '”') {
+      if (!speech) { flush(); speech = true; buf += ch; }
+      else { buf += ch; flush(); speech = false; }
+      i++; continue;
+    }
+    if (ch === '`') {
+      const rest = src.slice(i);
+      const hexm = rest.match(/^`#[0-9a-fA-F]{6}/);               // `#rrggbb truecolour
+      if (hexm) { flush(); colour = hexm[0].slice(1).toLowerCase(); i += hexm[0].length; continue; }
+      // a configured format toggle — but `1 must not eat the first digit of a colour like `135
+      const tog = toggles.find((t) => {
+        if (!rest.startsWith(t.code)) return false;
+        const after = rest[t.code.length];
+        return !(/\d$/.test(t.code) && after !== undefined && /\d/.test(after));
+      });
+      if (tog) { flush(); tog.apply(); i += tog.code.length; continue; }
+      const num = rest.match(/^`(\d{1,3})/);                     // `NNN xterm colour (1-3 digits)
+      if (num) { flush(); colour = num[1]; i += num[0].length; continue; }
+      const letter = rest[1];                                    // `<letter> resets colour (like `w)
+      if (letter && /[a-zA-Z]/.test(letter)) { flush(); colour = null; i += 2; continue; }
+      buf += ch; i++; continue;                                  // a lone backtick: keep as text
+    }
+    buf += ch; i++;
+  }
+  endLine();
+  return lines;
+}

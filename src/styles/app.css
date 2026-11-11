@@ -169,6 +169,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .input-send { align-self: flex-end; height: 38px; flex-shrink: 0; }
 .input-check { align-self: flex-end; height: 38px; flex-shrink: 0; }
 .input-check.on { border-color: var(--accent-2); color: var(--accent); }
+.input-eye { align-self: flex-end; height: 38px; flex-shrink: 0; }
+.input-eye.on { border-color: var(--accent-2); color: var(--accent); }
+/* The in-game preview: the box swapped for a read-only render of the line as it will send. Matches
+   the box's own sizing (the .input class); pre-wrap so spaces and wraps show like the output pane. */
+.input-render { white-space: pre-wrap; overflow-wrap: anywhere; cursor: text; }
+.input-render-line { min-height: 1lh; }
 /* A channel tab's command prefix, shown beside the box so it stays visible while typing. */
 .input-prefix {
   flex-shrink: 0; align-self: stretch; display: flex; align-items: center; min-height: 38px;
