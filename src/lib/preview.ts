@@ -2,25 +2,42 @@
  * Render the line you're about to send the way the game will show it — the command box's in-game
  * preview (InputBar's 👁 toggle). It resolves the same backtick codes the colour composer and the
  * chat-markup option emit — `#rrggbb and `NNN colours, plus the world's bold / italic / underline
- * toggles — turns %r into a real line break, and (a MUD convention) paints "double-quoted speech"
- * white unless a colour code inside it says otherwise. Pure (no DOM/Electron) so
- * scripts/test-preview.mjs can run it under Node.
+ * toggles — expands Haven's @me / @my / @line tokens, turns %r into a real line break, and (a MUD
+ * convention) paints "double-quoted speech" the world's speech colour unless a colour code inside it
+ * says otherwise. Pure (no DOM/Electron) so scripts/test-preview.mjs can run it under Node.
  *
  * It does NOT fake the room's wrapper ("Liesel says, …"); it shows your own line with its codes
  * resolved, which is what you want when eyeing a pose before it goes out. The caller runs the same
  * prefix + applyMarkup steps as a real send first, so a pose whose markup WON'T fire (wrong verb,
  * option off) shows its literal asterisks here — the preview tells the truth about what will send.
+ * The expansion is display-only: @me and friends are left in the text that actually transmits, so
+ * Haven does the real substitution; this only mirrors it for your eyes.
  */
 import { EMPTY_STYLE, type Span, type Style } from './ansi';
 import type { MarkupSettings } from '../../shared/types';
 
-/** Bright white (xterm 15, via the theme's --ansi-15) for quoted speech. */
-const SPEECH_FG = '15';
+/** Bright white (xterm 15, via the theme's --ansi-15): the default colour for quoted speech. */
+const SPEECH_DEFAULT = '15';
+
+export interface PreviewOpts {
+  /** Character name on this world — substituted for Haven's @me (and @my → "<name>'s"). '' leaves the tokens literal. */
+  character?: string;
+  /** Colour for "double-quoted speech": an xterm code, a CSS colour, or `#rrggbb`. Defaults to bright white. */
+  speechColour?: string;
+}
 
 /** Parse a composed line into styled spans per display line, resolving Haven's outgoing codes. */
-export function renderPreview(text: string, markup: MarkupSettings): Span[][] {
-  // %r / %R are MUSH line breaks; show them as real breaks (actual newlines already break too).
-  const src = text.replace(/%[rR]/g, '\n');
+export function renderPreview(text: string, markup: MarkupSettings, opts: PreviewOpts = {}): Span[][] {
+  const speechFg = opts.speechColour?.trim() || SPEECH_DEFAULT;
+  const name = (opts.character ?? '').trim();
+  // Haven's plain-text substitutions, done before the code walk so the expanded name flows through
+  // speech colouring too: @line is a line break (like %r/%R), @me is your name, @my the possessive.
+  // Word-boundary \b so @me doesn't fire inside @meloria; left literal when no character name is set.
+  const src = text
+    .replace(/%[rR]/g, '\n')
+    .replace(/@line\b/gi, '\n')
+    .replace(/@my\b/gi, name ? `${name}'s` : '@my')
+    .replace(/@me\b/gi, name || '@me');
 
   const lines: Span[][] = [];
   let spans: Span[] = [];
@@ -31,7 +48,7 @@ export function renderPreview(text: string, markup: MarkupSettings): Span[][] {
 
   const style = (): Style => ({
     ...EMPTY_STYLE,
-    fg: colour ?? (speech ? SPEECH_FG : null),
+    fg: colour ?? (speech ? speechFg : null),
     bold, italic, underline,
   });
   const flush = () => { if (buf) { spans.push({ text: buf, style: style() }); buf = ''; } };

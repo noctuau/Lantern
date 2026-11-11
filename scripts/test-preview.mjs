@@ -14,8 +14,8 @@ const M = DEFAULT_MARKUP; // boldOn `1 boldOff `4, italicOn `2 italicOff `5, und
 let n = 0;
 const ok = (msg) => { n++; if (process.env.V) console.log('ok', msg); };
 // Flatten one display line into {text, fg, bold, italic, underline} tuples.
-const line = (s, i = 0) => renderPreview(s, M)[i].map((sp) => ({ text: sp.text, fg: sp.style.fg, b: sp.style.bold, it: sp.style.italic, u: sp.style.underline }));
-const text = (s) => renderPreview(s, M).map((ln) => ln.map((sp) => sp.text).join(''));
+const line = (s, opt = {}, i = 0) => renderPreview(s, M, opt)[i].map((sp) => ({ text: sp.text, fg: sp.style.fg, b: sp.style.bold, it: sp.style.italic, u: sp.style.underline }));
+const text = (s, opt = {}) => renderPreview(s, M, opt).map((ln) => ln.map((sp) => sp.text).join(''));
 
 /* ---------- plain text ---------- */
 {
@@ -71,6 +71,44 @@ const text = (s) => renderPreview(s, M).map((ln) => ln.map((sp) => sp.text).join
   const l = line('"`201hi"');
   assert.equal(l.find((s) => s.text.startsWith('hi')).fg, '201');
   ok('a colour code inside speech overrides white');
+}
+{
+  // A configured speech colour replaces the white default.
+  const [sp] = renderPreview('"hi"', M, { speechColour: '117' })[0];
+  assert.equal(sp.style.fg, '117');
+  ok('speechColour sets the quote colour');
+}
+
+/* ---------- Haven @-tokens ---------- */
+const opt = { character: 'Liesel' };
+{
+  assert.deepEqual(text('emote @me waves', opt), ['emote Liesel waves']);
+  ok('@me expands to the character name');
+}
+{
+  assert.deepEqual(text('@my hand', opt), ["Liesel's hand"]);
+  ok('@my expands to the possessive');
+}
+{
+  // Word boundary: @me must not fire inside a longer word.
+  assert.deepEqual(text('@method @me', opt), ['@method Liesel']);
+  ok('@me respects a word boundary');
+}
+{
+  // @line breaks the line, like %r.
+  assert.deepEqual(text('a @line b', opt), ['a ', ' b']);
+  ok('@line becomes a line break');
+}
+{
+  // With no character name, @me/@my are left literal.
+  assert.deepEqual(text('@me and @my'), ['@me and @my']);
+  ok('@me/@my stay literal when no name is set');
+}
+{
+  // The expanded name inside quotes still takes the speech colour.
+  const l = renderPreview('"@me"', M, { character: 'Liesel' })[0];
+  assert.equal(l.find((s) => s.text.includes('Liesel')).style.fg, '15');
+  ok('an expanded @me inside speech is coloured');
 }
 
 console.log(`\n${n} preview assertions passed.`);

@@ -162,6 +162,10 @@ export interface World {
   speedwalkPrefix: string;
   /** *italic*, **bold** and __underline__ in typed chat commands become the game's format codes. Off by default. */
   markup: MarkupSettings;
+  /** Your character's name on this world. The command-box preview expands Haven's `@me` to it and `@my` to "<name>'s". '' = leave the tokens literal. */
+  character?: string;
+  /** Colour the command-box preview paints "double-quoted speech": an xterm palette code (default '15', bright white), or a CSS colour / `#rrggbb`. */
+  speechColour?: string;
   /**
    * Accept the game's offer of MXP (telnet option 91) and render the <B>, <I>, <U>, <COLOR>, <SEND>
    * and <A> tags it then sends (shared/mxp.ts); the same switch answers a Pueblo announcement
@@ -231,6 +235,8 @@ export function normalizeWorld(w: Partial<World> & Pick<World, 'id'>): World {
     speedwalk: w.speedwalk ?? false,
     speedwalkPrefix: w.speedwalkPrefix || DEFAULT_SPEEDWALK_PREFIX,
     markup: normalizeMarkup(w.markup),
+    character: typeof w.character === 'string' ? w.character : '',
+    speechColour: typeof w.speechColour === 'string' && w.speechColour.trim() ? w.speechColour : '15',
     // `pueblo` was this switch's name for one unreleased commit.
     mxp: w.mxp !== false && (w as { pueblo?: boolean }).pueblo !== false,
   };

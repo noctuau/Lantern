@@ -843,6 +843,21 @@ function OptionsTab({ w, setW }: { w: World; setW: React.Dispatch<React.SetState
         </div>
       </section>
       <section>
+        <h4 className="opt-head">Command-box preview</h4>
+        <p className="muted small">The 👁 button on the command box shows how a pose will look in-game. These tell it about your character so its guess matches Haven's.</p>
+        <div className="row wrap">
+          <Field label="Character name" hint="The preview expands Haven's @me to this name and @my to its possessive. @line becomes a line break. The text that actually sends still carries the @me / @my / @line tokens — Haven does the real swap.">
+            <input value={w.character ?? ''} onChange={(e) => set('character', e.target.value)} placeholder="e.g. Liesel" style={{ width: 160 }} />
+          </Field>
+          <Field label="Speech colour" grow hint="The preview paints &quot;double-quoted speech&quot; this colour (a code inside the quotes still wins). Pick an xterm colour; the default is bright white.">
+            <ColourPicker value={w.speechColour || '15'} onChange={(v) => set('speechColour', v ?? '15')} sample="Spoken words" />
+          </Field>
+        </div>
+        {(w.character ?? '').trim() && (
+          <div className="example mono muted">emote @me waves @line @my hand is raised → {w.character} waves ⏎ {w.character}'s hand is raised</div>
+        )}
+      </section>
+      <section>
         <p className="muted small">All three are off unless you turn them on here, and apply only to this world. Typed commands get the channel tab's prefix and markup first, then are split and run through aliases.</p>
       </section>
     </div>

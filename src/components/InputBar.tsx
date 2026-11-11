@@ -205,8 +205,11 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   // markup go on first (so a pose whose markup can't fire shows its literal asterisks — honest),
   // then renderPreview resolves the colour/format codes, line breaks and white speech.
   const previewLines = useMemo(
-    () => renderPreview(applyMarkup(session.world.markup, applyCommandPrefix(prefix, value).text), session.world.markup),
-    [prefix, value, session.world.markup],
+    () => renderPreview(applyMarkup(session.world.markup, applyCommandPrefix(prefix, value).text), session.world.markup, {
+      character: session.world.character,
+      speechColour: session.world.speechColour,
+    }),
+    [prefix, value, session.world.markup, session.world.character, session.world.speechColour],
   );
   const showPreview = preview && session.echo && !disconnected;
   const sendHint = sendMode === 'ctrl-enter' ? 'Enter sends short commands; Ctrl+Enter for a long pose'

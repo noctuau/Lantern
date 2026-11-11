@@ -264,6 +264,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .auto-options section { display: flex; flex-direction: column; gap: 8px; }
 .auto-options p { margin: 0; }
 .auto-options .example { align-self: flex-end; padding-bottom: 9px; font-size: 12px; }
+.auto-options h4.opt-head { margin: 0; font-size: 13px; font-weight: 600; }
 .modal.auto .modal-actions { padding: 12px 22px; border-top: 1px solid var(--line); margin: 0; align-items: center; }
 
 /* channels tab */
