@@ -2,9 +2,10 @@
  * Render the line you're about to send the way the game will show it — the command box's in-game
  * preview (InputBar's 👁 toggle). It resolves the same backtick codes the colour composer and the
  * chat-markup option emit — `#rrggbb and `NNN colours, plus the world's bold / italic / underline
- * toggles — expands Haven's @me / @my / @line tokens, turns %r into a real line break, and (a MUD
- * convention) paints "double-quoted speech" the world's speech colour unless a colour code inside it
- * says otherwise. Pure (no DOM/Electron) so scripts/test-preview.mjs can run it under Node.
+ * toggles — expands Haven's @me / @my / @line tokens, prepends your name to a pose (emote / pose / :
+ * / ;), turns %r into a real line break, and (a MUD convention) paints "double-quoted speech" the
+ * world's speech colour unless a colour code inside it says otherwise. Pure (no DOM/Electron) so
+ * scripts/test-preview.mjs can run it under Node.
  *
  * It does NOT fake the room's wrapper ("Liesel says, …"); it shows your own line with its codes
  * resolved, which is what you want when eyeing a pose before it goes out. The caller runs the same
@@ -30,12 +31,33 @@ export interface PreviewOpts {
 export function renderPreview(text: string, markup: MarkupSettings, opts: PreviewOpts = {}): Span[][] {
   const speechFg = opts.speechColour?.trim() || SPEECH_DEFAULT;
   const name = (opts.character ?? '').trim();
-  // Haven's plain-text substitutions, done before the code walk so the expanded name flows through
-  // speech colouring too: @line is a line break (like %r/%R), @me is your name, @my the possessive.
-  // Word-boundary \b so @me doesn't fire inside @meloria; left literal when no character name is set.
-  const src = text
+
+  // Pose verbs put your name in front: emote / pose / : add "Name " (a leading space); ; glues it on
+  // for a possessive (";'s hand" -> "Name's hand"). The verb is the command, so it isn't shown. When
+  // you place the name yourself with @me / @my, Haven doesn't also auto-add it, so neither do we.
+  // Left untouched when no character name is set (there's nothing to prepend).
+  let body = text;
+  if (name) {
+    let kind: 'space' | 'glue' | null = null;
+    let rest = text;
+    const verb = text.match(/^(?:emote|pose)\b[ \t]*/i);
+    if (verb) { kind = 'space'; rest = text.slice(verb[0].length); }
+    else if (text.startsWith(':')) { kind = 'space'; rest = text.slice(1); }
+    else if (text.startsWith(';')) { kind = 'glue'; rest = text.slice(1); }
+    if (kind) {
+      body = /@m[ey]\b/i.test(rest)
+        ? rest                                                        // @me / @my positions the name
+        : kind === 'glue' ? name + rest : `${name} ${rest.replace(/^[ \t]+/, '')}`;
+    }
+  }
+
+  // Haven's plain-text substitutions, done before the code walk so an expanded name flows through
+  // speech colouring too. @line is a hard break that swallows the spaces around it (the game trims
+  // them); @me is your name and @my the possessive; %r / %R are MUSH breaks. Word boundary \b so
+  // @me doesn't fire inside @meloria; @me / @my stay literal when no character name is set.
+  const src = body
     .replace(/%[rR]/g, '\n')
-    .replace(/@line\b/gi, '\n')
+    .replace(/[ \t]*@line\b[ \t]*/gi, '\n')
     .replace(/@my\b/gi, name ? `${name}'s` : '@my')
     .replace(/@me\b/gi, name || '@me');
 

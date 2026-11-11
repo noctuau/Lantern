@@ -82,7 +82,7 @@ const text = (s, opt = {}) => renderPreview(s, M, opt).map((ln) => ln.map((sp) =
 /* ---------- Haven @-tokens ---------- */
 const opt = { character: 'Liesel' };
 {
-  assert.deepEqual(text('emote @me waves', opt), ['emote Liesel waves']);
+  assert.deepEqual(text('@me waves', opt), ['Liesel waves']);
   ok('@me expands to the character name');
 }
 {
@@ -95,9 +95,14 @@ const opt = { character: 'Liesel' };
   ok('@me respects a word boundary');
 }
 {
-  // @line breaks the line, like %r.
-  assert.deepEqual(text('a @line b', opt), ['a ', ' b']);
-  ok('@line becomes a line break');
+  // @line is a hard break and swallows the spaces around it (the game trims them).
+  assert.deepEqual(text('a @line b', opt), ['a', 'b']);
+  ok('@line becomes a line break and trims surrounding spaces');
+}
+{
+  // Two @line in a row make one blank line, no stray spaces.
+  assert.deepEqual(text('a @line @line b', opt), ['a', '', 'b']);
+  ok('@line @line is a blank line with no leftover spaces');
 }
 {
   // With no character name, @me/@my are left literal.
@@ -109,6 +114,44 @@ const opt = { character: 'Liesel' };
   const l = renderPreview('"@me"', M, { character: 'Liesel' })[0];
   assert.equal(l.find((s) => s.text.includes('Liesel')).style.fg, '15');
   ok('an expanded @me inside speech is coloured');
+}
+
+/* ---------- pose verbs prepend the name ---------- */
+{
+  assert.deepEqual(text('emote tests some text', opt), ['Liesel tests some text']);
+  ok('emote prepends the name with a space');
+}
+{
+  assert.deepEqual(text('pose grins', opt), ['Liesel grins']);
+  ok('pose prepends the name');
+}
+{
+  assert.deepEqual(text(':waves', opt), ['Liesel waves']);
+  ok(': prepends the name with a space');
+}
+{
+  assert.deepEqual(text(";'s hand lifts", opt), ["Liesel's hand lifts"]);
+  ok('; glues the name on for a possessive');
+}
+{
+  // When @me / @my places the name, the verb is dropped but the name is NOT doubled.
+  assert.deepEqual(text('emote @me waves', opt), ['Liesel waves']);
+  ok('a pose with @me is not also auto-prepended');
+}
+{
+  // Speech verbs are left as typed — we do not fake the "says," wrapper.
+  assert.deepEqual(text('say hi', opt), ['say hi']);
+  ok('non-pose verbs are shown literally');
+}
+{
+  // With no character name, the pose verb is left literal (nothing to prepend).
+  assert.deepEqual(text('emote waves'), ['emote waves']);
+  ok('a pose is untouched when no name is set');
+}
+{
+  // emotes must not match a longer word.
+  assert.deepEqual(text('emotes are fun', opt), ['emotes are fun']);
+  ok('emote respects a word boundary');
 }
 
 console.log(`\n${n} preview assertions passed.`);

@@ -854,7 +854,7 @@ function OptionsTab({ w, setW }: { w: World; setW: React.Dispatch<React.SetState
           </Field>
         </div>
         {(w.character ?? '').trim() && (
-          <div className="example mono muted">emote @me waves @line @my hand is raised → {w.character} waves ⏎ {w.character}'s hand is raised</div>
+          <div className="example mono muted">emote waves → {w.character} waves{'   ·   '}@me / @my place the name yourself, @line is a break</div>
         )}
       </section>
       <section>
