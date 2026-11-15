@@ -5,6 +5,7 @@ import type { Span } from '../lib/ansi';
 import { FindBar } from './FindBar';
 import { findMatches, queryIsValid, type FindMatch } from '../lib/search';
 import { expandEmoji } from '../lib/emoji';
+import { isImageUrl, openLightbox } from '../lib/lightbox';
 
 const URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
 const NONE: Span[] = [];
@@ -16,11 +17,21 @@ function linkify(text: string): ReactNode {
   if (!URL_RE.test(text)) return text;
   URL_RE.lastIndex = 0;
   const parts = text.split(URL_RE);
-  return parts.map((p, i) =>
-    i % 2 === 1
-      ? <a key={i} href={p} className="link" onClick={(e) => { e.preventDefault(); window.lantern.app.openExternal(p); }}>{p}</a>
-      : p,
-  );
+  return parts.map((p, i) => {
+    if (i % 2 === 0) return p;
+    // A link straight to an image opens in the in-app lightbox; anything else goes to the browser.
+    // Either way the request only fires on this click — nothing loads on its own.
+    const img = isImageUrl(p);
+    return (
+      <a
+        key={i}
+        href={p}
+        className={`link${img ? ' img-link' : ''}`}
+        title={img ? 'View image' : undefined}
+        onClick={(e) => { e.preventDefault(); img ? openLightbox(p) : window.lantern.app.openExternal(p); }}
+      >{p}</a>
+    );
+  });
 }
 
 export function renderSpan(sp: Span, key: number) {

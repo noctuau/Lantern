@@ -136,6 +136,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .line.kind-error { color: var(--danger); font-style: italic; }
 .line.prompt { margin-top: 2px; }
 .link { color: var(--ansi-12); text-decoration: underline; cursor: pointer; }
+/* A link straight to an image: a tiny 🖼 before it marks that clicking opens the in-app viewer. */
+.img-link { text-decoration-style: dotted; }
+.img-link::before { content: "🖼 "; text-decoration: none; display: inline-block; }
 /* Floated at the bottom right of a pane: the unread pills, then "Jump to latest" under them when it is showing. */
 .float-stack { position: absolute; right: 24px; bottom: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
 .float-stack > * { pointer-events: auto; }
@@ -255,6 +258,33 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .modal .grow { flex: 1; }
 /* Pinned to the bottom of the (now scrollable) modal, so Save/Cancel stay in view on short screens. */
 .modal-actions { display: flex; gap: 8px; align-items: center; position: sticky; bottom: 0; margin: 4px -22px -20px; padding: 12px 22px 20px; background: var(--bg-2); border-top: 1px solid var(--line); border-radius: 0 0 14px 14px; }
+
+/* ---------- image lightbox ---------- */
+.lightbox-backdrop { padding: 24px; }
+.lightbox {
+  display: flex; flex-direction: column; gap: 10px; max-width: 94vw; max-height: 92vh; min-height: 0;
+}
+.lightbox-bar { display: flex; align-items: center; gap: 12px; color: var(--fg); }
+.lightbox-name {
+  flex: 1; min-width: 0; font-family: var(--font-ui); font-size: 13px; color: var(--fg-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lightbox-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.lightbox-actions .icon-btn { font-size: 16px; }
+.lightbox-stage {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  min-height: 0; min-width: 240px; flex: 1;
+}
+.lightbox-img {
+  max-width: 94vw; max-height: calc(92vh - 46px); object-fit: contain;
+  border-radius: 10px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); background: var(--bg-2);
+}
+.lightbox-spin { position: absolute; font-family: var(--font-ui); font-size: 13px; }
+.lightbox-fail {
+  display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 32px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; color: var(--fg);
+}
+.lightbox-fail p { margin: 0; }
 
 /* ---------- automation panel ---------- */
 .modal.auto { width: 920px; height: min(680px, calc(100vh - 40px)); padding: 0; gap: 0; overflow: hidden; }

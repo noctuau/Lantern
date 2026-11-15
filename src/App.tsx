@@ -13,6 +13,8 @@ import { AutomationPanel, type PanelTab } from './components/AutomationPanel';
 import { StatusBar } from './components/StatusBar';
 import { SettingsDialog, type SettingsTab } from './components/SettingsDialog';
 import { HighlightDialog } from './components/HighlightDialog';
+import { Lightbox } from './components/Lightbox';
+import { onOpenLightbox } from './lib/lightbox';
 import { applySettings, normalizeSettings, listSystemFonts, FALLBACK_FONTS, type AppSettings } from './lib/settings';
 import type { UpdateInfo } from '../shared/updates';
 import type { Trigger } from '../shared/types';
@@ -46,6 +48,9 @@ export function App() {
   // menu). An optional query pre-fills the box — the right-click uses the selected text.
   const [findReq, setFindReq] = useState<{ tick: number; query?: string }>({ tick: 0 });
   const requestFind = useCallback((query?: string) => setFindReq((r) => ({ tick: r.tick + 1, query })), []);
+  // The image lightbox: clicking an image link in the output sets the URL here; the modal renders it.
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  useEffect(() => onOpenLightbox(setLightbox), []);
   // Renaming a tab in place (just this open session), and dragging tabs to reorder them.
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
@@ -586,6 +591,8 @@ export function App() {
           onClose={() => { setAutomating(null); setPanelTab(undefined); }}
         />
       )}
+
+      {lightbox && <Lightbox url={lightbox} onClose={() => setLightbox(null)} />}
     </div>
   );
 }
