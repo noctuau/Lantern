@@ -290,26 +290,30 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
               onKeyDown={onKeyDown}
             />
           )}
-          {session.echo && !showPreview && (
-            <div className="emoji-pick-wrap">
-              {pickerOpen && (
-                <EmojiPicker
-                  onPick={(c) => insertEmoji(c)}
-                  onClose={() => { setPickerOpen(false); ref.current?.focus(); }}
-                />
-              )}
-              <button type="button" className={`btn small ghost input-emoji ${pickerOpen ? 'on' : ''}`}
-                title="Insert an emoji" aria-expanded={pickerOpen}
-                onClick={() => setPickerOpen((o) => !o)}>😀</button>
-            </div>
-          )}
           {session.echo && (
-            <button type="button" className={`btn small ghost input-eye ${showPreview ? 'on' : ''}`}
-              title={showPreview ? 'Back to editing' : 'Preview how this will look in-game'}
-              onClick={() => (showPreview ? exitPreview() : setPreview(true))}>{showPreview ? '✎' : '👁'}</button>
-          )}
-          {session.echo && !spellCheckInput && (
-            <button type="button" className={`btn small ghost input-check ${checkNow ? 'on' : ''}`} title="Spell-check what's in the box now (it turns off again when you send)" onClick={() => { setCheckNow(true); ref.current?.focus(); }}>🔤</button>
+            // The small action buttons stack in a narrow column down the right edge, not in a row,
+            // so they take one button's width instead of several.
+            <div className="input-actions">
+              {!showPreview && (
+                <div className="emoji-pick-wrap">
+                  {pickerOpen && (
+                    <EmojiPicker
+                      onPick={(c) => insertEmoji(c)}
+                      onClose={() => { setPickerOpen(false); ref.current?.focus(); }}
+                    />
+                  )}
+                  <button type="button" className={`btn small ghost input-emoji ${pickerOpen ? 'on' : ''}`}
+                    title="Insert an emoji" aria-expanded={pickerOpen}
+                    onClick={() => setPickerOpen((o) => !o)}>😀</button>
+                </div>
+              )}
+              <button type="button" className={`btn small ghost input-eye ${showPreview ? 'on' : ''}`}
+                title={showPreview ? 'Back to editing' : 'Preview how this will look in-game'}
+                onClick={() => (showPreview ? exitPreview() : setPreview(true))}>{showPreview ? '✎' : '👁'}</button>
+              {!spellCheckInput && (
+                <button type="button" className={`btn small ghost input-check ${checkNow ? 'on' : ''}`} title="Spell-check what's in the box now (it turns off again when you send)" onClick={() => { setCheckNow(true); ref.current?.focus(); }}>🔤</button>
+              )}
+            </div>
           )}
           {sendMode === 'button' && (
             <button type="button" className="btn primary input-send" title="Send this command (or press Ctrl+Enter)" onClick={() => { send(); ref.current?.focus(); }}>Send</button>

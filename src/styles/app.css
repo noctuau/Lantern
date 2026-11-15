@@ -173,15 +173,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .masked .input { -webkit-text-security: disc; }
 .input-row { display: flex; align-items: flex-start; gap: 8px; }
 .input-send { align-self: flex-end; height: 38px; flex-shrink: 0; }
-.input-check { align-self: flex-end; height: 38px; flex-shrink: 0; }
+/* The small action buttons (😀 / 👁 / 🔤) stack in a narrow column down the right of the box,
+   pinned to the bottom, so they take one button's width instead of sitting in a row. */
+.input-actions { display: flex; flex-direction: column; gap: 6px; align-self: stretch; justify-content: flex-end; flex-shrink: 0; }
+.input-actions .btn { width: 40px; height: 34px; padding: 0; align-self: auto; flex-shrink: 0; }
+.input-actions .emoji-pick-wrap { align-self: auto; }
 .input-check.on { border-color: var(--accent-2); color: var(--accent); }
-.input-eye { align-self: flex-end; height: 38px; flex-shrink: 0; }
 .input-eye.on { border-color: var(--accent-2); color: var(--accent); }
-.input-emoji { align-self: flex-end; height: 38px; flex-shrink: 0; }
 .input-emoji.on { border-color: var(--accent-2); color: var(--accent); }
 /* Emoji picker: a popover anchored above the 😀 button. The wrap keeps the button and popover
    together so a click on either stays "inside" (see EmojiPicker's outside-click guard). */
-.emoji-pick-wrap { position: relative; align-self: flex-end; display: flex; }
+.emoji-pick-wrap { position: relative; display: flex; }
 .emoji-picker {
   position: absolute; bottom: calc(100% + 8px); right: 0; z-index: 40;
   width: 300px; display: flex; flex-direction: column;
