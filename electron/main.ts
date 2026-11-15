@@ -12,6 +12,7 @@ import { aboutInfo, checkForUpdates, downloadUpdate, installUpdate } from './upd
 import type { ReleaseAsset, UpdateFlavour } from '../shared/updates';
 import { PuebloFilter } from '../shared/pueblo';
 import { MxpFilter } from '../shared/mxp';
+import { refreshProfiles, readProfileCache, lookupProfile } from './profiles';
 
 interface Session {
   id: string;
@@ -473,6 +474,18 @@ ipcMain.handle('spell:languages', () => {
   const ses = electronSession.defaultSession;
   return { available: ses.availableSpellCheckerLanguages, active: ses.getSpellCheckerLanguages() };
 });
+
+// --- My Haven profile cache ---
+let scraping: Promise<unknown> | null = null;   // one refresh at a time
+ipcMain.handle('profiles:refresh', async (e) => {
+  if (scraping) { await scraping.catch(() => {}); const c = readProfileCache(); return { updatedAt: c.updatedAt, count: Object.keys(c.profiles).length }; }
+  const run = refreshProfiles((done, total, name) => { if (!e.sender.isDestroyed()) e.sender.send('profiles:progress', { done, total, name }); });
+  scraping = run;
+  try { const cache = await run; return { updatedAt: cache.updatedAt, count: Object.keys(cache.profiles).length }; }
+  finally { scraping = null; }
+});
+ipcMain.handle('profiles:status', () => { const c = readProfileCache(); return { updatedAt: c.updatedAt, count: Object.keys(c.profiles).length }; });
+ipcMain.handle('profiles:get', (_e, handle: string) => lookupProfile(String(handle)));
 
 app.whenReady().then(() => { createWindow(); installedFonts(); });
 app.on('window-all-closed', () => {

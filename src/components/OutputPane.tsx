@@ -6,6 +6,7 @@ import { FindBar } from './FindBar';
 import { findMatches, queryIsValid, type FindMatch } from '../lib/search';
 import { expandEmoji } from '../lib/emoji';
 import { isImageUrl, openLightbox } from '../lib/lightbox';
+import { openProfile } from '../lib/profileview';
 
 const URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
 const NONE: Span[] = [];
@@ -84,6 +85,14 @@ export const LineView = memo(function LineView({ line, showTime }: { line: Line;
     <div className={`line kind-${line.kind} ${line.prompt ? 'prompt' : ''}`} data-ts={line.ts} data-id={line.id} title={when}>
       {showTime && <span className="ts" title={when}>{fmtTime(line.ts)}</span>}
       {line.spans.length === 0 ? ' ' : line.spans.map(renderSpan)}
+      {line.profile && (
+        <button
+          type="button"
+          className="profile-pill"
+          title={`Open @${line.profile.handle}'s profile`}
+          onClick={() => openProfile(line.profile!.handle)}
+        >view @{line.profile.handle} profile</button>
+      )}
     </div>
   );
 });

@@ -48,6 +48,12 @@ contextBridge.exposeInMainWorld('lantern', {
   spell: {
     languages: () => ipcRenderer.invoke('spell:languages'),
   },
+  profiles: {
+    refresh: () => ipcRenderer.invoke('profiles:refresh'),
+    status: () => ipcRenderer.invoke('profiles:status'),
+    get: (handle: string) => ipcRenderer.invoke('profiles:get', handle),
+    onProgress: on('profiles:progress'),
+  },
   app: {
     openLogs: () => ipcRenderer.invoke('app:openLogs'),
     chooseFolder: (title?: string) => ipcRenderer.invoke('app:chooseFolder', title),

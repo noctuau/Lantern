@@ -15,6 +15,8 @@ import { SettingsDialog, type SettingsTab } from './components/SettingsDialog';
 import { HighlightDialog } from './components/HighlightDialog';
 import { Lightbox } from './components/Lightbox';
 import { onOpenLightbox } from './lib/lightbox';
+import { ProfileModal } from './components/ProfileModal';
+import { onOpenProfile } from './lib/profileview';
 import { applySettings, normalizeSettings, listSystemFonts, FALLBACK_FONTS, type AppSettings } from './lib/settings';
 import type { UpdateInfo } from '../shared/updates';
 import type { Trigger } from '../shared/types';
@@ -51,6 +53,9 @@ export function App() {
   // The image lightbox: clicking an image link in the output sets the URL here; the modal renders it.
   const [lightbox, setLightbox] = useState<string | null>(null);
   useEffect(() => onOpenLightbox(setLightbox), []);
+  // The My Haven profile modal: a clicked "view @handle profile" pill sets the handle here.
+  const [profileHandle, setProfileHandle] = useState<string | null>(null);
+  useEffect(() => onOpenProfile(setProfileHandle), []);
   // Renaming a tab in place (just this open session), and dragging tabs to reorder them.
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
@@ -593,6 +598,7 @@ export function App() {
       )}
 
       {lightbox && <Lightbox url={lightbox} onClose={() => setLightbox(null)} />}
+      {profileHandle && <ProfileModal handle={profileHandle} onClose={() => setProfileHandle(null)} />}
     </div>
   );
 }

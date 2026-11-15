@@ -30,12 +30,13 @@ const LANG_LABELS: Record<string, string> = {
 };
 const langLabel = (c: string) => LANG_LABELS[c] ?? c;
 
-export type SettingsTab = 'text' | 'colours' | 'presets' | 'spelling' | 'about';
+export type SettingsTab = 'text' | 'colours' | 'presets' | 'spelling' | 'myhaven' | 'about';
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: 'text', label: 'Text & layout' },
   { id: 'colours', label: 'Colours' },
   { id: 'presets', label: 'Presets' },
   { id: 'spelling', label: 'Spelling' },
+  { id: 'myhaven', label: 'My Haven' },
   { id: 'about', label: 'About' },
 ];
 
@@ -328,6 +329,8 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
               )}
             </>)}
 
+            {tab === 'myhaven' && <MyHavenTab />}
+
             {tab === 'about' && (
               <AboutTab checkOnStart={s.checkUpdates} onCheckOnStart={(v) => set('checkUpdates', v)} update={update} onUpdate={(u) => onUpdate?.(u)} />
             )}
@@ -342,5 +345,35 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
         </div>
       </form>
     </div>
+  );
+}
+
+/** My Haven profile cache: a manual refresh (never automatic — it's ~40 page loads) plus a status line. */
+function MyHavenTab() {
+  const [status, setStatus] = useState<{ updatedAt: number; count: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [prog, setProg] = useState<{ done: number; total: number; name: string } | null>(null);
+
+  useEffect(() => { window.lantern.profiles.status().then(setStatus).catch(() => {}); }, []);
+  useEffect(() => window.lantern.profiles.onProgress(setProg), []);
+
+  const refresh = async () => {
+    setBusy(true); setProg(null);
+    try { setStatus(await window.lantern.profiles.refresh()); }
+    catch { /* leave the old status */ }
+    finally { setBusy(false); setProg(null); }
+  };
+
+  const last = status?.updatedAt ? new Date(status.updatedAt).toLocaleString() : 'never';
+  return (
+    <>
+      <h3>My Haven profiles</h3>
+      <p className="hint">When you pull a character up in-game, Lantern adds a <b>view @handle profile</b> pill at the bottom — click it to see their My Haven photos beside the profile. This button caches the current roster and their photos from havenrpg.net (about 40 pages, loaded quietly). Run it now and then, or when someone new turns up.</p>
+      <div className="row" style={{ alignItems: 'center', gap: 12 }}>
+        <button type="button" className="btn primary" disabled={busy} onClick={refresh}>{busy ? 'Refreshing…' : 'Refresh profiles'}</button>
+        <span className="muted small">{busy && prog ? `${prog.done}/${prog.total} — ${prog.name}` : `${status?.count ?? 0} cached · last refreshed ${last}`}</span>
+      </div>
+      <p className="hint">The profile text always comes from the game itself (correct fixed-font and colours). This only caches the photos and the handle→name list, so the pill works offline afterwards.</p>
+    </>
   );
 }

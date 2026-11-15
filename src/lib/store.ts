@@ -23,11 +23,14 @@ import { lineHtml } from './loghtml';
 import { playSound, soundVolume } from './sound';
 import { LuaSession, type LuaHost, type NoteSpan, type Scripted, type ScriptKind } from './lua';
 import { getLuaFactory } from './lua-wasm';
+import { setProfileCapture } from './profileview';
 
 export type { World } from '../../shared/types';
 
 export type LineKind = 'mud' | 'input' | 'note' | 'error';
-export interface Line { id: number; kind: LineKind; spans: Span[]; ts: number; prompt?: boolean }
+export interface Line { id: number; kind: LineKind; spans: Span[]; ts: number; prompt?: boolean;
+  /** Set on a My Haven profile's footer line; OutputPane renders a "view @handle profile" pill. */
+  profile?: { handle: string } }
 
 /** A channel tab's own scrollback. Scroll position and lock live in its OutputPane. */
 export interface ChannelView { lines: Line[]; unread: number }
@@ -409,8 +412,32 @@ class Store {
     if (!route || swallow) return;   // gagged or padding: shown nowhere, and never reaches a tab
 
     const line: Line = { id: this.lineId++, kind, spans: merged, ts: Date.now(), prompt };
+    this.markProfile(s, line, text);
     if (route.showInTab && route.tab) this.pushChannelLine(s, route.tab, line, !route.showInMain);
     if (route.showInMain) this.pushLine(s, line);
+  }
+
+  /**
+   * My Haven profile detection. The profile block ends with a "…@handle on MyHaven…" line (present
+   * whatever the relationship). When we see it, we tag the line so the output renders a pill, and
+   * capture the block's text (from the "@handle(…)" header, or the "About Me:" line as a fallback,
+   * down to here) so the modal can show the game's own fixed-font, coloured copy next to the photos.
+   */
+  private markProfile(s: SessionState, line: Line, text: string) {
+    const m = /@([\w$.\-]+)\s+on\s+MyHaven\b/i.exec(text);
+    if (!m) return;
+    const handle = m[1];
+    const esc = handle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const headRe = new RegExp(`^@${esc}(?:\\(|\\b|$)`);
+    const lines = s.lines;
+    let start = -1;
+    for (let i = lines.length - 1, stop = Math.max(0, lines.length - 80); i >= stop; i--) {
+      const t = lines[i].spans.map((sp) => sp.text).join('').trim();
+      if (headRe.test(t)) { start = i; break; }
+      if (start === -1 && /^About Me:/i.test(t)) start = i;   // fallback; keep scanning for the header
+    }
+    if (start >= 0) setProfileCapture(handle, lines.slice(start).map((l) => l.spans));
+    line.profile = { handle };
   }
 
   /** A captured line lands in its tab's scrollback; `countSession` adds it to the session tab's badge when the line is not also in main. */

@@ -1,6 +1,7 @@
 import type { World } from './lib/store';
 import type { Trigger, Alias, Timer } from '../shared/types';
 import type { UpdateInfo, ReleaseAsset, UpdateFlavour } from '../shared/updates';
+import type { Profile } from '../shared/profiles';
 
 type MclItems = { triggers: Trigger[]; aliases: Alias[]; timers: Timer[] };
 
@@ -48,6 +49,15 @@ declare global {
       };
       spell: {
         languages(): Promise<{ available: string[]; active: string[] }>;
+      };
+      profiles: {
+        /** Re-scrape every active My Haven profile (hidden window); resolves when the cache is written. */
+        refresh(): Promise<{ updatedAt: number; count: number }>;
+        /** How many profiles are cached and when (updatedAt is 0 if never scraped). */
+        status(): Promise<{ updatedAt: number; count: number }>;
+        /** One cached profile by @handle (with or without the @), or null if not scraped yet. */
+        get(handle: string): Promise<Profile | null>;
+        onProgress(cb: (p: { done: number; total: number; name: string }) => void): Unsub;
       };
       app: {
         openLogs(): Promise<string>;

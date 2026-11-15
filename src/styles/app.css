@@ -286,6 +286,52 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .lightbox-fail p { margin: 0; }
 
+/* ---------- My Haven profile pill + modal ---------- */
+.profile-pill {
+  display: inline-block; margin-left: 10px; padding: 1px 10px; vertical-align: baseline;
+  border: 1px solid var(--accent-2); border-radius: 999px; background: transparent;
+  color: var(--accent); font: inherit; font-size: 0.85em; cursor: pointer; user-select: none;
+}
+.profile-pill:hover { background: rgba(232, 169, 75, 0.12); border-color: var(--accent); }
+.profile-backdrop { padding: 24px; }
+.profile-view {
+  display: flex; flex-direction: column; width: min(1000px, 94vw); max-height: 92vh; min-height: 0;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+.profile-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.profile-id { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.profile-name { font-family: var(--font-ui); font-size: 18px; font-weight: 600; color: var(--fg); }
+.profile-handle { font-size: 12px; color: var(--accent); }
+.profile-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.profile-actions .icon-btn { font-size: 16px; }
+.profile-body { display: flex; min-height: 0; flex: 1; }
+.profile-photos {
+  position: relative; flex: 0 0 42%; max-width: 42%; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); border-right: 1px solid var(--line); padding: 16px; min-height: 0;
+}
+.profile-photo { max-width: 100%; max-height: 74vh; object-fit: contain; border-radius: 8px; cursor: zoom-in; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5); }
+.profile-nophoto { padding: 24px; text-align: center; font-family: var(--font-ui); font-size: 13px; }
+.profile-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 44px;
+  background: rgba(0, 0, 0, 0.4); color: #fff; border: 0; border-radius: 8px; font-size: 22px; cursor: pointer;
+}
+.profile-nav:hover { background: rgba(0, 0, 0, 0.65); }
+.profile-nav.prev { left: 8px; } .profile-nav.next { right: 8px; }
+.profile-dots { position: absolute; bottom: 10px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; }
+.profile-dot { width: 8px; height: 8px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.35); cursor: pointer; padding: 0; }
+.profile-dot.on { background: #fff; }
+.profile-text {
+  flex: 1; min-width: 0; overflow: auto; padding: 16px 20px;
+  font-family: var(--font-mud); font-size: var(--mud-size); line-height: 1.5;
+  white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-color: var(--line) transparent;
+}
+.profile-text-line { min-height: 1lh; }
+@media (max-width: 680px) {
+  .profile-body { flex-direction: column; }
+  .profile-photos { flex-basis: auto; max-width: none; border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
 /* ---------- automation panel ---------- */
 .modal.auto { width: 920px; height: min(680px, calc(100vh - 40px)); padding: 0; gap: 0; overflow: hidden; }
 .auto-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 18px 44px 0 22px; border-bottom: 1px solid var(--line); }
