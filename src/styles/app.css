@@ -262,7 +262,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ---------- image lightbox ---------- */
 .lightbox-backdrop { padding: 24px; }
 .lightbox {
-  display: flex; flex-direction: column; gap: 10px; max-width: 94vw; max-height: 92vh; min-height: 0;
+  display: flex; flex-direction: column; gap: 10px; max-width: min(760px, 86vw); max-height: 78vh; min-height: 0;
 }
 .lightbox-bar { display: flex; align-items: center; gap: 12px; color: var(--fg); }
 .lightbox-name {
@@ -276,7 +276,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   min-height: 0; min-width: 240px; flex: 1;
 }
 .lightbox-img {
-  max-width: 94vw; max-height: calc(92vh - 46px); object-fit: contain;
+  max-width: min(760px, 86vw); max-height: calc(78vh - 46px); object-fit: contain;
   border-radius: 10px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); background: var(--bg-2);
 }
 .lightbox-spin { position: absolute; font-family: var(--font-ui); font-size: 13px; }
@@ -329,7 +329,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .profile-text-line { min-height: 1lh; }
 @media (max-width: 900px) {
   .profile-body { flex-direction: column; }
-  .profile-photos { flex: 0 0 42vh; max-width: none; height: 42vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  .profile-photos { flex: 0 0 48vh; max-width: none; height: 48vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  /* Full-width banner: pin the crop to the top so the subject's head stays in frame. */
+  .profile-photo { object-position: top center; }
 }
 
 /* ---------- automation panel ---------- */
