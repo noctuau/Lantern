@@ -4,7 +4,6 @@ import type { SendMode } from '../lib/settings';
 import { entrySends } from '../lib/sendkey';
 import { activePrefix, applyCommandPrefix, PREFIX_BYPASS } from '../lib/channels';
 import { applyMarkup } from '../lib/automation';
-import { expandEmoji } from '../lib/emoji';
 import { renderPreview } from '../lib/preview';
 import { renderSpan } from './OutputPane';
 import { EmojiPicker } from './EmojiPicker';
@@ -98,18 +97,19 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   }, []);
   useEffect(() => { registerInsert?.(insert); }, [registerInsert, insert]);
 
-  // Drop an emoji in at the caret (replacing any selection), inline — the picker uses this. Unlike
-  // `insert` above it never breaks onto a new line, since an emoji belongs mid-sentence. The box's
-  // selection survives the picker taking focus (selectionStart/End persist through blur).
-  const insertEmoji = useCallback((char: string) => {
+  // Drop a shortcode (e.g. ":santa:") in at the caret (replacing any selection), inline — the picker
+  // uses this. The literal code is what sends; Lantern shows the emoji on display. Unlike `insert`
+  // above it never breaks onto a new line, since it belongs mid-sentence. The box's selection
+  // survives the picker taking focus (selectionStart/End persist through blur).
+  const insertEmoji = useCallback((text: string) => {
     const el = ref.current;
     const start = el?.selectionStart ?? el?.value.length ?? 0;
     const end = el?.selectionEnd ?? start;
-    setValue((v) => v.slice(0, start) + char + v.slice(end));
+    setValue((v) => v.slice(0, start) + text + v.slice(end));
     requestAnimationFrame(() => {
       const e2 = ref.current; if (!e2) return;
       e2.focus();
-      const at = start + char.length;
+      const at = start + text.length;
       e2.setSelectionRange(at, at);
     });
   }, []);
@@ -226,7 +226,7 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   // markup go on first (so a pose whose markup can't fire shows its literal asterisks — honest),
   // then renderPreview resolves the colour/format codes, line breaks and white speech.
   const previewLines = useMemo(
-    () => renderPreview(applyMarkup(session.world.markup, expandEmoji(applyCommandPrefix(prefix, value).text)), session.world.markup, {
+    () => renderPreview(applyMarkup(session.world.markup, applyCommandPrefix(prefix, value).text), session.world.markup, {
       character: session.world.character,
       speechColour: session.world.speechColour,
     }),

@@ -1,8 +1,10 @@
 /**
- * Emoji shortcodes for the command box. `:name:` in a line you send (and in the 👁 preview) turns
- * into the matching emoji, Discord/GitHub style, so typing :santa: sends 🎅. Only KNOWN names
- * convert — an unknown :word: is left exactly as typed, so game syntax that happens to use colons
- * (12:30, http://…, exits:) is never touched. The same table backs the emoji picker's grid.
+ * Emoji shortcodes, Discord/GitHub style. `:santa:` DISPLAYS as 🎅 — but the literal `:santa:` is
+ * what gets sent to the game and what's stored, so clients that don't translate still see the code
+ * and capable ones show the emoji (the same idea as Haven's @me tokens: raw on the wire, resolved
+ * for the eye). expandEmoji() runs only at display time (OutputPane's renderSpan, which also feeds
+ * the 👁 preview). Only KNOWN names convert — an unknown :word: is left exactly as typed, so game
+ * text with colons (12:30, http://…, exits:) is never touched. The table also backs the picker grid.
  *
  * Pure (no DOM/Electron) so scripts/test-emoji.mjs can run it under Node.
  */

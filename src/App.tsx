@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { store, useStore, MAIN_VIEW, type World } from './lib/store';
 import { activePrefix, applyCommandPrefix, havenChannelTab, helpChannelTab } from './lib/channels';
 import { cleanTyped, applyMarkup } from './lib/automation';
-import { expandEmoji } from './lib/emoji';
 import { OutputPane } from './components/OutputPane';
 import { ChannelStrip, UnreadPills } from './components/ChannelStrip';
 import { InputBar } from './components/InputBar';
@@ -329,10 +328,10 @@ export function App() {
     // The echo and log show what was sent; history keeps what was typed (tidied).
     const typed = settings.cleanInput ? cleanTyped(raw) : raw;
     const { text: prefixed } = applyCommandPrefix(activePrefix(active.world.channelTabs, active.view), typed);
-    // :santa: → 🎅 (known shortcodes only; a leading pose ':' is preserved — see expandEmoji).
-    const emojied = expandEmoji(prefixed);
+    // Emoji shortcodes are NOT expanded here: the literal :santa: goes out on the wire, so clients
+    // that don't translate still see the code. Lantern only resolves it for display (see OutputPane).
     // *italic* / **bold** / __underline__ → the world's format codes, in listed chat commands only (Options tab).
-    const text = applyMarkup(active.world.markup, emojied);
+    const text = applyMarkup(active.world.markup, prefixed);
     // With the option off, say once per world when a chat command carried markup that would have been converted.
     if (!active.world.markup.enabled && !markupTipShown.current.has(active.world.id)
       && applyMarkup({ ...active.world.markup, enabled: true }, prefixed) !== prefixed) {

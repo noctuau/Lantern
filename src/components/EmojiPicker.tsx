@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { EMOJI_LIST, searchEmoji, nameForChar, type EmojiEntry } from '../lib/emoji';
 
 interface Props {
-  /** Drop this emoji into the command box. The picker stays open so several can be picked. */
-  onPick(char: string): void;
+  /** Drop this shortcode (e.g. ":santa:") into the command box — the literal code is what sends, and
+   *  Lantern shows the emoji on display. The picker stays open so several can be picked. */
+  onPick(shortcode: string): void;
   /** Close the popover (Esc, or a click outside it). */
   onClose(): void;
 }
@@ -58,15 +59,15 @@ export function EmojiPicker({ onPick, onClose }: Props) {
   const results = useMemo(() => searchEmoji(query), [query]);
   const searching = query.trim() !== '';
 
-  const pick = (char: string) => {
+  const pick = (e: EmojiEntry) => {
     setFreq((prev) => {
       const next = prev.map((f) => ({ ...f }));
-      const hit = next.find((f) => f.c === char);
-      if (hit) hit.n += 1; else next.push({ c: char, n: 1 });
+      const hit = next.find((f) => f.c === e.char);
+      if (hit) hit.n += 1; else next.push({ c: e.char, n: 1 });
       saveFreq(next);
       return next;
     });
-    onPick(char);
+    onPick(`:${e.name}:`);
   };
 
   const hoverName = hover ? nameForChar(hover) : null;
@@ -79,7 +80,7 @@ export function EmojiPicker({ onPick, onClose }: Props) {
       title={`:${e.name}:`}
       onMouseEnter={() => setHover(e.char)}
       onFocus={() => setHover(e.char)}
-      onClick={() => pick(e.char)}
+      onClick={() => pick(e)}
     >{e.char}</button>
   );
 
@@ -117,7 +118,7 @@ export function EmojiPicker({ onPick, onClose }: Props) {
         )}
       </div>
       <div className="emoji-foot">
-        {hover ? <><span className="emoji-foot-char">{hover}</span> <code>:{hoverName}:</code></> : <span className="muted">Pick an emoji — it drops in at your cursor.</span>}
+        {hover ? <><span className="emoji-foot-char">{hover}</span> <code>:{hoverName}:</code></> : <span className="muted">Inserts the <code>:code:</code> — the emoji shows on display.</span>}
       </div>
     </div>
   );

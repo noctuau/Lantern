@@ -4,6 +4,7 @@ import type { Line } from '../lib/store';
 import type { Span } from '../lib/ansi';
 import { FindBar } from './FindBar';
 import { findMatches, queryIsValid, type FindMatch } from '../lib/search';
+import { expandEmoji } from '../lib/emoji';
 
 const URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
 const NONE: Span[] = [];
@@ -23,7 +24,9 @@ function linkify(text: string): ReactNode {
 }
 
 export function renderSpan(sp: Span, key: number) {
-  return <span key={key} style={spanStyle(sp.style)}>{linkify(sp.text)}</span>;
+  // Emoji shortcodes resolve at DISPLAY time only (expandEmoji) — the stored line text and the wire
+  // keep the literal :name:, this just shows 🎅. Same for the echo of your own sent line.
+  return <span key={key} style={spanStyle(sp.style)}>{linkify(expandEmoji(sp.text))}</span>;
 }
 
 /**
@@ -46,12 +49,12 @@ function renderSpansMarked(spans: Span[], ranges: [number, number][], current: [
       if (rs >= spEnd) break;           // ranges are sorted: nothing further touches this span
       const a = Math.max(rs, spStart);
       const b = Math.min(re, spEnd);
-      if (a > cursor) out.push(<span key={key++} style={style}>{linkify(sp.text.slice(cursor - spStart, a - spStart))}</span>);
+      if (a > cursor) out.push(<span key={key++} style={style}>{linkify(expandEmoji(sp.text.slice(cursor - spStart, a - spStart)))}</span>);
       const isCur = !!current && rs === current[0] && re === current[1];
-      out.push(<mark key={key++} className={`find-mark${isCur ? ' current' : ''}`} style={style}>{sp.text.slice(a - spStart, b - spStart)}</mark>);
+      out.push(<mark key={key++} className={`find-mark${isCur ? ' current' : ''}`} style={style}>{expandEmoji(sp.text.slice(a - spStart, b - spStart))}</mark>);
       cursor = b;
     }
-    if (cursor < spEnd) out.push(<span key={key++} style={style}>{linkify(sp.text.slice(cursor - spStart))}</span>);
+    if (cursor < spEnd) out.push(<span key={key++} style={style}>{linkify(expandEmoji(sp.text.slice(cursor - spStart)))}</span>);
     pos = spEnd;
   }
   return out;
