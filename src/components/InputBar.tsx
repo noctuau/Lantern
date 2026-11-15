@@ -4,8 +4,10 @@ import type { SendMode } from '../lib/settings';
 import { entrySends } from '../lib/sendkey';
 import { activePrefix, applyCommandPrefix, PREFIX_BYPASS } from '../lib/channels';
 import { applyMarkup } from '../lib/automation';
+import { expandEmoji } from '../lib/emoji';
 import { renderPreview } from '../lib/preview';
 import { renderSpan } from './OutputPane';
+import { EmojiPicker } from './EmojiPicker';
 
 interface Props {
   session: SessionState;
@@ -41,6 +43,8 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   // In-game preview: swap the box for a read-only render of how the line will look once sent
   // (colours, bold/italic/underline, line breaks, white speech). Toggle with the 👁 button.
   const [preview, setPreview] = useState(false);
+  // Emoji picker popover (the 😀 button next to the eye): a searchable grid + frequently-used row.
+  const [pickerOpen, setPickerOpen] = useState(false);
   const histIdx = useRef<number | null>(null);   // null = not browsing history
   const draft = useRef('');
 
@@ -94,6 +98,22 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   }, []);
   useEffect(() => { registerInsert?.(insert); }, [registerInsert, insert]);
 
+  // Drop an emoji in at the caret (replacing any selection), inline — the picker uses this. Unlike
+  // `insert` above it never breaks onto a new line, since an emoji belongs mid-sentence. The box's
+  // selection survives the picker taking focus (selectionStart/End persist through blur).
+  const insertEmoji = useCallback((char: string) => {
+    const el = ref.current;
+    const start = el?.selectionStart ?? el?.value.length ?? 0;
+    const end = el?.selectionEnd ?? start;
+    setValue((v) => v.slice(0, start) + char + v.slice(end));
+    requestAnimationFrame(() => {
+      const e2 = ref.current; if (!e2) return;
+      e2.focus();
+      const at = start + char.length;
+      e2.setSelectionRange(at, at);
+    });
+  }, []);
+
   // Expose the currently selected text (selectionStart/End survive blur, so the composer button
   // can read it even after focus moves to the button).
   const getSelection = useCallback(() => {
@@ -139,6 +159,7 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
     setValue('');
     setCheckNow(false);
     setPreview(false);
+    setPickerOpen(false);
     histIdx.current = null;
     draft.current = '';
   };
@@ -205,7 +226,7 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   // markup go on first (so a pose whose markup can't fire shows its literal asterisks — honest),
   // then renderPreview resolves the colour/format codes, line breaks and white speech.
   const previewLines = useMemo(
-    () => renderPreview(applyMarkup(session.world.markup, applyCommandPrefix(prefix, value).text), session.world.markup, {
+    () => renderPreview(applyMarkup(session.world.markup, expandEmoji(applyCommandPrefix(prefix, value).text)), session.world.markup, {
       character: session.world.character,
       speechColour: session.world.speechColour,
     }),
@@ -268,6 +289,19 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={onKeyDown}
             />
+          )}
+          {session.echo && !showPreview && (
+            <div className="emoji-pick-wrap">
+              {pickerOpen && (
+                <EmojiPicker
+                  onPick={(c) => insertEmoji(c)}
+                  onClose={() => { setPickerOpen(false); ref.current?.focus(); }}
+                />
+              )}
+              <button type="button" className={`btn small ghost input-emoji ${pickerOpen ? 'on' : ''}`}
+                title="Insert an emoji" aria-expanded={pickerOpen}
+                onClick={() => setPickerOpen((o) => !o)}>😀</button>
+            </div>
           )}
           {session.echo && (
             <button type="button" className={`btn small ghost input-eye ${showPreview ? 'on' : ''}`}
