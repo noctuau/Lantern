@@ -327,11 +327,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-color: var(--line) transparent;
 }
 .profile-text-line { min-height: 1lh; }
-@media (max-width: 900px) {
+@media (max-width: 760px) {
   .profile-body { flex-direction: column; }
-  .profile-photos { flex: 0 0 48vh; max-width: none; height: 48vh; border-right: 0; border-bottom: 1px solid var(--line); }
-  /* Full-width banner: pin the crop to the top so the subject's head stays in frame. */
-  .profile-photo { object-position: top center; }
+  .profile-photos { flex: 0 0 56vh; max-width: none; height: 56vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  /* Stacked: show the whole photo as a centred portrait, not a cropped full-width band. */
+  .profile-photo { object-fit: contain; }
 }
 
 /* ---------- automation panel ---------- */
