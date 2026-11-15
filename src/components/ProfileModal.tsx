@@ -16,6 +16,15 @@ export function ProfileModal({ handle, onClose }: { handle: string; onClose: () 
   // The in-game text block captured for this handle (lines of coloured spans).
   const lines = useMemo(() => getProfileCapture(handle), [handle]);
 
+  // Drop a leading "@handle(…)" header line — the modal header already shows the handle, so it'd just repeat.
+  const textLines = useMemo(() => {
+    if (!lines || !lines.length) return lines;
+    const esc = handle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const headRe = new RegExp(`^@${esc}(?:\\(|\\b|$)`, 'i');
+    const first = lines[0].map((sp) => sp.text).join('').trim();
+    return headRe.test(first) ? lines.slice(1) : lines;
+  }, [lines, handle]);
+
   useEffect(() => {
     let live = true;
     window.lantern.profiles.get(handle).then((p) => { if (live) setProfile(p); }).catch(() => { if (live) setProfile(null); });
@@ -82,8 +91,8 @@ export function ProfileModal({ handle, onClose }: { handle: string; onClose: () 
           </div>
 
           <div className="profile-text">
-            {lines && lines.length ? (
-              lines.map((spans, li) => (
+            {textLines && textLines.length ? (
+              textLines.map((spans, li) => (
                 <div className="profile-text-line" key={li}>{spans.length ? spans.map(renderSpan) : ' '}</div>
               ))
             ) : (
