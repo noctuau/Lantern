@@ -29,7 +29,7 @@ export type { World } from '../../shared/types';
 
 export type LineKind = 'mud' | 'input' | 'note' | 'error';
 export interface Line { id: number; kind: LineKind; spans: Span[]; ts: number; prompt?: boolean;
-  /** Set on a My Haven profile's footer line; OutputPane renders a "view @handle profile" pill. */
+  /** Set on a My Haven profile's "About Me:" line; OutputPane renders a "view @handle profile" pill. */
   profile?: { handle: string } }
 
 /** A channel tab's own scrollback. Scroll position and lock live in its OutputPane. */
@@ -62,6 +62,8 @@ export interface SessionState {
   swallowBlankUntil: number; // after a captured line: drop the next blank line until this time (ms)
   /** A command matched a tab's capture pattern: replies go to that tab until quiet or the next command. */
   cmdCapture: { tabId: string; until: number; lines: number } | null;
+  /** While a My Haven profile block is streaming in, we capture its lines for the profile modal. */
+  profileCap?: { handle: string; startId: number; count: number } | null;
   lua: LuaSession | null;
   luaStatus: 'starting' | 'ready' | 'error' | 'failed';
   luaGen: number;        // bumps on every (re)load so a stale load can't install itself
@@ -418,26 +420,51 @@ class Store {
   }
 
   /**
-   * My Haven profile detection. The profile block ends with a "…@handle on MyHaven…" line (present
-   * whatever the relationship). When we see it, we tag the line so the output renders a pill, and
-   * capture the block's text (from the "@handle(…)" header, or the "About Me:" line as a fallback,
-   * down to here) so the modal can show the game's own fixed-font, coloured copy next to the photos.
+   * My Haven profile detection. Every profile shows a "@handle(…)" header followed by an "About Me:"
+   * line — unlike the "…@handle on MyHaven…" match footer, which only appears for a MyHaven match, so
+   * plain profile views never had it. We trigger on the About Me line, grab the handle from the header
+   * just above it, tag the line so the output renders a pill, and capture the block (header downward)
+   * as the rest of it streams in, so the modal can show the game's fixed-font, coloured copy.
    */
   private markProfile(s: SessionState, line: Line, text: string) {
-    const m = /@([\w$.\-]+)\s+on\s+MyHaven\b/i.exec(text);
-    if (!m) return;
-    const handle = m[1];
-    const esc = handle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const headRe = new RegExp(`^@${esc}(?:\\(|\\b|$)`);
-    const lines = s.lines;
-    let start = -1;
-    for (let i = lines.length - 1, stop = Math.max(0, lines.length - 80); i >= stop; i--) {
-      const t = lines[i].spans.map((sp) => sp.text).join('').trim();
-      if (headRe.test(t)) { start = i; break; }
-      if (start === -1 && /^About Me:/i.test(t)) start = i;   // fallback; keep scanning for the header
+    const t = text.trim();
+
+    // A new "@handle(…)" header starts its own profile; a prompt or a long run ends the current one.
+    const header = /^@([\w$.\-]+)(?:\s*\(|\s*$)/.exec(t);
+
+    if (s.profileCap) {
+      if (line.prompt || header || s.profileCap.count >= 150) {
+        s.profileCap = null;   // finalise: the running capture already holds the whole block
+      } else {
+        s.profileCap.count++;
+        this.updateProfileCap(s, line);
+        return;
+      }
     }
-    if (start >= 0) setProfileCapture(handle, lines.slice(start).map((l) => l.spans));
-    line.profile = { handle };
+
+    // Start capturing when About Me arrives, taking the handle from the header line just above it.
+    if (/^About Me\b/i.test(t)) {
+      const lines = s.lines;   // the current line isn't pushed yet, so the header is the last entry here
+      for (let i = lines.length - 1, stop = Math.max(0, lines.length - 5); i >= stop; i--) {
+        const ht = lines[i].spans.map((sp) => sp.text).join('').trim();
+        const hm = /^@([\w$.\-]+)(?:\s*\(|\s*$)/.exec(ht);
+        if (hm) {
+          s.profileCap = { handle: hm[1], startId: lines[i].id, count: 0 };
+          this.updateProfileCap(s, line);
+          line.profile = { handle: hm[1] };
+          return;
+        }
+      }
+    }
+  }
+
+  /** Refresh the modal's stored copy of the streaming profile: the header line down to `line` (not yet pushed). */
+  private updateProfileCap(s: SessionState, line: Line) {
+    const cap = s.profileCap;
+    if (!cap) return;
+    const si = s.lines.findIndex((l) => l.id === cap.startId);
+    const prior = si >= 0 ? s.lines.slice(si).map((l) => l.spans) : [];
+    setProfileCapture(cap.handle, [...prior, line.spans]);
   }
 
   /** A captured line lands in its tab's scrollback; `countSession` adds it to the session tab's badge when the line is not also in main. */
