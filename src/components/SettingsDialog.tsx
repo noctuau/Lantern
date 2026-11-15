@@ -206,7 +206,7 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
                 </label>
                 <label title="Font weight.">Weight{weightSelect('inputWeight')}</label>
                 <label>Size (px){num('inputSize', 1, 9, 40)}</label>
-                <label>Lines shown{num('inputLines', 1, 1, 20)}</label>
+                <label>Lines shown{num('inputLines', 1, 3, 20)}</label>
               </div>
               <p className="hint">The box always grows as you type. "Lines shown" is its resting height; you can also drag its top edge.</p>
               <label>Send a command with

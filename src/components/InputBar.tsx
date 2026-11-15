@@ -30,12 +30,15 @@ interface Props {
 }
 
 const MAX_LINES = 20;
+// The box never rests shorter than this, so it stays at least as tall as the stacked action
+// buttons down its right edge (😀 / 👁 / 🔤) and the two line up.
+const MIN_LINES = 3;
 const BOX_PADDING = 18; // vertical padding + border of .input
 
 export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpToLatest, onResize, onSend, onReconnect, registerInsert, registerGetSelection, registerFocus }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
-  const [lines, setLines] = useState(minLines);
+  const [lines, setLines] = useState(Math.max(MIN_LINES, minLines));
   // On-demand spell check: when live spell check is off, this turns the native checker on for the
   // box until the next send, so a quick check costs nothing the rest of the time.
   const [checkNow, setCheckNow] = useState(false);
@@ -48,7 +51,7 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   const draft = useRef('');
 
   useEffect(() => { ref.current?.focus(); }, []);
-  useEffect(() => { setLines(minLines); }, [minLines]);
+  useEffect(() => { setLines(Math.max(MIN_LINES, minLines)); }, [minLines]);
   // Switching channel tabs (same world, so the box isn't remounted) returns focus to the box.
   useEffect(() => { ref.current?.focus(); }, [session.view]);
   // Let the parent focus the box on demand (a plain click in the output hands focus back here).
@@ -141,7 +144,7 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
     const lh = lineHeight();
     let current = startLines;
     const move = (ev: MouseEvent) => {
-      current = Math.min(MAX_LINES, Math.max(1, Math.round(startLines + (startY - ev.clientY) / lh)));
+      current = Math.min(MAX_LINES, Math.max(MIN_LINES, Math.round(startLines + (startY - ev.clientY) / lh)));
       setLines(current);
     };
     const up = () => {
