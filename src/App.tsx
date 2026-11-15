@@ -46,6 +46,13 @@ export function App() {
   // menu). An optional query pre-fills the box — the right-click uses the selected text.
   const [findReq, setFindReq] = useState<{ tick: number; query?: string }>({ tick: 0 });
   const requestFind = useCallback((query?: string) => setFindReq((r) => ({ tick: r.tick + 1, query })), []);
+  // Renaming a tab in place (just this open session), and dragging tabs to reorder them.
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState('');
+  const [dragOverTab, setDragOverTab] = useState<string | null>(null);
+  const dragTab = useRef<string | null>(null);
+  const startRename = (id: string) => { const sess = store.get(id); setRenameVal(sess?.label || sess?.world.name || ''); setRenaming(id); };
+  const commitRename = (id: string) => { store.setLabel(id, renameVal); setRenaming(null); };
   const insertRef = useRef<(t: string) => void>(() => {});
   const registerInsert = useCallback((fn: (t: string) => void) => { insertRef.current = fn; }, []);
   const inputSelRef = useRef<() => string>(() => '');
@@ -365,11 +372,37 @@ export function App() {
             return (
               <div
                 key={id}
-                className={`tab ${id === s.activeId ? 'active' : ''} status-${sess.status}`}
+                className={`tab ${id === s.activeId ? 'active' : ''} status-${sess.status} ${dragOverTab === id ? 'drag-over' : ''}`}
+                title={`${sess.world.name} — ${sess.world.host}:${sess.world.port}`}
+                draggable={renaming !== id}
                 onClick={() => store.setActive(id)}
+                onDragStart={(e) => { dragTab.current = id; e.dataTransfer.effectAllowed = 'move'; }}
+                onDragOver={(e) => { if (dragTab.current && dragTab.current !== id) { e.preventDefault(); setDragOverTab(id); } }}
+                onDragLeave={() => setDragOverTab((d) => (d === id ? null : d))}
+                onDrop={(e) => { e.preventDefault(); if (dragTab.current) store.moveTab(dragTab.current, id); dragTab.current = null; setDragOverTab(null); }}
+                onDragEnd={() => { dragTab.current = null; setDragOverTab(null); }}
               >
                 <span className="dot" />
-                <span className="tab-name">{sess.world.name}</span>
+                {renaming === id ? (
+                  <input
+                    className="tab-rename"
+                    autoFocus
+                    value={renameVal}
+                    placeholder={sess.world.name}
+                    spellCheck={false}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setRenameVal(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); commitRename(id); }
+                      else if (e.key === 'Escape') { e.preventDefault(); setRenaming(null); }
+                    }}
+                    onBlur={() => commitRename(id)}
+                  />
+                ) : (
+                  <span className="tab-name" title="Double-click to rename this tab" onDoubleClick={(e) => { e.stopPropagation(); startRename(id); }}>
+                    {sess.label || sess.world.name}
+                  </span>
+                )}
                 {sess.unread > 0 && id !== s.activeId && <span className="badge">{sess.unread}</span>}
                 <button className="tab-close" title="Close" onClick={(e) => { e.stopPropagation(); closeSession(id); }}>×</button>
               </div>

@@ -80,6 +80,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tab-close { background: none; border: 0; color: var(--fg-muted); cursor: pointer; border-radius: 4px; width: 18px; height: 18px; line-height: 1; }
 .tab-close:hover { background: var(--line); color: var(--fg); }
 .tab-hint { color: var(--fg-muted); padding: 6px 8px; font-size: 13px; }
+.tab-name { user-select: none; }
+.tab.drag-over { outline: 1px solid var(--accent-2); outline-offset: -1px; background: var(--bg-3); }
+.tab-rename {
+  background: var(--bg); border: 1px solid var(--accent-2); border-radius: 5px; padding: 1px 6px;
+  color: var(--fg); font: inherit; outline: none; field-sizing: content; min-width: 48px; max-width: 220px;
+}
 .badge { background: var(--accent); color: #1a1409; border-radius: 10px; font-size: 11px; padding: 1px 6px; font-weight: 600; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-muted); flex-shrink: 0; }
 .status-connected .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }

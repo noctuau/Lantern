@@ -38,6 +38,9 @@ export const MAIN_VIEW = 'main';
 export interface SessionState {
   id: string;
   world: World;
+  /** A per-tab name just for this open session (not the world). '' / undefined shows the world name.
+   *  Lets you tell two tabs on the same world apart; kept across an in-place reconnect, not saved. */
+  label?: string;
   status: 'connecting' | 'connected' | 'disconnected' | 'error';
   statusMessage?: string;
   lines: Line[];
@@ -153,7 +156,7 @@ class Store {
     this.sessions.delete(oldId);
     this.parsers.delete(oldId);
     const s: SessionState = {
-      id: newId, world, status: 'connecting', partial: [], echo: true, unread: 0, gmcp: {},
+      id: newId, world, label: old?.label, status: 'connecting', partial: [], echo: true, unread: 0, gmcp: {},
       lines: old?.lines ?? [], channels: old?.channels ?? {}, history: old?.history ?? [],
       view: old?.view ?? MAIN_VIEW, channelsOff: old?.channelsOff ?? false,
       mainUnread: 0, swallowBlankUntil: 0, cmdCapture: null,
@@ -184,6 +187,26 @@ class Store {
     this.activeId = id;
     const s = this.sessions.get(id);
     if (s) { s.unread = 0; this.markViewed(s); }
+    this.notify();
+  }
+
+  /** Rename just this open tab (not the world). Blank clears back to the world's name. */
+  setLabel(id: string, label: string) {
+    const s = this.sessions.get(id); if (!s) return;
+    s.label = label.trim() || undefined;
+    this.notify();
+  }
+
+  /** Drag one tab to another's place: pull `dragId` out and drop it on `targetId`'s side, so the
+   *  order follows the drag direction (dragging rightwards lands after the target, leftwards before). */
+  moveTab(dragId: string, targetId: string) {
+    if (dragId === targetId) return;
+    const from = this.order.indexOf(dragId);
+    const to = this.order.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    this.order.splice(from, 1);
+    const at = this.order.indexOf(targetId);
+    this.order.splice(from < to ? at + 1 : at, 0, dragId);
     this.notify();
   }
 
