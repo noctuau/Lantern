@@ -446,8 +446,35 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .preset-row .grow { flex: 1; min-width: 0; }
 .btn.step { padding: 0; width: 30px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; flex-shrink: 0; }
 .ctx-menu { position: fixed; z-index: 20; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 170px; }
-.ctx-item { display: block; width: 100%; text-align: left; background: transparent; border: 0; border-radius: 6px; padding: 7px 10px; color: var(--fg); font-size: 13px; cursor: pointer; }
+.ctx-item { display: block; width: 100%; text-align: left; background: transparent; border: 0; border-radius: 6px; padding: 7px 10px; color: var(--fg); font-size: 13px; cursor: pointer; white-space: nowrap; }
 .ctx-item:hover { background: var(--bg-3); color: var(--accent); }
+
+/* ---------- find in output ---------- */
+.find-bar {
+  position: absolute; top: 10px; right: 20px; z-index: 6;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  font-family: var(--font-ui);
+}
+.find-input { width: 190px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; color: var(--fg); font-size: 13px; outline: none; }
+.find-input:focus { border-color: var(--accent-2); }
+.find-input.invalid { border-color: var(--danger); }
+.find-count { font-size: 12px; color: var(--fg-muted); min-width: 54px; text-align: center; font-variant-numeric: tabular-nums; }
+.find-count.none { color: var(--danger); }
+.find-btn {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 26px; height: 26px; background: var(--bg-3); border: 1px solid var(--line);
+  border-radius: 6px; color: var(--fg-muted); font-size: 13px; cursor: pointer;
+}
+.find-btn:hover:not(:disabled) { border-color: var(--accent-2); color: var(--fg); }
+.find-btn:disabled { opacity: 0.4; cursor: default; }
+.find-btn.toggle { font-size: 12px; font-family: var(--font-mud); }
+.find-btn.toggle.on { border-color: var(--accent-2); color: var(--accent); background: rgba(232, 169, 75, 0.12); }
+
+/* match highlights in the scrollback */
+.find-mark { background: rgba(224, 178, 74, 0.32); color: inherit; border-radius: 2px; }
+.find-mark.current { background: var(--accent); color: #1a1409; }
 
 /* Colour composer: Xterm/HTML mode toggle and the HTML colour tools */
 .composer-mode { display: flex; align-items: center; gap: 8px; }

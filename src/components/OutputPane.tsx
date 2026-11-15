@@ -1,25 +1,60 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { spanStyle } from '../lib/ansi';
 import type { Line } from '../lib/store';
 import type { Span } from '../lib/ansi';
+import { FindBar } from './FindBar';
+import { findMatches, queryIsValid, type FindMatch } from '../lib/search';
 
 const URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
 const NONE: Span[] = [];
+const NO_MATCHES: FindMatch[] = [];
+
+/** Turn any http(s) URLs in a plain string into clickable links, leaving the rest as text. */
+function linkify(text: string): ReactNode {
+  URL_RE.lastIndex = 0;
+  if (!URL_RE.test(text)) return text;
+  URL_RE.lastIndex = 0;
+  const parts = text.split(URL_RE);
+  return parts.map((p, i) =>
+    i % 2 === 1
+      ? <a key={i} href={p} className="link" onClick={(e) => { e.preventDefault(); window.lantern.app.openExternal(p); }}>{p}</a>
+      : p,
+  );
+}
 
 export function renderSpan(sp: Span, key: number) {
-  const style = spanStyle(sp.style);
-  if (!URL_RE.test(sp.text)) return <span key={key} style={style}>{sp.text}</span>;
-  URL_RE.lastIndex = 0;
-  const parts = sp.text.split(URL_RE);
-  return (
-    <span key={key} style={style}>
-      {parts.map((p, i) =>
-        i % 2 === 1
-          ? <a key={i} href={p} className="link" onClick={(e) => { e.preventDefault(); window.lantern.app.openExternal(p); }}>{p}</a>
-          : p,
-      )}
-    </span>
-  );
+  return <span key={key} style={spanStyle(sp.style)}>{linkify(sp.text)}</span>;
+}
+
+/**
+ * Render a line's spans with the find hits wrapped in <mark>. `ranges` are [start, end) offsets into
+ * the line's full text (sorted, non-overlapping — as findMatches returns them per line); `current`
+ * is the one range to flag as the active match. A hit that crosses a colour boundary is split at the
+ * span edge so each piece keeps its own colour under the highlight.
+ */
+function renderSpansMarked(spans: Span[], ranges: [number, number][], current: [number, number] | null): ReactNode[] {
+  const out: ReactNode[] = [];
+  let key = 0;
+  let pos = 0; // running offset into the full line text
+  for (const sp of spans) {
+    const style = spanStyle(sp.style);
+    const spStart = pos;
+    const spEnd = pos + sp.text.length;
+    let cursor = spStart;
+    for (const [rs, re] of ranges) {
+      if (re <= spStart) continue;      // range ends before this span
+      if (rs >= spEnd) break;           // ranges are sorted: nothing further touches this span
+      const a = Math.max(rs, spStart);
+      const b = Math.min(re, spEnd);
+      if (a > cursor) out.push(<span key={key++} style={style}>{linkify(sp.text.slice(cursor - spStart, a - spStart))}</span>);
+      const isCur = !!current && rs === current[0] && re === current[1];
+      out.push(<mark key={key++} className={`find-mark${isCur ? ' current' : ''}`} style={style}>{sp.text.slice(a - spStart, b - spStart)}</mark>);
+      cursor = b;
+    }
+    if (cursor < spEnd) out.push(<span key={key++} style={style}>{linkify(sp.text.slice(cursor - spStart))}</span>);
+    pos = spEnd;
+  }
+  return out;
 }
 
 /** HH:MM for a line's timestamp (channel chat is read later, so when matters). */
@@ -32,12 +67,24 @@ export const LineView = memo(function LineView({ line, showTime }: { line: Line;
   // Hover any line to see when it arrived (like MUSHclient), even when inline timestamps are off.
   const when = new Date(line.ts).toLocaleString();
   return (
-    <div className={`line kind-${line.kind} ${line.prompt ? 'prompt' : ''}`} data-ts={line.ts} title={when}>
+    <div className={`line kind-${line.kind} ${line.prompt ? 'prompt' : ''}`} data-ts={line.ts} data-id={line.id} title={when}>
       {showTime && <span className="ts" title={when}>{fmtTime(line.ts)}</span>}
       {line.spans.length === 0 ? ' ' : line.spans.map(renderSpan)}
     </div>
   );
 });
+
+/** A line that has find hits in it. Not memoized by id (the current match moves as you step), but
+ *  only the handful of matching lines take this path — the rest keep the per-id element cache. */
+function MarkedLine({ line, showTime, ranges, current }: { line: Line; showTime?: boolean; ranges: [number, number][]; current: [number, number] | null }) {
+  const when = new Date(line.ts).toLocaleString();
+  return (
+    <div className={`line kind-${line.kind} ${line.prompt ? 'prompt' : ''}`} data-ts={line.ts} data-id={line.id} title={when}>
+      {showTime && <span className="ts" title={when}>{fmtTime(line.ts)}</span>}
+      {renderSpansMarked(line.spans, ranges, current)}
+    </div>
+  );
+}
 
 interface Props {
   lines: Line[];
@@ -56,13 +103,16 @@ interface Props {
   extras?: ReactNode;
   /** Called after a plain click in the pane (no text selected) so focus can return to the command box. */
   onReturnFocus?(): void;
+  /** Bumped by App (Ctrl+F, the ☰ menu, the right-click menu) to open the find bar in the visible
+   *  pane. `query`, when given, pre-fills the box (e.g. the selected text from a right-click). */
+  openFind?: { tick: number; query?: string };
 }
 
 /**
  * One scrollback: the main output or a channel tab. Scroll-lock ("pinned" to the bottom), the
  * missed-line count and the jump button belong to this pane alone.
  */
-export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap = 0, autoScroll = true, visible = true, emptyHint, extras, onReturnFocus }: Props) {
+export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap = 0, autoScroll = true, visible = true, emptyHint, extras, onReturnFocus, openFind }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLDivElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -142,6 +192,65 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
 
   const jump = () => { pinned.current = true; setMissed(0); toBottom(); };
 
+  /* ---------- find in output ---------- */
+  const [findOpen, setFindOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [regex, setRegex] = useState(false);
+  const [caseSensitive, setCaseSensitive] = useState(false);
+  const [curState, setCurState] = useState(0);
+  const findInput = useRef<HTMLInputElement>(null);
+
+  // Open (and focus) on a bump from App — but only in the pane that's actually on screen, so the
+  // single Ctrl+F reaches the main pane or whichever channel tab you're reading, not all of them.
+  const lastFindTick = useRef(openFind?.tick ?? 0);
+  useEffect(() => {
+    if (!openFind || openFind.tick === lastFindTick.current) return;
+    lastFindTick.current = openFind.tick;
+    if (!visible) return;
+    setFindOpen(true);
+    if (openFind.query != null) setQuery(openFind.query);
+    requestAnimationFrame(() => { const el = findInput.current; if (el) { el.focus(); el.select(); } });
+  }, [openFind, visible]);
+
+  const finding = findOpen && query !== '';
+  const invalidRe = regex && query !== '' && !queryIsValid(query, { regex, caseSensitive });
+  const matches = useMemo(
+    () => (finding ? findMatches(lines.map((l) => ({ id: l.id, text: l.spans.map((sp) => sp.text).join('') })), query, { regex, caseSensitive }) : NO_MATCHES),
+    [finding, lines, query, regex, caseSensitive],
+  );
+  const matchesRef = useRef(matches);
+  matchesRef.current = matches;
+  // Hits grouped onto their line, for the render pass.
+  const rangesByLine = useMemo(() => {
+    const m = new Map<number, [number, number][]>();
+    for (const x of matches) { const a = m.get(x.lineId); if (a) a.push([x.start, x.end]); else m.set(x.lineId, [[x.start, x.end]]); }
+    return m;
+  }, [matches]);
+  // The current match, clamped so it stays valid as hits appear or scroll out of the buffer.
+  const cur = matches.length === 0 ? -1 : Math.min(Math.max(curState, 0), matches.length - 1);
+  const curMatch = cur >= 0 ? matches[cur] : null;
+  const curRange: [number, number] | null = curMatch ? [curMatch.start, curMatch.end] : null;
+
+  // A new query (or toggle) jumps to the *last* hit — the most recent output, where you usually are.
+  const findSig = `${query}\u0000${regex ? 1 : 0}\u0000${caseSensitive ? 1 : 0}`;
+  useEffect(() => { setCurState(matchesRef.current.length - 1); }, [findSig]);
+
+  const step = (d: 1 | -1) => {
+    const len = matchesRef.current.length;
+    if (!len) return;
+    setCurState((c) => { const base = Math.min(Math.max(c, 0), len - 1); return (base + d + len) % len; });
+  };
+  const closeFind = () => { setFindOpen(false); onReturnFocus?.(); };
+
+  // Bring the current match to the middle of the pane, and stop following the bottom while searching
+  // (so an incoming line can't yank you off the hit you're reading).
+  useEffect(() => {
+    if (!finding || cur < 0) return;
+    pinned.current = false;
+    const el = ref.current?.querySelector('.find-mark.current');
+    el?.scrollIntoView({ block: 'center', inline: 'nearest' });
+  }, [finding, cur]);
+
   // A committed line never changes once it is on screen, so its rendered element is cached by id and
   // handed back unchanged on every render. Fast output re-renders this pane once per animation frame;
   // reusing the same element lets React bail out per line instead of rebuilding (and garbage-
@@ -154,7 +263,12 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
   if (cacheTime.current !== timestamps) { cache.current.clear(); cacheTime.current = timestamps; }
   const prevCache = cache.current;
   const nextCache = new Map<number, ReactElement>();
+  const curLineId = curMatch?.lineId ?? -1;
   const rendered = lines.map((l) => {
+    // A line with hits renders fresh with its <mark>s (and bypasses the cache); everything else keeps
+    // the cached element, so highlighting never costs the live-output fast path its per-line bail-out.
+    const r = rangesByLine.get(l.id);
+    if (r) return <MarkedLine key={l.id} line={l} showTime={timestamps} ranges={r} current={l.id === curLineId ? curRange : null} />;
     let el = prevCache.get(l.id);
     if (!el) el = <LineView key={l.id} line={l} showTime={timestamps} />;
     nextCache.set(l.id, el);
@@ -164,6 +278,16 @@ export function OutputPane({ lines, partial = NONE, timestamps = false, lineGap 
 
   return (
     <div className={`output-wrap ${visible ? '' : 'hidden'}`}>
+      {findOpen && (
+        <FindBar
+          query={query} onQuery={setQuery}
+          regex={regex} onToggleRegex={() => setRegex((v) => !v)}
+          caseSensitive={caseSensitive} onToggleCase={() => setCaseSensitive((v) => !v)}
+          count={matches.length} current={Math.max(cur, 0)} invalid={invalidRe}
+          onNext={() => step(1)} onPrev={() => step(-1)} onClose={closeFind}
+          inputRef={findInput}
+        />
+      )}
       <div className="output" ref={ref} onWheel={onWheel} onMouseUp={onMouseUp}
         style={lineGap ? ({ '--line-gap': `${lineGap}px` } as CSSProperties) : undefined}>
         <div className="output-inner" ref={inner}>

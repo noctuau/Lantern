@@ -41,7 +41,11 @@ export function App() {
   const [highlight, setHighlight] = useState<{ worldId: string; text: string } | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerSeed, setComposerSeed] = useState('');
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; text: string; codes: string | null } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; text: string; codes: string | null; inOutput: boolean } | null>(null);
+  // Bumped to open the find bar in whichever pane is on screen (Ctrl+F, the ☰ menu, the right-click
+  // menu). An optional query pre-fills the box — the right-click uses the selected text.
+  const [findReq, setFindReq] = useState<{ tick: number; query?: string }>({ tick: 0 });
+  const requestFind = useCallback((query?: string) => setFindReq((r) => ({ tick: r.tick + 1, query })), []);
   const insertRef = useRef<(t: string) => void>(() => {});
   const registerInsert = useCallback((fn: (t: string) => void) => { insertRef.current = fn; }, []);
   const inputSelRef = useRef<() => string>(() => '');
@@ -111,23 +115,29 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.altKey && !e.shiftKey && e.key.toLowerCase() === 'h') { e.preventDefault(); openHighlight(); }
+      // Ctrl+F (Cmd+F) — find in the output, like a browser or editor.
+      else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); requestFind(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [openHighlight]);
+  }, [openHighlight, requestFind]);
 
   // Right-click a selection in the output or command box to offer the colour composer.
   const openComposer = useCallback((seed: string) => { setComposerSeed(seed.trim()); setComposerOpen(true); }, []);
   useEffect(() => {
     const onCtx = (e: MouseEvent) => {
       const t = e.target as HTMLElement | null;
-      if (!t || !(t.closest('.output') || t.closest('.input'))) return;
+      const inOutput = !!t?.closest('.output');
+      const inInput = !!t?.closest('.input');
+      if (!inOutput && !inInput) return;
       const text = grabSelection().trim();
-      if (!text) return;
+      // Over the output there's always Find; in the command box we only step in for a selection
+      // (otherwise the native menu with Paste etc. should stay).
+      if (!text && !inOutput) return;
       // Selected game-coloured output can also be copied back as backtick colour codes.
-      const codes = t.closest('.output') ? selectionColourCodes() : null;
+      const codes = inOutput && text ? selectionColourCodes() : null;
       e.preventDefault();
-      setCtxMenu({ x: e.clientX, y: e.clientY, text, codes });
+      setCtxMenu({ x: e.clientX, y: e.clientY, text, codes, inOutput });
     };
     document.addEventListener('contextmenu', onCtx);
     return () => document.removeEventListener('contextmenu', onCtx);
@@ -386,7 +396,7 @@ export function App() {
         {active ? (
           <>
             <ChannelStrip key={`strip-${active.id}`} session={active} onEdit={() => openAutomation(active.world, 'channels')} />
-            <OutputPane key={`out-${active.id}`} lines={active.lines} partial={active.partial} autoScroll={settings.autoScroll} visible={active.view === MAIN_VIEW} extras={<UnreadPills session={active} />} onReturnFocus={() => focusInputRef.current()} />
+            <OutputPane key={`out-${active.id}`} lines={active.lines} partial={active.partial} autoScroll={settings.autoScroll} visible={active.view === MAIN_VIEW} extras={<UnreadPills session={active} />} onReturnFocus={() => focusInputRef.current()} openFind={findReq} />
             {active.world.channelTabs.filter((t) => t.enabled).map((t) => (
               <OutputPane
                 key={`out-${active.id}-${t.id}`}
@@ -398,6 +408,7 @@ export function App() {
                 emptyHint={`Nothing captured for ${t.name || 'this tab'} yet. Lines matching its patterns will show here with the time they arrived.`}
                 extras={<UnreadPills session={active} />}
                 onReturnFocus={() => focusInputRef.current()}
+                openFind={findReq}
               />
             ))}
             <InputBar
@@ -446,6 +457,7 @@ export function App() {
             ))}
           </div>
           <div className="main-menu-foot">
+            {active && <button className="btn ghost" title="Search this world's output (Ctrl+F)" onClick={() => { setMenuOpen(false); requestFind(); }}>🔍 Find in output</button>}
             <button className="btn" onClick={async () => { setMenuOpen(false); setEditing(await window.lantern.worlds.create()); }}>+ New world</button>
             <button className="btn ghost" onClick={async () => { setMenuOpen(false); await window.lantern.worlds.importMcl(); refreshWorlds(); }}>Import .MCL</button>
             <button className="btn ghost" onClick={() => { setMenuOpen(false); window.lantern.app.openLogs(); }}>Open logs folder</button>
@@ -465,9 +477,16 @@ export function App() {
 
       {ctxMenu && (
         <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={(e) => e.stopPropagation()}>
-          <button type="button" className="ctx-item" onClick={() => { openComposer(ctxMenu.text); setCtxMenu(null); }}>
-            🎨 Colour composer
-          </button>
+          {ctxMenu.inOutput && (
+            <button type="button" className="ctx-item" onClick={() => { requestFind(ctxMenu.text || undefined); setCtxMenu(null); }}>
+              🔍 {ctxMenu.text ? `Find “${ctxMenu.text.length > 24 ? ctxMenu.text.slice(0, 24) + '…' : ctxMenu.text}”` : 'Find in output'}
+            </button>
+          )}
+          {ctxMenu.text && (
+            <button type="button" className="ctx-item" onClick={() => { openComposer(ctxMenu.text); setCtxMenu(null); }}>
+              🎨 Colour composer
+            </button>
+          )}
           {ctxMenu.codes && (
             <button type="button" className="ctx-item" onClick={() => { void navigator.clipboard.writeText(ctxMenu.codes!); setCtxMenu(null); }}>
               🎨 Copy colour codes
