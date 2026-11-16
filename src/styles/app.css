@@ -328,10 +328,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .profile-text-line { min-height: 1lh; }
 @media (max-width: 760px) {
+  /* Too narrow to fit a monospace About Me beside/under the photo, so drop the
+     text panel entirely and show just the photo carousel (header + photo + dots).
+     The About Me only appears on wider screens where it actually fits. */
+  .profile-view { width: min(94vw, 480px); }
   .profile-body { flex-direction: column; }
-  .profile-photos { flex: 0 0 56vh; max-width: none; height: 56vh; border-right: 0; border-bottom: 1px solid var(--line); }
-  /* Stacked: show the whole photo as a centred portrait, not a cropped full-width band. */
-  .profile-photo { object-fit: contain; }
+  .profile-text { display: none; }
+  .profile-photos {
+    flex: 1 1 auto; max-width: none; width: 100%; height: 78vh; min-height: 0;
+    border-right: 0; border-bottom: 0;
+  }
+  .profile-photo { object-fit: cover; }
 }
 
 /* ---------- automation panel ---------- */
