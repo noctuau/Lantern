@@ -27,15 +27,19 @@ interface Props {
   registerGetSelection?(fn: () => string): void;
   /** Hand the parent a function to focus the box (used when a click in the output returns focus). */
   registerFocus?(fn: () => void): void;
+  /** Open the colour composer, seeded with the given text (the box's current selection, if any). */
+  onColour?(selection: string): void;
+  /** Open the highlight dialog for the active world. */
+  onHighlight?(): void;
 }
 
 const MAX_LINES = 20;
 // The box never rests shorter than this, so it stays at least as tall as the stacked action
-// buttons down its right edge (😀 / 👁 / 🔤) and the two line up.
-const MIN_LINES = 3;
+// buttons down its right edge (😀 / 🎨 / 🖍 / 👁 / 🔤) and the two line up.
+const MIN_LINES = 5;
 const BOX_PADDING = 18; // vertical padding + border of .input
 
-export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpToLatest, onResize, onSend, onReconnect, registerInsert, registerGetSelection, registerFocus }: Props) {
+export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpToLatest, onResize, onSend, onReconnect, registerInsert, registerGetSelection, registerFocus, onColour, onHighlight }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
   const [lines, setLines] = useState(Math.max(MIN_LINES, minLines));
@@ -49,11 +53,29 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
   const [pickerOpen, setPickerOpen] = useState(false);
   const histIdx = useRef<number | null>(null);   // null = not browsing history
   const draft = useRef('');
+  // Each channel tab keeps its OWN half-typed draft. The box isn't remounted when you switch tabs in
+  // the same world, so without this a half-finished emote on Main would follow you to Tells. We stash
+  // the text under the tab you leave and restore the tab you land on.
+  const tabDrafts = useRef<Record<string, string>>({});
+  const prevView = useRef(session.view);
+  const valueRef = useRef(value);
 
   useEffect(() => { ref.current?.focus(); }, []);
   useEffect(() => { setLines(Math.max(MIN_LINES, minLines)); }, [minLines]);
-  // Switching channel tabs (same world, so the box isn't remounted) returns focus to the box.
-  useEffect(() => { ref.current?.focus(); }, [session.view]);
+  useEffect(() => { valueRef.current = value; }, [value]);
+  // Switching channel tabs (same world, so the box isn't remounted): stash the current draft under the
+  // tab we're leaving, restore the one for the tab we're entering, drop history browsing, and refocus.
+  useEffect(() => {
+    if (prevView.current !== session.view) {
+      tabDrafts.current[prevView.current] = valueRef.current;
+      const next = tabDrafts.current[session.view] ?? '';
+      prevView.current = session.view;
+      valueRef.current = next;
+      histIdx.current = null;
+      setValue(next);
+    }
+    ref.current?.focus();
+  }, [session.view]);
   // Let the parent focus the box on demand (a plain click in the output hands focus back here).
   useEffect(() => { registerFocus?.(() => ref.current?.focus()); }, [registerFocus]);
 
@@ -298,17 +320,31 @@ export function InputBar({ session, minLines, sendMode, spellCheckInput, onJumpT
             // so they take one button's width instead of several.
             <div className="input-actions">
               {!showPreview && (
-                <div className="emoji-pick-wrap">
-                  {pickerOpen && (
-                    <EmojiPicker
-                      onPick={(c) => insertEmoji(c)}
-                      onClose={() => { setPickerOpen(false); ref.current?.focus(); }}
-                    />
+                <>
+                  <div className="emoji-pick-wrap">
+                    {pickerOpen && (
+                      <EmojiPicker
+                        onPick={(c) => insertEmoji(c)}
+                        onClose={() => { setPickerOpen(false); ref.current?.focus(); }}
+                      />
+                    )}
+                    <button type="button" className={`btn small ghost input-emoji ${pickerOpen ? 'on' : ''}`}
+                      title="Insert an emoji" aria-expanded={pickerOpen}
+                      onClick={() => setPickerOpen((o) => !o)}>😀</button>
+                  </div>
+                  {onColour && (
+                    <button type="button" className="btn small ghost input-colour"
+                      title="Compose coloured/gradient text to send. Select text here or in the output to pre-fill it."
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => onColour(getSelection())}>🎨</button>
                   )}
-                  <button type="button" className={`btn small ghost input-emoji ${pickerOpen ? 'on' : ''}`}
-                    title="Insert an emoji" aria-expanded={pickerOpen}
-                    onClick={() => setPickerOpen((o) => !o)}>😀</button>
-                </div>
+                  {onHighlight && (
+                    <button type="button" className="btn small ghost input-highlight"
+                      title="Highlight a word or phrase so its appearances stand out (Ctrl+Alt+H). Select text in the output to pre-fill it."
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => onHighlight()}>🖍</button>
+                  )}
+                </>
               )}
               <button type="button" className={`btn small ghost input-eye ${showPreview ? 'on' : ''}`}
                 title={showPreview ? 'Back to editing' : 'Preview how this will look in-game'}

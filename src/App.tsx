@@ -422,20 +422,6 @@ export function App() {
           })}
           {s.order.length === 0 && <div className="tab-hint">Open the ☰ menu to pick a world.</div>}
           <span className="spacer" />
-          {active && (
-            <>
-              <button className="btn small ghost" title="Compose coloured/gradient text to send. Select text first to pre-fill it." onMouseDown={() => setComposerSeed(grabSelection().trim())} onClick={() => setComposerOpen(true)}>
-                🎨 Colour
-              </button>
-              <button className="btn small ghost" title="Highlight a word or phrase (Ctrl+Alt+H). Select text in the output first to pre-fill it." onClick={openHighlight}>
-                ✎ Highlight
-              </button>
-              <button className="btn small ghost" title="Triggers, aliases, timers and channel tabs for this world" onClick={() => openAutomation(active.world)}>
-                ⚡ Automation
-              </button>
-            </>
-          )}
-          <button className="btn small ghost" title="Settings" onClick={openSettings}>⚙ Settings</button>
         </div>
 
         {active ? (
@@ -469,6 +455,8 @@ export function App() {
               registerInsert={registerInsert}
               registerGetSelection={registerGetSelection}
               registerFocus={registerFocus}
+              onColour={(sel) => openComposer(sel.trim() || grabSelection().trim())}
+              onHighlight={openHighlight}
             />
             <StatusBar session={active} onToggleAutomation={() => store.setAutomation(active.id, !active.automation)} />
           </>
@@ -506,6 +494,7 @@ export function App() {
             <button className="btn" onClick={async () => { setMenuOpen(false); setEditing(await window.lantern.worlds.create()); }}>+ New world</button>
             <button className="btn ghost" onClick={async () => { setMenuOpen(false); await window.lantern.worlds.importMcl(); refreshWorlds(); }}>Import .MCL</button>
             <button className="btn ghost" onClick={() => { setMenuOpen(false); window.lantern.app.openLogs(); }}>Open logs folder</button>
+            {active && <button className="btn ghost" title="Triggers, aliases, timers and channel tabs for this world" onClick={() => { setMenuOpen(false); openAutomation(active.world); }}>⚡ Automation</button>}
             <button className={`btn ghost ${update?.newer ? 'has-update' : ''}`} title={update?.newer ? `Lantern v${update.latest} is available: see Settings › About` : undefined} onClick={() => { setMenuOpen(false); openSettings(); }}>⚙ Settings</button>
           </div>
         </div>
