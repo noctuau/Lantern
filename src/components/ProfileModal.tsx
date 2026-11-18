@@ -12,6 +12,7 @@ import { renderSpan } from './OutputPane';
 export function ProfileModal({ handle, onClose }: { handle: string; onClose: () => void }) {
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined); // undefined = loading
   const [idx, setIdx] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   // The in-game text block captured for this handle (lines of coloured spans).
   const lines = useMemo(() => getProfileCapture(handle), [handle]);
@@ -40,6 +41,18 @@ export function ProfileModal({ handle, onClose }: { handle: string; onClose: () 
   const photos = profile?.photos ?? [];
   const at = photos.length ? ((idx % photos.length) + photos.length) % photos.length : 0;
   const name = profile?.name || `@${handle}`;
+
+  // Re-fetch just this one profile's latest photos/name from My Haven (the About Me text comes from the
+  // in-game capture, so it isn't touched here). Only possible once we know the profile's page URL.
+  const onRefresh = async () => {
+    if (refreshing || !profile?.url) return;
+    setRefreshing(true);
+    try {
+      const fresh = await window.lantern.profiles.refreshOne(handle, profile.url);
+      if (fresh) { setProfile(fresh); setIdx(0); }
+    } catch { /* leave the current photos in place */ }
+    finally { setRefreshing(false); }
+  };
 
   return (
     <div className="modal-backdrop profile-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -87,6 +100,14 @@ export function ProfileModal({ handle, onClose }: { handle: string; onClose: () 
                   : profile === null ? 'No photos cached yet — run Refresh profiles in Settings → My Haven.'
                   : 'No photos on this profile.'}
               </div>
+            )}
+            {profile?.url && (
+              <button type="button" className="profile-refresh" disabled={refreshing}
+                title="Re-fetch this profile's latest photos from My Haven"
+                onClick={onRefresh}>
+                <span className={`profile-refresh-ic${refreshing ? ' spin' : ''}`}>↻</span>
+                {refreshing ? 'Refreshing…' : 'Refresh'}
+              </button>
             )}
           </div>
 

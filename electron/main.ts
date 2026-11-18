@@ -12,7 +12,7 @@ import { aboutInfo, checkForUpdates, downloadUpdate, installUpdate } from './upd
 import type { ReleaseAsset, UpdateFlavour } from '../shared/updates';
 import { PuebloFilter } from '../shared/pueblo';
 import { MxpFilter } from '../shared/mxp';
-import { refreshProfiles, readProfileCache, lookupProfile } from './profiles';
+import { refreshProfiles, refreshOneProfile, readProfileCache, lookupProfile } from './profiles';
 
 interface Session {
   id: string;
@@ -486,6 +486,11 @@ ipcMain.handle('profiles:refresh', async (e) => {
 });
 ipcMain.handle('profiles:status', () => { const c = readProfileCache(); return { updatedAt: c.updatedAt, count: Object.keys(c.profiles).length }; });
 ipcMain.handle('profiles:get', (_e, handle: string) => lookupProfile(String(handle)));
+ipcMain.handle('profiles:refreshOne', async (_e, arg: { url?: string; handle?: string } | string) => {
+  const url = typeof arg === 'string' ? arg : arg?.url;
+  const handle = typeof arg === 'string' ? undefined : arg?.handle;
+  return refreshOneProfile(url, handle);
+});
 
 app.whenReady().then(() => { createWindow(); installedFonts(); });
 app.on('window-all-closed', () => {

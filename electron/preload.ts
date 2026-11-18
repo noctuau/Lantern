@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('lantern', {
     refresh: () => ipcRenderer.invoke('profiles:refresh'),
     status: () => ipcRenderer.invoke('profiles:status'),
     get: (handle: string) => ipcRenderer.invoke('profiles:get', handle),
+    refreshOne: (handle: string, url?: string) => ipcRenderer.invoke('profiles:refreshOne', { handle, url }),
     onProgress: on('profiles:progress'),
   },
   app: {

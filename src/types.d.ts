@@ -57,6 +57,8 @@ declare global {
         status(): Promise<{ updatedAt: number; count: number }>;
         /** One cached profile by @handle (with or without the @), or null if not scraped yet. */
         get(handle: string): Promise<Profile | null>;
+        /** Re-scrape just this profile (by its cached URL/handle) and update its cache entry; resolves to the fresh Profile, or null. */
+        refreshOne(handle: string, url?: string): Promise<Profile | null>;
         onProgress(cb: (p: { done: number; total: number; name: string }) => void): Unsub;
       };
       app: {

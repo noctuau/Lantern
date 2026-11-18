@@ -113,3 +113,47 @@ export async function refreshProfiles(onProgress?: ProfileProgress): Promise<Pro
     if (!win.isDestroyed()) win.destroy();
   }
 }
+
+/**
+ * Re-scrape a SINGLE profile page and merge just that entry into the cache (the other profiles and the
+ * global updatedAt are left untouched). `url` normally comes from the cached profile the user is viewing;
+ * if it's missing we fall back to the cached URL for `handle`. Resolves to the fresh Profile, or null if
+ * we have no URL to visit or the page didn't yield a handle. The About Me text is not scraped here (same
+ * reason as the full run) — the in-game capture is the source of truth for that.
+ */
+export async function refreshOneProfile(url?: string, handle?: string): Promise<Profile | null> {
+  let target = url && /^https?:/.test(url) ? url : '';
+  if (!target && handle) target = lookupProfile(handle)?.url || '';
+  if (!target) return null;
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      images: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      partition: 'persist:haven-scrape',
+      backgroundThrottling: false,
+    },
+  });
+  try {
+    await win.loadURL(target);
+    await waitFor(win, HANDLE_READY, PER_PAGE_TIMEOUT);
+    const data = await win.webContents.executeJavaScript(PROFILE_EXTRACT, true) as { name: string; handle: string; photos: string[] };
+    if (!data?.handle) return null;
+    const profile: Profile = {
+      handle: data.handle,
+      name: data.name || lookupProfile(data.handle)?.name || '',
+      url: target,
+      photos: data.photos || [],
+    };
+    const cache = readProfileCache();
+    cache.profiles[handleKey(data.handle)] = profile;
+    writeProfileCache(cache);
+    return profile;
+  } catch {
+    return null;
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+}
