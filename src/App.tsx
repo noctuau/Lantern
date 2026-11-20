@@ -12,7 +12,7 @@ import { setSoundVolume } from './lib/sound';
 import { AutomationPanel, type PanelTab } from './components/AutomationPanel';
 import { StatusBar } from './components/StatusBar';
 import { SettingsDialog, type SettingsTab } from './components/SettingsDialog';
-import { HighlightDialog } from './components/HighlightDialog';
+import { HighlightDialog, buildHighlightTrigger } from './components/HighlightDialog';
 import { Lightbox } from './components/Lightbox';
 import { onOpenLightbox } from './lib/lightbox';
 import { ProfileModal } from './components/ProfileModal';
@@ -350,9 +350,31 @@ export function App() {
     }
     store.input(active.id, text, true, typed, settings.echoInput);
     store.execute(active.id, text, false);
+    // Haven: `remember <keyword> <name>` assigns a name — auto-highlight that name in the colour set
+    // under Settings › Colours › Remembered names, so the person stands out from now on.
+    void autoHighlightRemembered(active, typed);
   };
 
   sendCommandRef.current = sendCommand;
+
+  // When the typed command is a `remember`, add a one-off Highlights trigger for the name it assigns.
+  // Matches only "remember"/"rem" as the whole first word (so "remove", "reminisce"… are left alone),
+  // and only when there's a keyword AND a name after it.
+  const REMEMBER_RE = /^\s*(?:remember|rem)\b\s+\S+\s+(\S.*?)\s*$/i;
+  const autoHighlightRemembered = async (sess: ReturnType<typeof store.active>, typed: string) => {
+    if (!sess || !settings.rememberHighlight.enabled) return;
+    const m = REMEMBER_RE.exec(typed);
+    if (!m) return;
+    const name = m[1].trim();
+    if (!name) return;
+    const w = worldsRef.current.find((x) => x.id === sess.world.id) ?? sess.world;
+    // Don't pile up duplicates: skip if a Highlights trigger for this exact name already exists.
+    const label = `Highlight: ${name}`.toLowerCase();
+    if (w.triggers.some((t) => t.group === 'Highlights' && t.name.toLowerCase() === label)) return;
+    const t = buildHighlightTrigger(name, settings.rememberHighlight.colour, true, false, false);
+    await saveWorld({ ...w, triggers: [...w.triggers, t] });
+    store.note(sess.id, `Now highlighting "${name}". Recolour or remove it under ⚡ Automation › Triggers › Highlights.`);
+  };
 
   const closeSession = async (id: string) => {
     const sess = store.get(id);

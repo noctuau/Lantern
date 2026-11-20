@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { applySettings, normalizeSettings, DEFAULT_SETTINGS, FALLBACK_FONTS, PALETTES, resolvePalette, MAX_CUSTOM_COLOURS, type AppSettings, type PaletteName, type CustomColour, type SendMode } from '../lib/settings';
 import { FontPicker } from './FontPicker';
+import { ColourPicker } from './ColourPicker';
 import { AboutTab } from './AboutTab';
 import { GRADIENT_PRESETS, HTML_PRESETS, parseCodes, xtermHex, type GradientPreset } from '../lib/gradient';
 import type { UpdateInfo } from '../../shared/updates';
@@ -297,6 +298,14 @@ export function SettingsDialog({ settings, fonts, onSave, onClose, initialTab = 
               {s.customColours.length < MAX_CUSTOM_COLOURS && (
                 <button type="button" className="btn small" onClick={addCustom}>+ Add colour</button>
               )}
+
+              <h3>Remembered names</h3>
+              <p className="hint">When you type <span className="mono">remember &lt;keyword&gt; &lt;name&gt;</span> to name someone in-game, Lantern can add a highlight for that name so they stand out from then on. It becomes an ordinary highlight you can recolour or remove under ⚡ Automation › Triggers › Highlights.</p>
+              <label className="check inline"><input type="checkbox" checked={s.rememberHighlight.enabled} onChange={(e) => set('rememberHighlight', { ...s.rememberHighlight, enabled: e.target.checked })} /> Highlight names I <span className="mono" style={{ margin: '0 4px' }}>remember</span></label>
+              <label>Colour
+                <ColourPicker value={s.rememberHighlight.colour} allowNone={false} sample="Eddie"
+                  onChange={(v) => set('rememberHighlight', { ...s.rememberHighlight, colour: v ?? s.rememberHighlight.colour })} />
+              </label>
             </>)}
 
             {tab === 'presets' && (<>

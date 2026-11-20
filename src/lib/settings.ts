@@ -30,7 +30,11 @@ export interface AppSettings {
   customColours: CustomColour[]; // named colours for the trigger colour picker (up to MAX_CUSTOM_COLOURS)
   presets: GradientPreset[];     // the colour composer's xterm gradients, in dropdown order; editable under Settings › Presets
   htmlPresets: GradientPreset[]; // the composer's HTML (truecolour) gradients; separate list, codes are #rrggbb
+  rememberHighlight: RememberHighlight; // auto-add a highlight for a name when you type `remember <keyword> <name>` (Haven)
 }
+
+/** When on, typing `remember <keyword> <name>` adds a Highlights trigger for <name> in `colour`. */
+export interface RememberHighlight { enabled: boolean; colour: string }
 
 export type PaletteName = 'warm' | 'classic' | 'vga' | 'custom';
 export type SendMode = 'enter' | 'ctrl-enter' | 'button';
@@ -83,6 +87,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   customColours: DEFAULT_CUSTOM_COLOURS.slice(),
   presets: GRADIENT_PRESETS.map((p) => ({ ...p })),
   htmlPresets: HTML_PRESETS.map((p) => ({ ...p })),
+  rememberHighlight: { enabled: true, colour: '13' }, // 13 = soft rose in the warm palette
 };
 
 /** Resolve the active 16 colours for a settings object. */
@@ -137,6 +142,10 @@ export function normalizeSettings(s: Partial<AppSettings> | null | undefined): A
       : DEFAULT_SETTINGS.customColours.slice(),
     presets: normalizePresets(s?.presets),
     htmlPresets: normalizePresets(s?.htmlPresets, 'html'),
+    rememberHighlight: {
+      enabled: typeof s?.rememberHighlight?.enabled === 'boolean' ? s.rememberHighlight.enabled : DEFAULT_SETTINGS.rememberHighlight.enabled,
+      colour: typeof s?.rememberHighlight?.colour === 'string' && s.rememberHighlight.colour.trim() ? s.rememberHighlight.colour.trim() : DEFAULT_SETTINGS.rememberHighlight.colour,
+    },
   };
 }
 
