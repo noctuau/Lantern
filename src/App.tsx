@@ -45,7 +45,7 @@ export function App() {
   const [highlight, setHighlight] = useState<{ worldId: string; text: string } | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerSeed, setComposerSeed] = useState('');
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; text: string; codes: string | null; inOutput: boolean } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; text: string; codes: string | null; inOutput: boolean; inInput: boolean } | null>(null);
   // Bumped to open the find bar in whichever pane is on screen (Ctrl+F, the ☰ menu, the right-click
   // menu). An optional query pre-fills the box — the right-click uses the selected text.
   const [findReq, setFindReq] = useState<{ tick: number; query?: string }>({ tick: 0 });
@@ -147,14 +147,16 @@ export function App() {
       const inOutput = !!t?.closest('.output');
       const inInput = !!t?.closest('.input');
       if (!inOutput && !inInput) return;
-      const text = grabSelection().trim();
-      // Over the output there's always Find; in the command box we only step in for a selection
-      // (otherwise the native menu with Paste etc. should stay).
-      if (!text && !inOutput) return;
+      // Read the selection from where the click is: the command box's own selection in the box,
+      // the window selection over the output.
+      const text = (inInput ? (inputSelRef.current?.() ?? '') : (window.getSelection()?.toString() ?? '')).trim();
+      // Over the output there's always Find; in the command box we only step in for a selection,
+      // so right-clicking with nothing selected keeps the native menu (Paste + spelling suggestions).
+      if (inInput && !text) return;
       // Selected game-coloured output can also be copied back as backtick colour codes.
       const codes = inOutput && text ? selectionColourCodes() : null;
       e.preventDefault();
-      setCtxMenu({ x: e.clientX, y: e.clientY, text, codes, inOutput });
+      setCtxMenu({ x: e.clientX, y: e.clientY, text, codes, inOutput, inInput });
     };
     document.addEventListener('contextmenu', onCtx);
     return () => document.removeEventListener('contextmenu', onCtx);
@@ -533,6 +535,21 @@ export function App() {
 
       {ctxMenu && (
         <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={(e) => e.stopPropagation()}>
+          {ctxMenu.inInput && ctxMenu.text && (
+            <button type="button" className="ctx-item" onClick={() => { void navigator.clipboard.writeText(ctxMenu.text); insertRef.current(''); setCtxMenu(null); }}>
+              ✂️ Cut
+            </button>
+          )}
+          {ctxMenu.text && (
+            <button type="button" className="ctx-item" onClick={() => { void navigator.clipboard.writeText(ctxMenu.text); setCtxMenu(null); }}>
+              📋 Copy
+            </button>
+          )}
+          {ctxMenu.inInput && (
+            <button type="button" className="ctx-item" onClick={() => { void navigator.clipboard.readText().then((clip) => { if (clip) insertRef.current(clip); }).catch(() => {}); setCtxMenu(null); }}>
+              📥 Paste
+            </button>
+          )}
           {ctxMenu.inOutput && (
             <button type="button" className="ctx-item" onClick={() => { requestFind(ctxMenu.text || undefined); setCtxMenu(null); }}>
               🔍 {ctxMenu.text ? `Find “${ctxMenu.text.length > 24 ? ctxMenu.text.slice(0, 24) + '…' : ctxMenu.text}”` : 'Find in output'}
